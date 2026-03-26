@@ -1,0 +1,9 @@
+vendor
+bin
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+README.md
+storage/uploads

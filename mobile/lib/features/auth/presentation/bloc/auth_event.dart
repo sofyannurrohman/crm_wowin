@@ -1,0 +1,23 @@
+import 'package:equatable/equatable.dart';
+import '../../domain/entities/user_entity.dart';
+
+abstract class AuthEvent extends Equatable {
+  const AuthEvent();
+
+  @override
+  List<Object?> get props => [];
+}
+
+class CheckAuthStatus extends AuthEvent {}
+
+class LoginSubmitted extends AuthEvent {
+  final String email;
+  final String password;
+
+  const LoginSubmitted({required this.email, required this.password});
+
+  @override
+  List<Object> get props => [email, password];
+}
+
+class LogoutRequested extends AuthEvent {}

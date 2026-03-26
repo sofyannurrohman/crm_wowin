@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # Wowin CRM Backend API
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: wowin_crm_api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-wowin_crm}?sslmode=disable
+      - GOOSE_DBSTRING=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-wowin_crm}?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOADS_DIR=/app/uploads
+      - GIN_MODE=debug
+      - SEED_DATABASE=false # Automatic seeding for development
+    volumes:
+      - ./storage/uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - wowin_network
+  
+  # NGINX - Reverse Proxy and Static File Server (Uploads)
+  nginx:
+    image: nginx:alpine
+    container_name: wowin_crm_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      # NGINX config file would be mounted here, for now it just serves static directly if configured
+      - ./storage/uploads:/usr/share/nginx/html/uploads:ro
+    networks:
+      - wowin_network
+    depends_on:
+      - api
+
+  # PostgreSQL DB (with PostGIS extension)
+  postgres:
+    # Use postgis image natively
+    image: postgis/postgis:16-3.4
+    container_name: wowin_crm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-wowin_crm}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wowin_network
+
+  # Redis Cache & Worker queues
+  redis:
+    image: redis:7-alpine
+    container_name: wowin_crm_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - wowin_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  wowin_network:
+    driver: bridge

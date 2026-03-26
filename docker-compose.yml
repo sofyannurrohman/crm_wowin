@@ -1,0 +1,92 @@
+services:
+  # ----------------------------------------
+  # PostgreSQL (with PostGIS extentions)
+  # ----------------------------------------
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: crm_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-wowin_crm}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crm_network
+
+  # ----------------------------------------
+  # Redis (Cache & Session)
+  # ----------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: crm_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - crm_network
+
+  # ----------------------------------------
+  # Golang Backend API
+  # ----------------------------------------
+  api:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: crm_api
+    restart: always
+    ports:
+      - "8082:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-wowin_crm}?sslmode=disable
+      - GOOSE_DBSTRING=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-wowin_crm}?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - UPLOADS_DIR=/app/uploads
+      - GIN_MODE=release
+      - SEED_DATABASE=false # New: Automate seeding in development
+    volumes:
+      - ./storage/uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - crm_network
+
+  # ----------------------------------------
+  # Vue Web Dashboard & Nginx Reverse Proxy
+  # ----------------------------------------
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: crm_web
+    restart: always
+    ports:
+      - "8081:80"
+      - "443:443" # Map 443 if you intend to add SSL on the Nginx config
+    depends_on:
+      - api
+    networks:
+      - crm_network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  crm_network:
+    driver: bridge
