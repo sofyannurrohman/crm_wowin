@@ -49,7 +49,7 @@ const formatStatus = (status: string) => {
   const map: Record<string, { label: string, variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
     active: { label: 'Aktif', variant: 'default' },
     inactive: { label: 'Non-Aktif', variant: 'secondary' },
-    lead: { label: 'Lead', variant: 'outline' }
+    prospect: { label: 'Prospek / Lead', variant: 'outline' }
   }
   return map[status] || { label: status, variant: 'secondary' }
 }
@@ -95,7 +95,7 @@ const formatStatus = (status: string) => {
               <SelectItem value="all">Semua Status</SelectItem>
               <SelectItem value="active">Aktif</SelectItem>
               <SelectItem value="inactive">Non-Aktif</SelectItem>
-              <SelectItem value="lead">Lead</SelectItem>
+              <SelectItem value="prospect">Lead / Prospek</SelectItem>
             </SelectContent>
           </Select>
         </div>

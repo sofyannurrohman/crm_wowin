@@ -79,8 +79,8 @@ const formatCurrency = (val: number) => {
               <Loader2 v-if="loading" class="w-7 h-7 animate-spin text-muted-foreground" />
               <span v-else>{{ kpi?.total_customers.toLocaleString('id-ID') }}</span>
             </div>
-            <Badge variant="secondary" class="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-0 text-[11px]">
-              <ArrowUpRight class="w-3 h-3 mr-0.5" /> 12%
+            <Badge v-if="kpi?.customers_growth" variant="secondary" class="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-0 text-[11px]">
+              <ArrowUpRight class="w-3 h-3 mr-0.5" /> {{ kpi.customers_growth }}%
             </Badge>
           </div>
         </CardContent>
@@ -120,8 +120,8 @@ const formatCurrency = (val: number) => {
               <Loader2 v-if="loading" class="w-7 h-7 animate-spin text-muted-foreground" />
               <span v-else>{{ kpi?.win_rate }}%</span>
             </div>
-            <Badge variant="secondary" class="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-0 text-[11px]">
-              <ArrowUpRight class="w-3 h-3 mr-0.5" /> 2.4%
+            <Badge v-if="kpi?.win_rate_growth" variant="secondary" class="text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/30 border-0 text-[11px]">
+              <ArrowUpRight class="w-3 h-3 mr-0.5" /> {{ kpi.win_rate_growth }}%
             </Badge>
           </div>
         </CardContent>
@@ -143,11 +143,11 @@ const formatCurrency = (val: number) => {
               <Loader2 v-if="loading" class="w-7 h-7 animate-spin text-muted-foreground" />
               <span v-else>{{ kpi?.total_visits_today }}</span>
             </div>
-            <span class="text-xs text-muted-foreground">Target: 150</span>
+            <span class="text-xs text-muted-foreground">Target: {{ kpi?.visits_target || 150 }}</span>
           </div>
           <div class="w-full bg-secondary rounded-full h-1.5 mt-3">
             <div class="bg-violet-600 h-1.5 rounded-full transition-all duration-700"
-                 :style="{ width: `${Math.min((kpi?.total_visits_today ?? 0) / 150 * 100, 100)}%` }">
+                 :style="{ width: `${Math.min((kpi?.total_visits_today ?? 0) / (kpi?.visits_target || 150) * 100, 100)}%` }">
             </div>
           </div>
         </CardContent>

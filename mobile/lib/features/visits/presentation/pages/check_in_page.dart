@@ -2,12 +2,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:geolocator/geolocator.dart';
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class CheckInPage extends StatefulWidget {
   final String scheduleId;
@@ -106,7 +109,8 @@ class _CheckInPageState extends State<CheckInPage> {
     if (pickedFile != null) {
       // Compress photo
       final tmpDir = Directory.systemTemp;
-      final targetPath = '${tmpDir.path}/${DateTime.now().millisecondsSinceEpoch}.webp';
+      final targetPath =
+          '${tmpDir.path}/${DateTime.now().millisecondsSinceEpoch}.webp';
 
       final compressedFile = await FlutterImageCompress.compressAndGetFile(
         pickedFile.path,
@@ -129,34 +133,39 @@ class _CheckInPageState extends State<CheckInPage> {
     if (_photoFile == null || _currentPosition == null) return;
 
     context.read<VisitBloc>().add(
-      CheckInSubmitted(
-        scheduleId: widget.scheduleId,
-        latitude: _currentPosition!.latitude,
-        longitude: _currentPosition!.longitude,
-        photoFile: _photoFile!,
-        notes: _notesController.text,
-      ),
-    );
+          CheckInSubmitted(
+            scheduleId: widget.scheduleId,
+            latitude: _currentPosition!.latitude,
+            longitude: _currentPosition!.longitude,
+            photoFile: _photoFile!,
+            notes: _notesController.text,
+          ),
+        );
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isOutOfRadius = (_distanceToTarget != null && _distanceToTarget! > widget.targetRadiusMeters);
+    bool isOutOfRadius = (_distanceToTarget != null &&
+        _distanceToTarget! > widget.targetRadiusMeters);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Check-In Kunjungan'),
+        scrolledUnderElevation: 0,
       ),
       body: BlocListener<VisitBloc, VisitState>(
         listener: (context, state) {
           if (state is VisitSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+              SnackBar(
+                  content: Text(state.message), backgroundColor: Colors.green),
             );
             context.pop(); // Back after success
           } else if (state is VisitError) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Theme.of(context).colorScheme.error),
+              SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Theme.of(context).colorScheme.error),
             );
           }
         },
@@ -168,57 +177,107 @@ class _CheckInPageState extends State<CheckInPage> {
               // Location Info Badge
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
                     children: [
-                      const Row(
+                      Row(
                         children: [
-                          Icon(Icons.location_on, color: Colors.blue),
-                          SizedBox(width: 8),
-                          Text('Status Lokasi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.person,
+                                color: Colors.blue, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Status Lokasi',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
                         ],
                       ),
-                      const Divider(),
+                      const Divider(height: 32),
                       if (_isLoadingLocation)
-                        const CircularProgressIndicator()
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: CircularProgressIndicator(),
+                        )
                       else if (_locationError != null)
                         Text(
                           _locationError!,
-                          style: TextStyle(color: Theme.of(context).colorScheme.error),
+                          style: const TextStyle(color: AppColors.error),
                         )
                       else if (_distanceToTarget != null) ...[
-                        Text('Jarak: ${_distanceToTarget!.toStringAsFixed(1)} meter'),
+                        Text(
+                          'Jarak: ${_distanceToTarget!.toStringAsFixed(1)} meter',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 15),
+                        ),
+                        const SizedBox(height: 12),
                         if (isOutOfRadius)
                           Container(
-                            margin: const EdgeInsets.only(top: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              color: Colors.red.shade100,
-                              borderRadius: BorderRadius.circular(16),
+                              color: AppColors.error.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: AppColors.error.withOpacity(0.2)),
                             ),
-                            child: const Text(
-                              'DI LUAR RADIUS PELANGGAN',
-                              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.person,
+                                    color: AppColors.error, size: 16),
+                                SizedBox(width: 8),
+                                Text(
+                                  'DI LUAR RADIUS',
+                                  style: TextStyle(
+                                      color: AppColors.error,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12),
+                                ),
+                              ],
                             ),
                           )
                         else
                           Container(
-                            margin: const EdgeInsets.only(top: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              color: Colors.green.shade100,
-                              borderRadius: BorderRadius.circular(16),
+                              color: AppColors.success.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: AppColors.success.withOpacity(0.2)),
                             ),
-                            child: const Text(
-                              'DALAM RADIUS PELANGGAN',
-                              style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.person,
+                                    color: AppColors.success, size: 16),
+                                SizedBox(width: 8),
+                                Text(
+                                  'DALAM RADIUS',
+                                  style: TextStyle(
+                                      color: AppColors.success,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12),
+                                ),
+                              ],
                             ),
                           )
                       ],
+                      const SizedBox(height: 16),
                       TextButton.icon(
                         onPressed: _determinePosition,
-                        icon: const Icon(Icons.refresh),
+                        icon: const Icon(Icons.person, size: 16),
                         label: const Text('Perbarui Lokasi'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                        ),
                       )
                     ],
                   ),
@@ -229,21 +288,48 @@ class _CheckInPageState extends State<CheckInPage> {
               // Photo Section
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
                     children: [
-                      _photoFile != null
-                          ? Image.file(_photoFile!, height: 200, fit: BoxFit.cover)
-                          : Container(
-                              height: 200,
-                              color: Colors.grey.shade200,
-                              child: const Center(child: Text('Belum ada foto')),
-                            ),
-                      const SizedBox(height: 16),
+                      Container(
+                        height: 200,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: _photoFile != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.file(_photoFile!,
+                                    height: 200, fit: BoxFit.cover),
+                              )
+                            : Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.person,
+                                      size: 48, color: Colors.grey.shade300),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Belum ada foto',
+                                    style: TextStyle(
+                                        color: Colors.grey.shade400,
+                                        fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                      ),
+                      const SizedBox(height: 20),
                       ElevatedButton.icon(
                         onPressed: _takePhoto,
-                        icon: const Icon(Icons.camera_alt),
-                        label: Text(_photoFile == null ? 'Buka Kamera (Wajib)' : 'Ambil Ulang Foto'),
+                        icon: const Icon(Icons.person, size: 18),
+                        label: Text(_photoFile == null
+                            ? 'Ambil Foto (Wajib)'
+                            : 'Ambil Ulang Foto'),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
                       ),
                     ],
                   ),
@@ -257,8 +343,8 @@ class _CheckInPageState extends State<CheckInPage> {
                 maxLines: 3,
                 decoration: const InputDecoration(
                   labelText: 'Catatan (Opsional)',
-                  border: OutlineInputBorder(),
                   alignLabelWithHint: true,
+                  hintText: 'Tambahkan catatan jika diperlukan...',
                 ),
               ),
               const SizedBox(height: 24),
@@ -267,7 +353,9 @@ class _CheckInPageState extends State<CheckInPage> {
               BlocBuilder<VisitBloc, VisitState>(
                 builder: (context, state) {
                   final isLoading = state is VisitLoading;
-                  final canSubmit = _photoFile != null && _currentPosition != null && !isLoading;
+                  final canSubmit = _photoFile != null &&
+                      _currentPosition != null &&
+                      !isLoading;
 
                   return ElevatedButton(
                     onPressed: canSubmit ? _submitCheckIn : null,
@@ -278,7 +366,9 @@ class _CheckInPageState extends State<CheckInPage> {
                     ),
                     child: isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('SUBMIT CHECK-IN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        : const Text('SUBMIT CHECK-IN',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
                   );
                 },
               )

@@ -119,13 +119,18 @@ func main() {
 	router.Use(gin.Logger())
 
 	// CORS Middleware
-	// CORS_ORIGIN env allows overriding the allowed origin (e.g. for production)
-	allowedOrigin := os.Getenv("CORS_ORIGIN")
-	if allowedOrigin == "" {
-		allowedOrigin = "http://localhost:8081"
-	}
 	router.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		origin := c.Request.Header.Get("Origin")
+		if origin != "" {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			allowedOrigin := os.Getenv("CORS_ORIGIN")
+			if allowedOrigin == "" {
+				allowedOrigin = "http://localhost:8081"
+			}
+			c.Writer.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		}
+
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, PATCH, DELETE")
@@ -151,6 +156,7 @@ func main() {
 	reportRepo := postgres.NewReportRepository(dbpool)
 	attendanceRepo := postgres.NewAttendanceRepository(dbpool)
 	notificationRepo := postgres.NewNotificationRepository(dbpool)
+	targetRepo := postgres.NewTargetRepository(dbpool)
 	
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -170,9 +176,10 @@ func main() {
 	visitUC := usecase.NewVisitUseCase(visitRepo, customerRepo)
 	trackingUC := usecase.NewTrackingUseCase(trackingRepo)
 	territoryUC := usecase.NewTerritoryUseCase(territoryRepo)
-	reportUC := usecase.NewReportUseCase(reportRepo)
+	reportUC := usecase.NewReportUseCase(reportRepo, targetRepo)
 	attendanceUC := usecase.NewAttendanceUseCase(attendanceRepo, territoryRepo)
 	notificationUC := usecase.NewNotificationUseCase(notificationRepo)
+	targetUC := usecase.NewTargetUseCase(targetRepo)
 	
 	authHandler := handlers.NewAuthHandler(userUC)
 	customerHandler := handlers.NewCustomerHandler(customerUC)
@@ -185,9 +192,10 @@ func main() {
 	reportHandler := handlers.NewReportHandler(reportUC)
 	attendanceHandler := handlers.NewAttendanceHandler(attendanceUC, uploadDir)
 	notificationHandler := handlers.NewNotificationHandler(notificationUC)
+	targetHandler := handlers.NewTargetHandler(targetUC)
 
 	// Setup Routes
-	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler)
+	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler, targetHandler)
 
 	// Additionally inject basic health check underneath v1
 	router.GET("/api/v1/health", func(c *gin.Context) {

@@ -23,7 +23,8 @@ class LeadRepositoryImpl implements LeadRepository {
   }
 
   @override
-  Future<Either<Failure, Lead>> updateLeadStatus(String id, String status) async {
+  Future<Either<Failure, Lead>> updateLeadStatus(
+      String id, String status) async {
     try {
       final lead = await remoteDataSource.updateLeadStatus(id, status);
       return Right(lead);

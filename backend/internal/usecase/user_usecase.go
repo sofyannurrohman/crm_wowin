@@ -7,6 +7,7 @@ import (
 	"crm_wowin_backend/internal/domain/repository"
 	"crm_wowin_backend/pkg/jwtutil"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +19,8 @@ type UserUseCase interface {
 	Login(ctx context.Context, email, password string, ip string, userAgent string) (*models.TokenResponse, error)
 	Register(ctx context.Context, req *models.User) (*models.User, error)
 	GetProfile(ctx context.Context, userID string) (*models.User, error)
+	Logout(ctx context.Context, userID string) error
+	ListUsers(ctx context.Context) ([]*models.User, error)
 }
 
 type userUseCaseImpl struct {
@@ -88,10 +91,14 @@ func (u *userUseCaseImpl) Login(ctx context.Context, email, password, ip, agent 
 	user.LastLoginAt = &now
 	_ = u.userRepo.Update(ctx, user)
 
+	// Populate metadata for frontend
+	user.FirstName, user.LastName = splitName(user.Name)
+
 	return &models.TokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ExpiresIn:    u.jwtExpHrs * 3600,
+		User:         *user,
 	}, nil
 }
 
@@ -110,6 +117,9 @@ func (u *userUseCaseImpl) Register(ctx context.Context, req *models.User) (*mode
 		return nil, err
 	}
 
+	if err == nil {
+		req.FirstName, req.LastName = splitName(req.Name)
+	}
 	return req, nil
 }
 
@@ -121,10 +131,43 @@ func (u *userUseCaseImpl) GetProfile(ctx context.Context, userID string) (*model
 		return nil, dberrors.ErrInvalidInput
 	}
 	
-	return u.userRepo.FindByID(ctx, importUUID)
+	user, err := u.userRepo.FindByID(ctx, importUUID)
+	if err == nil && user != nil {
+		user.FirstName, user.LastName = splitName(user.Name)
+	}
+	return user, err
+}
+
+func (u *userUseCaseImpl) Logout(ctx context.Context, userID string) error {
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return dberrors.ErrInvalidInput
+	}
+	return u.userRepo.RevokeAllUserTokens(ctx, id)
+}
+
+func (u *userUseCaseImpl) ListUsers(ctx context.Context) ([]*models.User, error) {
+	users, err := u.userRepo.FindAll(ctx)
+	if err == nil {
+		for _, user := range users {
+			user.FirstName, user.LastName = splitName(user.Name)
+		}
+	}
+	return users, err
 }
 
 // ParseUUID helper
 func ParseUUID(id string) (uuid.UUID, error) {
 	return uuid.Parse(id)
+}
+
+func splitName(fullName string) (firstName, lastName string) {
+	parts := strings.Fields(fullName)
+	if len(parts) == 0 {
+		return "", ""
+	}
+	if len(parts) == 1 {
+		return parts[0], ""
+	}
+	return parts[0], strings.Join(parts[1:], " ")
 }

@@ -1,9 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
+
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../bloc/map_bloc.dart';
 import '../bloc/map_event.dart';
 import '../bloc/map_state.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class CustomerMapPage extends StatefulWidget {
   const CustomerMapPage({super.key});
@@ -14,7 +19,8 @@ class CustomerMapPage extends StatefulWidget {
 
 class _CustomerMapPageState extends State<CustomerMapPage> {
   GoogleMapController? _controller;
-  static const LatLng _initialPosition = LatLng(-6.200000, 106.816666); // Jakarta
+  static const LatLng _initialPosition =
+      LatLng(-6.200000, 106.816666); // Jakarta
 
   @override
   void initState() {
@@ -27,6 +33,14 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Peta Pelanggan'),
+        scrolledUnderElevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.person, size: 20),
+            onPressed: () => context.read<MapBloc>().add(FetchMapData()),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: BlocBuilder<MapBloc, MapState>(
         builder: (context, state) {
@@ -52,7 +66,10 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.read<MapBloc>().add(FetchMapData()),
-        child: const Icon(Icons.refresh),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: const Icon(Icons.person, size: 20),
       ),
     );
   }

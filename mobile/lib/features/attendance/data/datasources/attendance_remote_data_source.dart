@@ -15,7 +15,8 @@ class AttendanceRemoteDataSource {
     String? address,
     String? notes,
   }) async {
-    return _submitAttendance(ApiEndpoints.clockIn, photo, latitude, longitude, address, notes);
+    return _submitAttendance(
+        ApiEndpoints.clockIn, photo, latitude, longitude, address, notes);
   }
 
   Future<AttendanceModel> clockOut({
@@ -25,7 +26,8 @@ class AttendanceRemoteDataSource {
     String? address,
     String? notes,
   }) async {
-    return _submitAttendance(ApiEndpoints.clockOut, photo, latitude, longitude, address, notes);
+    return _submitAttendance(
+        ApiEndpoints.clockOut, photo, latitude, longitude, address, notes);
   }
 
   Future<AttendanceModel> _submitAttendance(

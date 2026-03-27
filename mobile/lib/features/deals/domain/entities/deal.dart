@@ -18,6 +18,5 @@ class Deal with _$Deal {
     String? description,
   }) = _Deal;
 
-  factory Deal.fromJson(Map<String, dynamic> json) =>
-      _$DealFromJson(json);
+  factory Deal.fromJson(Map<String, dynamic> json) => _$DealFromJson(json);
 }

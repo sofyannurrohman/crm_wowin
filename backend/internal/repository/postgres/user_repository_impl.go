@@ -107,6 +107,33 @@ func (r *userRepositoryImpl) Update(ctx context.Context, user *models.User) erro
 	return nil
 }
 
+func (r *userRepositoryImpl) FindAll(ctx context.Context) ([]*models.User, error) {
+	query := `
+		SELECT id, name, email, phone, role, status, avatar_path, manager_id, employee_code, joined_at, last_login_at, created_at, updated_at
+		FROM users
+		ORDER BY name ASC
+	`
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, dberrors.ErrInternalServer
+	}
+	defer rows.Close()
+
+	var users []*models.User
+	for rows.Next() {
+		var u models.User
+		err := rows.Scan(
+			&u.ID, &u.Name, &u.Email, &u.Phone, &u.Role, &u.Status, &u.AvatarPath, &u.ManagerID,
+			&u.EmployeeCode, &u.JoinedAt, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
+		)
+		if err != nil {
+			return nil, dberrors.ErrInternalServer
+		}
+		users = append(users, &u)
+	}
+	return users, nil
+}
+
 func (r *userRepositoryImpl) CreateRefreshToken(ctx context.Context, token *models.RefreshToken) error {
 	query := `
 		INSERT INTO refresh_tokens (user_id, token_hash, expires_at, revoked, ip_address, user_agent)

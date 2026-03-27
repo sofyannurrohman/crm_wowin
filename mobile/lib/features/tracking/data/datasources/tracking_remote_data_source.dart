@@ -9,7 +9,7 @@ class TrackingRemoteDataSource {
 
   Future<void> syncBatch(List<LocationPoint> points) async {
     if (points.isEmpty) return;
-    
+
     final body = {
       'points': points.map((p) => p.toJsonApi()).toList(),
     };

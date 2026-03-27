@@ -22,5 +22,6 @@ class AttendanceRecord extends Equatable {
   });
 
   @override
-  List<Object?> get props => [id, type, latitude, longitude, address, photoPath, timestampAt, notes];
+  List<Object?> get props =>
+      [id, type, latitude, longitude, address, photoPath, timestampAt, notes];
 }

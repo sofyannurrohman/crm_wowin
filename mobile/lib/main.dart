@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/router/app_router.dart';
 import 'core/di/injection.dart';
@@ -16,10 +17,14 @@ import 'features/map/presentation/bloc/map_bloc.dart';
 import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'features/dashboard/presentation/bloc/dashboard_event.dart';
 
+import 'core/theme/app_theme.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initDependencies(); // Boot GetIt dependency injection
-  await TrackingBackgroundService.initialize(); // Register WorkManager 
+  if (!kIsWeb) {
+    await TrackingBackgroundService.initialize(); // Register WorkManager
+  }
 
   runApp(const WowinCrmApp());
 }
@@ -41,7 +46,8 @@ class WowinCrmApp extends StatelessWidget {
           create: (_) => sl<AttendanceBloc>(),
         ),
         BlocProvider<NotificationBloc>(
-          create: (_) => sl<NotificationBloc>()..add(const FetchNotifications()),
+          create: (_) =>
+              sl<NotificationBloc>()..add(const FetchNotifications()),
         ),
         BlocProvider<CustomerBloc>(
           create: (_) => sl<CustomerBloc>(),
@@ -62,12 +68,7 @@ class WowinCrmApp extends StatelessWidget {
       child: MaterialApp.router(
         title: 'Wowin CRM',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF0C52A5), // Enterprise Blue Context
-          ),
-          useMaterial3: true,
-        ),
+        theme: AppTheme.lightTheme,
         routerConfig: appRouter,
       ),
     );

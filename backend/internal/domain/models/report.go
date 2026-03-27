@@ -6,6 +6,11 @@ type KpiSummary struct {
 	PipelineValue    float64 `json:"pipeline_value"`
 	WinRate          float64 `json:"win_rate"`
 	TotalVisitsToday int     `json:"total_visits_today"`
+
+	// Trends & Progress
+	CustomersGrowth float64 `json:"customers_growth"`
+	WinRateGrowth   float64 `json:"win_rate_growth"`
+	VisitsTarget    int     `json:"visits_target"`
 }
 
 type ChartData struct {

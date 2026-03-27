@@ -1,10 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+
 import '../bloc/attendance_bloc.dart';
 import '../bloc/attendance_event.dart';
 import '../bloc/attendance_state.dart';
 import '../../../../core/api/api_endpoints.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class AttendanceHistoryPage extends StatefulWidget {
   const AttendanceHistoryPage({super.key});
@@ -36,6 +41,7 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Riwayat Absensi'),
+        scrolledUnderElevation: 0,
         actions: [
           IconButton(
             onPressed: () async {
@@ -52,8 +58,9 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
                 _fetchHistory();
               }
             },
-            icon: const Icon(Icons.calendar_month),
+            icon: const Icon(Icons.person, size: 20),
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
@@ -83,8 +90,11 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
 
   Widget _buildSummaryHeader() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      color: Theme.of(context).primaryColor.withOpacity(0.05),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.05),
+        border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -93,15 +103,36 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
             children: [
               Text(
                 DateFormat('MMMM yyyy').format(selectedDate),
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
               ),
-              const Text('Ringkasan kehadiran bulan ini'),
+              const SizedBox(height: 4),
+              Text(
+                'Ringkasan kehadiran bulan ini',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+              ),
             ],
           ),
-          ElevatedButton.icon(
-            onPressed: _fetchHistory,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Refresh'),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _fetchHistory,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: const Icon(Icons.person,
+                    size: 18, color: AppColors.primary),
+              ),
+            ),
           ),
         ],
       ),
@@ -122,46 +153,76 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
   }
 
   Widget _buildHistoryList(history) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
       itemCount: history.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final record = history[index];
         final bool isClockIn = record.type == 'clock_in';
 
-        return Card(
-          elevation: 0,
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(color: Colors.grey.shade200),
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade100),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: isClockIn ? Colors.green.shade50 : Colors.orange.shade50,
+            contentPadding: const EdgeInsets.all(12),
+            leading: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isClockIn
+                    ? AppColors.success.withOpacity(0.1)
+                    : AppColors.accent.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
               child: Icon(
-                isClockIn ? Icons.login : Icons.logout,
-                color: isClockIn ? Colors.green : Colors.orange,
+                isClockIn ? Icons.person : Icons.person,
+                color: isClockIn ? AppColors.success : AppColors.accent,
+                size: 20,
               ),
             ),
             title: Text(
               isClockIn ? 'Clock In' : 'Clock Out',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(DateFormat('dd MMM yyyy, HH:mm').format(record.timestampAt)),
-                if (record.address != null)
-                  Text(
-                    record.address!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('dd MMM yyyy, HH:mm').format(record.timestampAt),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                ),
+                if (record.address != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.person, size: 12, color: Colors.grey.shade400),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          record.address!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade500),
+                        ),
+                      ),
+                    ],
                   ),
+                ],
               ],
             ),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: Icon(Icons.person, color: Colors.grey.shade400, size: 18),
             onTap: () => _showDetail(record),
           ),
         );
@@ -194,28 +255,58 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
             ),
             const SizedBox(height: 24),
             Text(
-              record.type == 'clock_in' ? 'Detail Clock In' : 'Detail Clock Out',
+              record.type == 'clock_in'
+                  ? 'Detail Clock In'
+                  : 'Detail Clock Out',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildDetailItem('Waktu', DateFormat('dd MMMM yyyy, HH:mm:ss').format(record.timestampAt)),
-            _buildDetailItem('Lokasi', record.address ?? 'Lokasi tidak tersedia'),
+            _buildDetailItem(
+                'Waktu',
+                DateFormat('dd MMMM yyyy, HH:mm:ss')
+                    .format(record.timestampAt)),
+            _buildDetailItem(
+                'Lokasi', record.address ?? 'Lokasi tidak tersedia'),
             if (record.notes != null && record.notes!.isNotEmpty)
               _buildDetailItem('Catatan', record.notes!),
             const SizedBox(height: 16),
             if (record.photoPath != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  // In real app, prefix with baseUrl
-                  ApiEndpoints.uploadsBaseUrl + record.photoPath!, 
-                  height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    ApiEndpoints.uploadsBaseUrl + record.photoPath!,
                     height: 200,
-                    color: Colors.grey[100],
-                    child: const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.person,
+                              size: 40, color: Colors.grey.shade300),
+                          const SizedBox(height: 8),
+                          Text('Foto tidak tersedia',
+                              style: TextStyle(
+                                  color: Colors.grey.shade400, fontSize: 13)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

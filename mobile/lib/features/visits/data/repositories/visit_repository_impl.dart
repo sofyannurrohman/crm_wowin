@@ -18,7 +18,8 @@ class VisitRepositoryImpl implements VisitRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Terjadi kesalahan yang tidak terduga saat Check-in'));
+      return const Left(
+          ServerFailure('Terjadi kesalahan yang tidak terduga saat Check-in'));
     }
   }
 
@@ -30,7 +31,8 @@ class VisitRepositoryImpl implements VisitRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Terjadi kesalahan yang tidak terduga saat Check-out'));
+      return const Left(
+          ServerFailure('Terjadi kesalahan yang tidak terduga saat Check-out'));
     }
   }
 }

@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 abstract class VisitState extends Equatable {
   const VisitState();
-  
+
   @override
   List<Object?> get props => [];
 }

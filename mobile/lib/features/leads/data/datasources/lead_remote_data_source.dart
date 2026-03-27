@@ -17,7 +17,7 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
       '/leads',
       queryParameters: status != null ? {'status': status} : null,
     );
-    
+
     final List data = response.data['data'];
     return data.map((e) => Lead.fromJson(e)).toList();
   }

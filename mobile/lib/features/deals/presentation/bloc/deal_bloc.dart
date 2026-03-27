@@ -36,7 +36,8 @@ class DealBloc extends Bloc<DealEvent, DealState> {
     final result = await updateDealStage(event.id, event.stage);
     result.fold(
       (failure) => emit(DealError(failure.message)),
-      (deal) => emit(const DealOperationSuccess('Berhasil memperbarui tahapan deal')),
+      (deal) =>
+          emit(const DealOperationSuccess('Berhasil memperbarui tahapan deal')),
     );
   }
 }

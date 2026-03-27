@@ -10,7 +10,8 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   AttendanceRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<Failure, List<AttendanceRecord>>> getHistory(int month, int year) async {
+  Future<Either<Failure, List<AttendanceRecord>>> getHistory(
+      int month, int year) async {
     try {
       final result = await remoteDataSource.getHistory(month, year);
       return Right(result);

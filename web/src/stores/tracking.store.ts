@@ -19,7 +19,7 @@ export const useTrackingStore = defineStore('tracking', () => {
     
     try {
       const res = await apiFetchLive()
-      livePositions.value = res.data.data
+      livePositions.value = res.data.data || []
       error.value = null
     } catch (e: any) {
       error.value = e.response?.data?.error?.message ?? 'Gagal memuat posisi sales'

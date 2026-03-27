@@ -18,7 +18,7 @@ export const useCustomerStore = defineStore('customers', () => {
     error.value = null
     try {
       const res = await apiFetchCustomers(filter)
-      customers.value = res.data.data
+      customers.value = res.data.data || []
       total.value = res.data.meta?.total ?? 0
     } catch (e: any) {
       error.value = e.response?.data?.error?.message ?? 'Gagal mengambil data pelanggan'

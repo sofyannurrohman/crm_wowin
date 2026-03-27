@@ -3,7 +3,7 @@ import '../../domain/entities/attendance_record.dart';
 
 abstract class AttendanceState extends Equatable {
   const AttendanceState();
-  
+
   @override
   List<Object> get props => [];
 }

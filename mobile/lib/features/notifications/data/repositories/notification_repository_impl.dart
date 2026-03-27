@@ -10,9 +10,11 @@ class NotificationRepositoryImpl implements NotificationRepository {
   NotificationRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<Failure, List<AppNotification>>> getNotifications({int limit = 20, int offset = 0}) async {
+  Future<Either<Failure, List<AppNotification>>> getNotifications(
+      {int limit = 20, int offset = 0}) async {
     try {
-      final result = await remoteDataSource.getNotifications(limit: limit, offset: offset);
+      final result =
+          await remoteDataSource.getNotifications(limit: limit, offset: offset);
       return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

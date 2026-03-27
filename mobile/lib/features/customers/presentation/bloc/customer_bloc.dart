@@ -52,7 +52,8 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
     final result = await createCustomer(event.customer);
     result.fold(
       (failure) => emit(CustomerError(failure.message)),
-      (customer) => emit(const CustomerOperationSuccess('Berhasil membuat pelanggan baru')),
+      (customer) => emit(
+          const CustomerOperationSuccess('Berhasil membuat pelanggan baru')),
     );
   }
 }

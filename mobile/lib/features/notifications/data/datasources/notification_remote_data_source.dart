@@ -7,7 +7,8 @@ class NotificationRemoteDataSource {
 
   NotificationRemoteDataSource(this.dio);
 
-  Future<List<NotificationModel>> getNotifications({int limit = 20, int offset = 0}) async {
+  Future<List<NotificationModel>> getNotifications(
+      {int limit = 20, int offset = 0}) async {
     final response = await dio.get(
       ApiEndpoints.notifications,
       queryParameters: {'limit': limit, 'offset': offset},

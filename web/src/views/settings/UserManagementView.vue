@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { fetchAnalytics } from '@/api/reports.api'
+import { fetchUsers } from '@/api/auth.api'
 import {
-  Loader2, RefreshCw, Shield, UserCog, Users, Mail
+  Loader2, RefreshCw, Shield, UserCog, Users, Mail, TrendingUp
 } from 'lucide-vue-next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,8 +19,8 @@ const users = ref<any[]>([])
 async function loadData() {
   loading.value = true
   try {
-    const res = await fetchAnalytics(6)
-    users.value = res.data.data.top_performers || []
+    const res = await fetchUsers()
+    users.value = res.data.data || []
   } catch (e) {
     console.error('Failed to load user data', e)
   } finally {
@@ -30,9 +30,14 @@ async function loadData() {
 
 onMounted(() => loadData())
 
-const getRoleBadge = (index: number) => {
-  if (index === 0) return { label: 'Supervisor', variant: 'default' as const }
-  return { label: 'Sales', variant: 'secondary' as const }
+const getRoleBadge = (role: string) => {
+  const map: Record<string, { label: string, variant: 'default' | 'secondary' | 'outline' }> = {
+    super_admin: { label: 'Super Admin', variant: 'default' },
+    manager: { label: 'Manager', variant: 'default' },
+    supervisor: { label: 'Supervisor', variant: 'secondary' },
+    sales: { label: 'Sales', variant: 'outline' }
+  }
+  return map[role] || { label: role, variant: 'outline' as const }
 }
 </script>
 
@@ -56,11 +61,11 @@ const getRoleBadge = (index: number) => {
     </div>
 
     <!-- Info Banner -->
-    <Card class="border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20">
+    <Card class="border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20">
       <CardContent class="py-3 flex items-center gap-3">
-        <Shield class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-        <p class="text-sm text-blue-700 dark:text-blue-300">
-          Data pengguna diambil dari laporan analytics. Fitur CRUD pengguna lengkap akan tersedia setelah endpoint admin APIs ditambahkan.
+        <Shield class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+        <p class="text-sm text-amber-700 dark:text-amber-300">
+          Daftar pengguna ditarik secara real-time dari database. Fitur pembuatan pengguna baru (register/invite) tersedia di tombol aksi.
         </p>
       </CardContent>
     </Card>
@@ -69,7 +74,7 @@ const getRoleBadge = (index: number) => {
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <Card>
         <CardHeader class="flex flex-row items-center justify-between pb-2 space-y-0">
-          <CardTitle class="text-sm font-medium text-muted-foreground">Total Tim Sales</CardTitle>
+          <CardTitle class="text-sm font-medium text-muted-foreground">Total Pengguna</CardTitle>
           <Users class="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -79,24 +84,22 @@ const getRoleBadge = (index: number) => {
       </Card>
       <Card>
         <CardHeader class="flex flex-row items-center justify-between pb-2 space-y-0">
-          <CardTitle class="text-sm font-medium text-muted-foreground">Total Kunjungan</CardTitle>
+          <CardTitle class="text-sm font-medium text-muted-foreground">Tim Sales</CardTitle>
           <Users class="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <Loader2 v-if="loading" class="w-6 h-6 animate-spin text-muted-foreground" />
-          <div v-else class="text-3xl font-bold">{{ users.reduce((s: number, u: any) => s + (u.total_visits || 0), 0) }}</div>
+          <div v-else class="text-3xl font-bold">{{ users.filter(u => u.role === 'sales').length }}</div>
         </CardContent>
       </Card>
       <Card>
         <CardHeader class="flex flex-row items-center justify-between pb-2 space-y-0">
-          <CardTitle class="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
-          <Users class="h-4 w-4 text-muted-foreground" />
+          <CardTitle class="text-sm font-medium text-muted-foreground">Management</CardTitle>
+          <Shield class="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <Loader2 v-if="loading" class="w-6 h-6 animate-spin text-muted-foreground" />
-          <div v-else class="text-2xl font-bold truncate">
-            {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(users.reduce((s: number, u: any) => s + (u.revenue || 0), 0)) }}
-          </div>
+          <div v-else class="text-3xl font-bold">{{ users.filter(u => ['super_admin', 'manager', 'supervisor'].includes(u.role)).length }}</div>
         </CardContent>
       </Card>
     </div>
@@ -123,9 +126,9 @@ const getRoleBadge = (index: number) => {
               <TableHead class="w-[50px]">#</TableHead>
               <TableHead>Nama</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead class="text-center">Kunjungan</TableHead>
-              <TableHead class="text-center">Valid</TableHead>
-              <TableHead class="text-right">Revenue</TableHead>
+              <TableHead class="text-center">Email</TableHead>
+              <TableHead class="text-center">Status</TableHead>
+              <TableHead class="text-right">Last Login</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -135,24 +138,28 @@ const getRoleBadge = (index: number) => {
                 <div class="flex items-center gap-3">
                   <Avatar class="h-9 w-9">
                     <AvatarFallback class="text-xs bg-primary/10 text-primary font-semibold">
-                      {{ user.sales_name.charAt(0) }}
+                      {{ user.name.charAt(0) }}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p class="font-medium">{{ user.sales_name }}</p>
-                    <p class="text-xs text-muted-foreground font-mono">{{ user.sales_id.slice(0, 8) }}</p>
+                    <p class="font-medium">{{ user.name }}</p>
+                    <p class="text-xs text-muted-foreground font-mono">{{ user.id.slice(0, 8) }}</p>
                   </div>
                 </div>
               </TableCell>
-              <TableCell>
-                <Badge :variant="getRoleBadge(i).variant">
-                  {{ getRoleBadge(i).label }}
+               <TableCell>
+                <Badge :variant="getRoleBadge(user.role).variant">
+                  {{ getRoleBadge(user.role).label }}
                 </Badge>
               </TableCell>
-              <TableCell class="text-center font-mono">{{ user.total_visits }}</TableCell>
-              <TableCell class="text-center font-mono">{{ user.valid_checkins }}</TableCell>
-              <TableCell class="text-right font-mono text-sm">
-                {{ new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(user.revenue) }}
+              <TableCell class="text-center font-mono text-muted-foreground">
+                {{ user.email }}
+              </TableCell>
+              <TableCell class="text-center font-mono">
+                {{ user.status }}
+              </TableCell>
+              <TableCell class="text-right font-mono text-xs text-muted-foreground">
+                {{ user.last_login_at ? new Date(user.last_login_at).toLocaleDateString('id-ID') : 'Never' }}
               </TableCell>
             </TableRow>
           </TableBody>

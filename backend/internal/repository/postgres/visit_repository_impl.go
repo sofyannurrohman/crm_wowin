@@ -24,7 +24,7 @@ func NewVisitRepository(db *pgxpool.Pool) repository.VisitRepository {
 // === SCHEDULES ===
 
 func (r *visitRepoImpl) CreateSchedule(ctx context.Context, s *models.VisitSchedule) error {
-	query := `INSERT INTO visit_schedules (sales_id, customer_id, date, notes)
+	query := `INSERT INTO visit_schedules (sales_id, customer_id, scheduled_date, notes)
 			  VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at`
 	err := r.db.QueryRow(ctx, query, s.SalesID, s.CustomerID, s.Date, s.Notes).
 		Scan(&s.ID, &s.CreatedAt, &s.UpdatedAt)
@@ -32,7 +32,7 @@ func (r *visitRepoImpl) CreateSchedule(ctx context.Context, s *models.VisitSched
 }
 
 func (r *visitRepoImpl) GetScheduleByID(ctx context.Context, id uuid.UUID) (*models.VisitSchedule, error) {
-	query := `SELECT id, sales_id, customer_id, date, notes, created_at, updated_at
+	query := `SELECT id, sales_id, customer_id, scheduled_date, notes, created_at, updated_at
 			  FROM visit_schedules WHERE id=$1`
 	var s models.VisitSchedule
 	err := r.db.QueryRow(ctx, query, id).Scan(
@@ -45,7 +45,7 @@ func (r *visitRepoImpl) GetScheduleByID(ctx context.Context, id uuid.UUID) (*mod
 }
 
 func (r *visitRepoImpl) ListSchedules(ctx context.Context, filter repository.ScheduleFilter) ([]*models.VisitSchedule, error) {
-	baseQuery := `SELECT id, sales_id, customer_id, date, notes, created_at, updated_at 
+	baseQuery := `SELECT id, sales_id, customer_id, scheduled_date, notes, created_at, updated_at 
 				  FROM visit_schedules WHERE 1=1`
 
 	args := []interface{}{}
@@ -61,23 +61,18 @@ func (r *visitRepoImpl) ListSchedules(ctx context.Context, filter repository.Sch
 		args = append(args, *filter.CustomerID)
 		argCount++
 	}
-	if filter.Status != "" {
-		baseQuery += fmt.Sprintf(" AND status = $%d", argCount)
-		args = append(args, filter.Status)
-		argCount++
-	}
 	if filter.StartDate != nil {
-		baseQuery += fmt.Sprintf(" AND date >= $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND scheduled_date >= $%d", argCount)
 		args = append(args, *filter.StartDate)
 		argCount++
 	}
 	if filter.EndDate != nil {
-		baseQuery += fmt.Sprintf(" AND date <= $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND scheduled_date <= $%d", argCount)
 		args = append(args, *filter.EndDate)
 		argCount++
 	}
 
-	baseQuery += " ORDER BY date ASC, created_at ASC"
+	baseQuery += " ORDER BY scheduled_date ASC, created_at ASC"
 
 	rows, err := r.db.Query(ctx, baseQuery, args...)
 	if err != nil {
@@ -96,16 +91,13 @@ func (r *visitRepoImpl) ListSchedules(ctx context.Context, filter repository.Sch
 		}
 		results = append(results, &s)
 	}
-	if results == nil {
-		results = []*models.VisitSchedule{}
-	}
 
 	return results, nil
 }
 
 func (r *visitRepoImpl) UpdateSchedule(ctx context.Context, s *models.VisitSchedule) error {
 	query := `UPDATE visit_schedules SET 
-				sales_id=$1, customer_id=$2, date=$3, notes=$4, updated_at=NOW()
+				sales_id=$1, customer_id=$2, scheduled_date=$3, notes=$4, updated_at=NOW()
 			  WHERE id=$5 RETURNING updated_at`
 	err := r.db.QueryRow(ctx, query, s.SalesID, s.CustomerID, s.Date, s.Notes, s.ID).Scan(&s.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {

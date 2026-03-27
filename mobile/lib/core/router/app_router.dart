@@ -12,19 +12,9 @@ import '../../features/leads/presentation/pages/lead_list_page.dart';
 import '../../features/deals/presentation/pages/deal_kanban_page.dart';
 import '../../features/map/presentation/pages/customer_map_page.dart';
 
-// Constants for Routes Mapping
-const String kRouteLogin = 'login';
-const String kRouteDashboard = 'dashboard';
-const String kRouteCheckIn = 'check_in';
-const String kRouteCheckOut = 'check_out';
-const String kRouteAttendanceHistory = 'attendance_history';
-const String kRouteNotifications = 'notifications';
-const String kRouteCustomers = 'customers';
-const String kRouteCustomerDetail = 'customer_detail';
-const String kRouteAddCustomer = 'add_customer';
-const String kRouteLeads = 'leads';
-const String kRouteDeals = 'deals';
-const String kRouteMap = 'map';
+import 'route_constants.dart';
+
+export 'route_constants.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/login',

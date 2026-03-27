@@ -22,11 +22,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'password': password,
         },
       );
-      
+
       if (response.statusCode == 200 && response.data['data'] != null) {
         return AuthModel.fromJson(response.data['data']);
       } else {
-        throw ServerException(response.data['message'] ?? 'Unknown authentication error');
+        throw ServerException(
+            response.data['message'] ?? 'Unknown authentication error');
       }
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {

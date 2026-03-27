@@ -74,3 +74,29 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 
 	response.OK(c, profile)
 }
+
+// Logout revokes user tokens
+func (h *AuthHandler) Logout(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		response.Fail(c, http.StatusUnauthorized, "missing user context")
+		return
+	}
+
+	if err := h.userUC.Logout(c.Request.Context(), userID); err != nil {
+		response.MapDBError(c, err)
+		return
+	}
+
+	response.OK(c, nil, "logout successful")
+}
+
+// ListUsers retrieves all registered users
+func (h *AuthHandler) ListUsers(c *gin.Context) {
+	users, err := h.userUC.ListUsers(c.Request.Context())
+	if err != nil {
+		response.MapDBError(c, err)
+		return
+	}
+	response.OK(c, users)
+}

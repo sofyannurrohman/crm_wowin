@@ -17,7 +17,7 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
   Future<void> checkIn(CheckInRequest request) async {
     try {
       final fileName = request.photoFile.path.split('/').last;
-      
+
       final formData = FormData.fromMap({
         'visit_schedule_id': request.scheduleId,
         'activity_type': 'check_in',
@@ -43,9 +43,10 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
       }
     } on DioException catch (e) {
       if (e.response?.statusCode == 400 && e.response?.data != null) {
-         // Detect if its a distance violation from backend (if blocking was enabled)
-         // For now server handles it strictly or bypasses with warning.
-         throw ServerException(e.response?.data['message'] ?? 'Kesalahan validasi data');
+        // Detect if its a distance violation from backend (if blocking was enabled)
+        // For now server handles it strictly or bypasses with warning.
+        throw ServerException(
+            e.response?.data['message'] ?? 'Kesalahan validasi data');
       }
       throw ServerException(e.message ?? 'Server error occurred');
     }

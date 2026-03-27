@@ -63,7 +63,7 @@ const goBack = () => router.back()
         <CardContent class="pt-8 text-center">
           <Avatar class="h-20 w-20 mx-auto mb-4">
             <AvatarFallback class="bg-primary/10 text-primary text-2xl font-bold">
-              {{ customer.name.charAt(0).toUpperCase() }}
+              {{ customer.name?.charAt(0)?.toUpperCase() ?? '?' }}
             </AvatarFallback>
           </Avatar>
           <h3 class="text-xl font-bold">{{ customer.name }}</h3>

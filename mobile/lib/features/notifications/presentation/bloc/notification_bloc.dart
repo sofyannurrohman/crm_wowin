@@ -43,7 +43,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
   ) async {
     if (state is NotificationLoaded) {
       final current = state as NotificationLoaded;
-      
+
       // Optimitic update
       final updatedNotifs = current.notifications.map((n) {
         if (n.id == event.id && !n.isRead) {

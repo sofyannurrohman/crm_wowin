@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/router/app_router.dart';
-import '../../auth/presentation/bloc/auth_bloc.dart';
-import '../../auth/presentation/bloc/auth_event.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/router/route_constants.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
 import '../bloc/dashboard_bloc.dart';
 import '../bloc/dashboard_event.dart';
 import '../bloc/dashboard_state.dart';
@@ -16,19 +17,21 @@ class DashboardPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Wowin CRM'),
+        scrolledUnderElevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.person, size: 20),
             onPressed: () {
               context.read<DashboardBloc>().add(FetchDashboardKpis());
             },
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.person, size: 20),
             onPressed: () {
               context.read<AuthBloc>().add(LogoutRequested());
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
@@ -62,49 +65,44 @@ class DashboardPage extends StatelessWidget {
                   _buildMenuCard(
                     context,
                     title: 'Pelanggan',
-                    icon: Icons.people,
+                    icon: Icons.person,
                     color: Colors.blue,
                     onTap: () => context.pushNamed(kRouteCustomers),
                   ),
                   _buildMenuCard(
-                  context,
-                  title: 'Kunjungan',
-                  icon: Icons.location_on,
-                  color: Colors.orange,
-                  onTap: () {
-                    // Navigate to visits history/check-in context
-                    // For now, let's say it goes to check-in if not checked in, 
-                    // or history? 
-                    // Let's just use history for now if available, or just a placeholder.
-                    // The user mentioned "Check-in foto, check-out"
-                    context.pushNamed(kRouteCheckIn);
-                  },
-                ),
+                    context,
+                    title: 'Kunjungan',
+                    icon: Icons.person,
+                    color: Colors.orange,
+                    onTap: () {
+                      context.pushNamed(kRouteCheckIn);
+                    },
+                  ),
                   _buildMenuCard(
                     context,
                     title: 'Leads',
-                    icon: Icons.leaderboard,
+                    icon: Icons.person,
                     color: Colors.green,
                     onTap: () => context.pushNamed(kRouteLeads),
                   ),
                   _buildMenuCard(
                     context,
                     title: 'Deals',
-                    icon: Icons.handshake,
+                    icon: Icons.person,
                     color: Colors.purple,
                     onTap: () => context.pushNamed(kRouteDeals),
                   ),
                   _buildMenuCard(
                     context,
                     title: 'Absensi',
-                    icon: Icons.access_time,
+                    icon: Icons.person,
                     color: Colors.teal,
                     onTap: () => context.pushNamed(kRouteAttendanceHistory),
                   ),
                   _buildMenuCard(
                     context,
                     title: 'Peta',
-                    icon: Icons.map,
+                    icon: Icons.person,
                     color: Colors.red,
                     onTap: () => context.pushNamed(kRouteMap),
                   ),
@@ -119,37 +117,51 @@ class DashboardPage extends StatelessWidget {
 
   Widget _buildWelcomeSection(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.primaryContainer,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          const CircleAvatar(
-            radius: 30,
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person, size: 40),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              color: Colors.white24,
+              shape: BoxShape.circle,
+            ),
+            child: const CircleAvatar(
+              radius: 32,
+              backgroundColor: Colors.white,
+              child: Icon(Icons.person, size: 32, color: AppColors.primary),
+            ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'Selamat Datang,',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 Text(
                   'Sales Wowin',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
+                        letterSpacing: -0.5,
                       ),
                 ),
               ],
@@ -184,7 +196,7 @@ class DashboardPage extends StatelessWidget {
                       context,
                       label: 'Total Penjualan',
                       value: 'Rp ${summary.totalSales}',
-                      icon: Icons.monetization_on,
+                      icon: Icons.person,
                       color: Colors.green,
                     ),
                   ),
@@ -194,7 +206,7 @@ class DashboardPage extends StatelessWidget {
                       context,
                       label: 'Leads Baru',
                       value: '${summary.newLeads}',
-                      icon: Icons.person_add,
+                      icon: Icons.person,
                       color: Colors.blue,
                     ),
                   ),
@@ -208,7 +220,7 @@ class DashboardPage extends StatelessWidget {
                       context,
                       label: 'Deals Aktif',
                       value: '${summary.activeDeals}',
-                      icon: Icons.trending_up,
+                      icon: Icons.person,
                       color: Colors.orange,
                     ),
                   ),
@@ -218,7 +230,7 @@ class DashboardPage extends StatelessWidget {
                       context,
                       label: 'Kunjungan Hari Ini',
                       value: '${summary.visitsToday}',
-                      icon: Icons.calendar_today,
+                      icon: Icons.person,
                       color: Colors.purple,
                     ),
                   ),
@@ -242,36 +254,46 @@ class DashboardPage extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 16),
           Text(
             value,
             style: const TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 18,
+              fontSize: 20,
+              letterSpacing: -0.5,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 12,
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -286,28 +308,46 @@ class DashboardPage extends StatelessWidget {
     required Color color,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.2)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 40, color: color),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.grey.shade100),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 28, color: color),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

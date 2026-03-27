@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import '../../customers/domain/usecases/get_customers.dart';
+import '../../../customers/domain/usecases/get_customers.dart';
 import 'map_event.dart';
 import 'map_state.dart';
 

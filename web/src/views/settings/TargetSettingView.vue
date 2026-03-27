@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Save, Target, TrendingUp, MapPin, CircleDollarSign } from 'lucide-vue-next'
+import { ref, computed, onMounted } from 'vue'
+import { Save, Target, TrendingUp, MapPin, CircleDollarSign, Loader2, RefreshCw, CheckCircle2 } from 'lucide-vue-next'
+import { fetchTargets, updateTargets, type Target as TargetModel } from '@/api/targets.api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,24 +12,53 @@ import { useToast } from '@/components/ui/toast/use-toast'
 
 const { toast } = useToast()
 
-const targets = ref({
-  monthly_revenue: 500000000,
-  monthly_visits: 150,
-  monthly_new_customers: 20,
-  win_rate: 30,
-  monthly_deals: 10,
+const targets = ref<TargetModel>({
+  monthly_revenue: 0,
+  monthly_visits: 0,
+  monthly_new_customers: 0,
+  win_rate: 0,
+  monthly_deals: 0,
 })
 
-const saved = ref(false)
+const loading = ref(false)
+const saving = ref(false)
 
-function handleSave() {
-  saved.value = true
-  toast({
-    title: 'Target disimpan',
-    description: 'Target KPI bulanan berhasil diperbarui. (Lokal saja — belum terkoneksi ke backend)'
-  })
-  setTimeout(() => { saved.value = false }, 2000)
+async function loadTargets() {
+  loading.value = true
+  try {
+    const res = await fetchTargets()
+    targets.value = res.data.data
+  } catch (e: any) {
+    toast({
+      title: 'Gagal memuat target',
+      description: e.response?.data?.error?.message || 'Terjadi kesalahan sistem.',
+      variant: 'destructive'
+    })
+  } finally {
+    loading.value = false
+  }
 }
+
+async function handleSave() {
+  saving.value = true
+  try {
+    await updateTargets(targets.value)
+    toast({
+      title: 'Target disimpan',
+      description: 'Target KPI bulanan berhasil diperbarui dan diterapkan ke seluruh sistem.'
+    })
+  } catch (e: any) {
+    toast({
+      title: 'Gagal menyimpan',
+      description: e.response?.data?.error?.message || 'Terjadi kesalahan sistem.',
+      variant: 'destructive'
+    })
+  } finally {
+    saving.value = false
+  }
+}
+
+onMounted(loadTargets)
 
 const formatCurrency = (val: number) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
@@ -89,18 +119,25 @@ const metrics = computed(() => [
         <h1 class="text-3xl font-bold tracking-tight">Target Setting</h1>
         <p class="text-muted-foreground mt-1">Atur target penjualan dan KPI tim sales per bulan.</p>
       </div>
-      <Button size="sm" @click="handleSave">
-        <Save class="w-4 h-4 mr-2" />
-        Simpan Target
-      </Button>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="sm" @click="loadTargets" :disabled="loading">
+          <RefreshCw class="w-4 h-4 mr-2" :class="{ 'animate-spin': loading }" />
+          Refresh
+        </Button>
+        <Button size="sm" @click="handleSave" :disabled="saving || loading">
+          <Loader2 v-if="saving" class="w-4 h-4 mr-2 animate-spin" />
+          <Save v-else class="w-4 h-4 mr-2" />
+          Simpan Target
+        </Button>
+      </div>
     </div>
 
     <!-- Info -->
-    <Card class="border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-950/20">
+    <Card class="border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20">
       <CardContent class="py-3 flex items-center gap-3">
-        <Target class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-        <p class="text-sm text-amber-700 dark:text-amber-300">
-          Target saat ini disimpan secara lokal. Integrasi dengan backend akan tersedia pada versi selanjutnya.
+        <CheckCircle2 class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+        <p class="text-sm text-emerald-700 dark:text-emerald-300">
+          Target saat ini aktif dan terhubung dengan backend Dashboard Analytics.
         </p>
       </CardContent>
     </Card>

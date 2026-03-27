@@ -24,13 +24,13 @@ class TrackingLocalDataSource {
       orderBy: 'captured_at ASC',
       limit: 10,
     );
-    
+
     return result.map((json) => LocationPoint.fromMap(json)).toList();
   }
 
   Future<void> removeSyncedLocations(List<int> ids) async {
     if (ids.isEmpty) return;
-    
+
     final db = await dbHelper.database;
     await db.delete(
       'locations',

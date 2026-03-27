@@ -13,3 +13,7 @@ export async function refreshToken(refresh_token: string) {
 export async function logout() {
   return client.post('/auth/logout')
 }
+
+export async function fetchUsers() {
+  return client.get<ApiResponse<any[]>>('/users')
+}

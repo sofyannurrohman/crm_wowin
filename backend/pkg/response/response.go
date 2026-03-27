@@ -61,6 +61,8 @@ func MapDBError(c *gin.Context, err error) {
 	} else if errors.Is(err, dberrors.ErrUnauthorized) {
 		code = http.StatusUnauthorized
 		msg = err.Error()
+	} else {
+		msg = err.Error()
 	}
 
 	c.JSON(code, Error{

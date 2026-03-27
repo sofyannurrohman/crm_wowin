@@ -20,6 +20,5 @@ class Lead with _$Lead {
     @JsonKey(name: 'converted_at') DateTime? convertedAt,
   }) = _Lead;
 
-  factory Lead.fromJson(Map<String, dynamic> json) =>
-      _$LeadFromJson(json);
+  factory Lead.fromJson(Map<String, dynamic> json) => _$LeadFromJson(json);
 }

@@ -45,5 +45,6 @@ class CheckOutSubmitted extends VisitEvent {
   });
 
   @override
-  List<Object> get props => [scheduleId, latitude, longitude, visitResult, nextAction, nextVisitDate];
+  List<Object> get props =>
+      [scheduleId, latitude, longitude, visitResult, nextAction, nextVisitDate];
 }

@@ -36,7 +36,8 @@ class LeadBloc extends Bloc<LeadEvent, LeadState> {
     final result = await updateLeadStatus(event.id, event.status);
     result.fold(
       (failure) => emit(LeadError(failure.message)),
-      (lead) => emit(const LeadOperationSuccess('Berhasil memperbarui status lead')),
+      (lead) =>
+          emit(const LeadOperationSuccess('Berhasil memperbarui status lead')),
     );
   }
 }

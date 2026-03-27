@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../customers/domain/entities/customer.dart';
+import '../../../customers/domain/entities/customer.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 abstract class MapEvent extends Equatable {

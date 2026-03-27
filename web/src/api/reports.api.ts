@@ -7,6 +7,9 @@ export interface KpiSummary {
   pipeline_value: number
   win_rate: number
   total_visits_today: number
+  customers_growth?: number
+  win_rate_growth?: number
+  visits_target?: number
 }
 
 // These generic metrics structure allow dynamically populating the Line/Bar charts

@@ -16,7 +16,7 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
   ) async {
     emit(AttendanceLoading());
     final result = await repository.getHistory(event.month, event.year);
-    
+
     result.fold(
       (failure) => emit(AttendanceError(failure.message)),
       (history) => emit(AttendanceHistoryLoaded(history)),

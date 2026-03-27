@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:workmanager/workmanager.dart';
@@ -23,9 +24,9 @@ void callbackDispatcher() {
     try {
       // 1. Inisialisasi dependensi mentah (Karena GetIt mungkin tidak aktif di Isolate Latar Belakang)
       final tokenStorage = TokenStorage(const FlutterSecureStorage());
-      final dio = DioClient(tokenStorage).dio;
+      final dio = DioClient().dio;
       final dbHelper = DatabaseHelper.instance;
-      
+
       final localDataSource = TrackingLocalDataSource(dbHelper);
       final remoteDataSource = TrackingRemoteDataSource(dio);
       final repository = TrackingRepositoryImpl(
@@ -51,23 +52,24 @@ void callbackDispatcher() {
 
       // 4. Coba Sinkronisasi Batch (Akan sukses jika ada internet)
       final syncResult = await repository.syncBufferedLocations();
-      
+
       syncResult.fold(
         (l) => log("Sync Background Failed: ${l.message}"),
-        (syncedCount) => log("Sync Background Success. Transmitted $syncedCount points."),
+        (syncedCount) =>
+            log("Sync Background Success. Transmitted $syncedCount points."),
       );
-
     } catch (e) {
       log("Background Task Error: ${e.toString()}");
       return Future.value(false); // Task butuh retry oleh OS Native
     }
-    
+
     return Future.value(true);
   });
 }
 
 class TrackingBackgroundService {
   static Future<void> initialize() async {
+    if (kIsWeb) return;
     await Workmanager().initialize(
       callbackDispatcher,
       isInDebugMode: true, // Ubah ke true untuk testing notif log native
@@ -75,28 +77,31 @@ class TrackingBackgroundService {
   }
 
   static Future<void> startTrackingJob() async {
+    if (kIsWeb) return;
     // Memastikan izin lokasi 'Always' sebelumnya
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-       permission = await Geolocator.requestPermission();
+      permission = await Geolocator.requestPermission();
     }
-    
+
     // Perlu request Always untuk iOS & Android 10+
     if (permission == LocationPermission.whileInUse) {
-       // Biasanya UI prompt khusus 'Always' dipanggil user dari in-app setting page
+      // Biasanya UI prompt khusus 'Always' dipanggil user dari in-app setting page
     }
 
     await Workmanager().registerPeriodicTask(
       "1", // Unique Name
       fetchBackgroundLocationTask,
-      frequency: const Duration(minutes: 15), // OS Constraints limits min 15 minutes
+      frequency:
+          const Duration(minutes: 15), // OS Constraints limits min 15 minutes
       constraints: Constraints(
-        networkType: NetworkType.connected, 
+        networkType: NetworkType.connected,
       ),
     );
   }
 
   static Future<void> stopTrackingJob() async {
+    if (kIsWeb) return;
     await Workmanager().cancelAll();
   }
 }

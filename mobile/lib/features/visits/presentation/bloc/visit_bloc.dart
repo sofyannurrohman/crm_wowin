@@ -22,7 +22,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
     Emitter<VisitState> emit,
   ) async {
     emit(VisitLoading());
-    
+
     final request = CheckInRequest(
       scheduleId: event.scheduleId,
       latitude: event.latitude,
@@ -32,7 +32,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
     );
 
     final result = await checkInUseCase(request);
-    
+
     result.fold(
       (failure) => emit(VisitError(failure.message)),
       (_) => const VisitSuccess('Check-in berhasil dilakukan!'),
@@ -44,7 +44,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
     Emitter<VisitState> emit,
   ) async {
     emit(VisitLoading());
-    
+
     final request = CheckOutRequest(
       scheduleId: event.scheduleId,
       latitude: event.latitude,
@@ -55,7 +55,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
     );
 
     final result = await checkOutUseCase(request);
-    
+
     result.fold(
       (failure) => emit(VisitError(failure.message)),
       (_) => const VisitSuccess('Check-out berhasil disimpan!'),

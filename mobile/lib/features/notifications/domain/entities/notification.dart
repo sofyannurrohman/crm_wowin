@@ -24,5 +24,6 @@ class AppNotification extends Equatable {
   });
 
   @override
-  List<Object?> get props => [id, type, title, body, entityType, entityId, isRead, readAt, createdAt];
+  List<Object?> get props =>
+      [id, type, title, body, entityType, entityId, isRead, readAt, createdAt];
 }

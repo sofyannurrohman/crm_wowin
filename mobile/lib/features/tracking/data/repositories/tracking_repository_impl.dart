@@ -21,7 +21,8 @@ class TrackingRepositoryImpl implements TrackingRepository {
       await localDataSource.cacheLocation(point);
       return const Right(null);
     } catch (e) {
-      return Left(CacheFailure('Gagal menyimpan koordinat lokal: ${e.toString()}'));
+      return Left(
+          CacheFailure('Gagal menyimpan koordinat lokal: ${e.toString()}'));
     }
   }
 
@@ -29,22 +30,23 @@ class TrackingRepositoryImpl implements TrackingRepository {
   Future<Either<Failure, int>> syncBufferedLocations() async {
     try {
       final unsyncedPoints = await localDataSource.getUnsyncedLocations();
-      
+
       if (unsyncedPoints.isEmpty) {
         return const Right(0);
       }
 
       await remoteDataSource.syncBatch(unsyncedPoints);
-      
+
       // Jika sukses kirim, hapus dari lokal
       final syncedIds = unsyncedPoints.map((p) => p.id!).toList();
       await localDataSource.removeSyncedLocations(syncedIds);
-      
+
       return Right(syncedIds.length);
     } on ServerException catch (e) {
-       return Left(ServerFailure(e.message));
+      return Left(ServerFailure(e.message));
     } catch (e) {
-       return const Left(ServerFailure('Gagal menyinkronkan data lokasi ke server'));
+      return const Left(
+          ServerFailure('Gagal menyinkronkan data lokasi ke server'));
     }
   }
 }

@@ -5,7 +5,8 @@ class ServerException implements Exception {
 
 class CacheException implements Exception {
   final String message;
-  const CacheException([this.message = 'Gagal menyimpan atau mengambil data lokal']);
+  const CacheException(
+      [this.message = 'Gagal menyimpan atau mengambil data lokal']);
 }
 
 class AuthException implements Exception {
@@ -15,5 +16,6 @@ class AuthException implements Exception {
 
 class LocationException implements Exception {
   final String message;
-  const LocationException([this.message = 'Gagal mendapatkan akses lokasi perangkat']);
+  const LocationException(
+      [this.message = 'Gagal mendapatkan akses lokasi perangkat']);
 }

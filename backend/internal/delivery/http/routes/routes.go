@@ -19,8 +19,9 @@ func SetupRouter(
 	trackingHandler *handlers.TrackingHandler,
 	territoryHandler *handlers.TerritoryHandler,
 	reportHandler *handlers.ReportHandler,
-	attendanceHandler *handlers.AttendanceHandler,
+	attendanceHandler *handlers.AttendanceHandler, 
 	notificationHandler *handlers.NotificationHandler,
+	targetHandler *handlers.TargetHandler,
 ) {
 
 	v1 := r.Group("/api/v1")
@@ -35,6 +36,7 @@ func SetupRouter(
 	{
 		authRoutes.POST("/login", authHandler.Login)
 		authRoutes.POST("/register", authHandler.Register)
+		authRoutes.POST("/logout", middlewares.AuthMiddleware(), authHandler.Logout)
 	}
 
 	// Protected routes
@@ -42,6 +44,7 @@ func SetupRouter(
 	protected.Use(middlewares.AuthMiddleware())
 	{
 		usersGroup := protected.Group("/users")
+		usersGroup.GET("", authHandler.ListUsers)
 		usersGroup.GET("/me", authHandler.GetMe)
 		
 		// Customer Domain
@@ -131,6 +134,11 @@ func SetupRouter(
 		notifGroup.GET("/unread-count", notificationHandler.GetUnreadCount)
 		notifGroup.PATCH("/:id/read", notificationHandler.MarkAsRead)
 		notifGroup.PATCH("/read-all", notificationHandler.MarkAllAsRead)
+		
+		// KPI Targets
+		targetGroup := protected.Group("/settings/targets")
+		targetGroup.GET("", targetHandler.Get)
+		targetGroup.PUT("", targetHandler.Update)
 		
 		// Example of RBAC implementation
 		// managerOnly := protected.Group("/admin")

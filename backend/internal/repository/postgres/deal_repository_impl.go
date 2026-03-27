@@ -36,7 +36,7 @@ func (r *dealRepoImpl) Create(ctx context.Context, d *models.Deal) error {
 	).Scan(&d.ID, &d.CreatedAt, &d.UpdatedAt)
 
 	if err != nil {
-		return dberrors.ErrInternalServer
+		return err
 	}
 	return nil
 }

@@ -29,6 +29,8 @@ const (
 type User struct {
 	ID           uuid.UUID   `json:"id"`
 	Name         string      `json:"name"`
+	FirstName    string      `json:"first_name"`
+	LastName     string      `json:"last_name"`
 	Email        string      `json:"email"`
 	Phone        *string     `json:"phone,omitempty"`
 	PasswordHash string      `json:"-"` // Never expose via JSON
@@ -66,6 +68,7 @@ type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresIn    int    `json:"expires_in"` // seconds
+	User         User   `json:"user"`
 }
 
 // AuthUser defines the JWT payload standard

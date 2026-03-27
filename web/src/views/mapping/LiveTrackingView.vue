@@ -27,7 +27,7 @@ Icon.Default.mergeOptions({
 })
 
 const activeSalesCount = computed(() =>
-  trackingStore.livePositions.filter(p => p.status === 'active').length
+  (trackingStore.livePositions || []).filter(p => p.status === 'active').length
 )
 
 onMounted(async () => {
@@ -36,7 +36,7 @@ onMounted(async () => {
     trackingStore.fetchLivePositions()
   ]).then(() => {
     mapReady.value = true
-    if (trackingStore.livePositions.length > 0) {
+    if (trackingStore.livePositions && trackingStore.livePositions.length > 0) {
       const firstPos = trackingStore.livePositions[0]
       center.value = [firstPos.latitude, firstPos.longitude]
       zoom.value = 13
@@ -72,9 +72,8 @@ onUnmounted(() => {
           </div>
           <Separator orientation="vertical" class="h-5" />
           <div class="flex items-center gap-2 text-sm">
-            <Users class="w-4 h-4 text-primary" />
             <span class="font-bold">{{ activeSalesCount }}</span>
-            <span class="text-muted-foreground">/ {{ trackingStore.livePositions.length }} Aktif</span>
+            <span class="text-muted-foreground">/ {{ (trackingStore.livePositions || []).length || 0 }} Aktif</span>
           </div>
         </CardContent>
       </Card>

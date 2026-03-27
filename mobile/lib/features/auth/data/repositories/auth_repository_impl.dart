@@ -13,16 +13,17 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this.remoteDataSource, this.tokenStorage);
 
   @override
-  Future<Either<Failure, UserEntity>> login(String email, String password) async {
+  Future<Either<Failure, UserEntity>> login(
+      String email, String password) async {
     try {
       final authModel = await remoteDataSource.login(email, password);
-      
+
       // Save tokens securely immediately upon login
       await tokenStorage.saveTokens(
         access: authModel.accessToken,
         refresh: authModel.refreshToken,
       );
-      
+
       return Right(authModel.user);
     } on AuthException catch (e) {
       return Left(AuthFailure(e.message));
@@ -54,12 +55,12 @@ class AuthRepositoryImpl implements AuthRepository {
       // Assuming token exists is sufficient for immediate UI gating. Interceptor handles truth.
       // But we will return a minimal dummy entity since we lack `/me` endpoint payload right now.
       return const Right(UserEntity(
-        id: 'cached', 
-        email: 'user@wowin.id', 
-        role: 'sales', 
-        firstName: 'Sales', 
+        id: 'cached',
+        email: 'user@wowin.id',
+        role: 'sales',
+        firstName: 'Sales',
         lastName: 'Wowin',
-      )); 
+      ));
     } catch (e) {
       return const Left(StorageFailure('Gagal mengecek status sesi'));
     }
