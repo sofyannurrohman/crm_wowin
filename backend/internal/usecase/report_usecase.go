@@ -30,16 +30,27 @@ func (u *reportUseCaseImpl) GetDashboardSummary(ctx context.Context) (*models.Kp
 	target, _ := u.targetRepo.Get(ctx)
 	if target != nil {
 		summary.VisitsTarget = target.MonthlyVisits
+		summary.MonthlyTarget = float64(target.MonthlyRevenue)
 	} else {
 		summary.VisitsTarget = 150 // Default fallback
+		summary.MonthlyTarget = 65000
 	}
 
-	// For now, these trends are hardcoded to backend values but accessible to frontend
+	// Compute target percentage
+	if summary.MonthlyTarget > 0 {
+		summary.TargetMetPercentage = (summary.MonthlyRevenue / summary.MonthlyTarget) * 100
+		if summary.TargetMetPercentage > 100 {
+			summary.TargetMetPercentage = 100
+		}
+	}
+
+	// Static growth trends
 	summary.CustomersGrowth = 12.0
 	summary.WinRateGrowth = 2.4
 
 	return summary, nil
 }
+
 
 func (u *reportUseCaseImpl) GetAnalytics(ctx context.Context, months int) (map[string]interface{}, error) {
 	revenue, _ := u.repo.GetRevenueTrend(ctx, months)

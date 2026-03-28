@@ -63,6 +63,15 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required,min=6"`
 }
 
+// RegisterRequest defines the expected payload for user registration
+type RegisterRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Email       string `json:"email" binding:"required,email"`
+	Password    string `json:"password" binding:"required,min=8"`
+	CompanyName string `json:"company_name"`
+	Role        string `json:"role"`
+}
+
 // TokenResponse defines the auth payload given back to clients
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`

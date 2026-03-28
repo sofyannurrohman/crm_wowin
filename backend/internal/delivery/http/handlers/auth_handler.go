@@ -39,20 +39,27 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 // Register creates a new active user
 func (h *AuthHandler) Register(c *gin.Context) {
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		response.Fail(c, http.StatusBadRequest, "invalid registration payload")
+	var req models.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, "invalid registration payload", err.Error())
 		return
 	}
 
-	// For initial system setup logic, standard signup provides Active status & 'sales' role.
-	// Production variant might require approval cycles.
-	user.Status = models.UserStatusActive // Uses models.UserStatus ("active") instead of customer one
-	if user.Role == "" {
-		user.Role = models.RoleSales
+	// Map RegisterRequest → User domain model
+	role := models.RoleSales
+	if req.Role != "" {
+		role = models.UserRole(req.Role)
 	}
 
-	createdUser, err := h.userUC.Register(c.Request.Context(), &user)
+	user := &models.User{
+		Name:         req.Name,
+		Email:        req.Email,
+		PasswordHash: req.Password, // usecase will bcrypt-hash this
+		Role:         role,
+		Status:       models.UserStatusActive,
+	}
+
+	createdUser, err := h.userUC.Register(c.Request.Context(), user)
 	if err != nil {
 		response.MapDBError(c, err)
 		return

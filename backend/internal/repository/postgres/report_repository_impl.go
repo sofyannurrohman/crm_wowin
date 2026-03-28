@@ -25,14 +25,28 @@ func (r *reportRepositoryImpl) GetKpiSummary(ctx context.Context) (*models.KpiSu
 			(SELECT COALESCE(
 				(COUNT(*) FILTER (WHERE status = 'won'))::float / NULLIF(COUNT(*), 0) * 100, 0
 			 ) FROM deals WHERE status IN ('won', 'lost')) as win_rate,
-			(SELECT COUNT(*) FROM visit_activities WHERE type = 'check-in' AND DATE(created_at) = CURRENT_DATE) as visits_today
+			(SELECT COUNT(*) FROM visit_activities WHERE type = 'check-in' AND DATE(created_at) = CURRENT_DATE) as visits_today,
+			(SELECT COUNT(*) FROM leads WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)) as new_leads,
+			(SELECT COALESCE(SUM(amount), 0) FROM deals WHERE status = 'won' AND DATE_TRUNC('month', closed_at) = DATE_TRUNC('month', CURRENT_DATE)) as monthly_revenue,
+			(EXTRACT(DAY FROM (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month') - CURRENT_DATE))::int as days_left
 	`
 	var k models.KpiSummary
+	var daysLeft int
 	err := r.db.QueryRow(ctx, query).Scan(
-		&k.TotalCustomers, &k.TotalActiveDeals, &k.PipelineValue, &k.WinRate, &k.TotalVisitsToday,
+		&k.TotalCustomers, &k.TotalActiveDeals, &k.PipelineValue, &k.WinRate,
+		&k.TotalVisitsToday, &k.NewLeads, &k.MonthlyRevenue, &daysLeft,
 	)
-	return &k, err
+	if err != nil {
+		return nil, err
+	}
+	// Populate Flutter-compatible aliases
+	k.ActiveDeals = k.TotalActiveDeals
+	k.VisitsToday = k.TotalVisitsToday
+	k.TotalSales = k.PipelineValue
+	k.DaysLeft = daysLeft
+	return &k, nil
 }
+
 
 func (r *reportRepositoryImpl) GetRevenueTrend(ctx context.Context, months int) ([]models.ChartData, error) {
 	query := `

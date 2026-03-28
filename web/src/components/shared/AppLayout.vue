@@ -27,27 +27,27 @@ const mobileOpen = ref(false)
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, group: 'overview' },
-  { name: 'Customers', href: '/customers', icon: Users, group: 'crm' },
-  { name: 'Leads', href: '/leads', icon: UserPlus, group: 'crm' },
-  { name: 'Deals', href: '/deals', icon: FileText, group: 'crm' },
-  { name: 'Visits', href: '/visits', icon: Calendar, group: 'sales' },
-  { name: 'Live Tracking', href: '/live-tracking', icon: MapPin, group: 'mapping' },
-  { name: 'Territories', href: '/territories', icon: Map, group: 'mapping' },
-  { name: 'Heatmap', href: '/heatmap', icon: Flame, group: 'mapping' },
-  { name: 'KPI Report', href: '/reports/kpi', icon: Target, group: 'reports' },
-  { name: 'Visit Report', href: '/reports/visits', icon: BarChart3, group: 'reports' },
-  { name: 'Pipeline Report', href: '/reports/pipeline', icon: BarChart3, group: 'reports' },
-  { name: 'User Management', href: '/settings/users', icon: Settings, group: 'settings' },
-  { name: 'Target Setting', href: '/settings/targets', icon: Target, group: 'settings' },
+  { name: 'Pelanggan', href: '/customers', icon: Users, group: 'crm' },
+  { name: 'Prospek', href: '/leads', icon: UserPlus, group: 'crm' },
+  { name: 'Penjualan', href: '/deals', icon: FileText, group: 'crm' },
+  { name: 'Kunjungan', href: '/visits', icon: Calendar, group: 'sales' },
+  { name: 'Pelacakan Langsung', href: '/live-tracking', icon: MapPin, group: 'mapping' },
+  { name: 'Wilayah', href: '/territories', icon: Map, group: 'mapping' },
+  { name: 'Peta Panas', href: '/heatmap', icon: Flame, group: 'mapping' },
+  { name: 'Laporan KPI', href: '/reports/kpi', icon: Target, group: 'reports' },
+  { name: 'Laporan Kunjungan', href: '/reports/visits', icon: BarChart3, group: 'reports' },
+  { name: 'Laporan Pipeline', href: '/reports/pipeline', icon: BarChart3, group: 'reports' },
+  { name: 'Manajemen Pengguna', href: '/settings/users', icon: Settings, group: 'settings' },
+  { name: 'Pengaturan Target', href: '/settings/targets', icon: Target, group: 'settings' },
 ]
 
 const groups = [
-  { key: 'overview', label: 'Overview' },
+  { key: 'overview', label: 'Ringkasan' },
   { key: 'crm', label: 'CRM' },
-  { key: 'sales', label: 'Sales' },
-  { key: 'mapping', label: 'Mapping' },
-  { key: 'reports', label: 'Reports' },
-  { key: 'settings', label: 'Settings' },
+  { key: 'sales', label: 'Penjualan' },
+  { key: 'mapping', label: 'Pemetaan' },
+  { key: 'reports', label: 'Laporan' },
+  { key: 'settings', label: 'Pengaturan' },
 ]
 
 const userInitials = computed(() => {
@@ -81,7 +81,7 @@ function handleLogout() {
                       leave-active-class="transition duration-150" leave-from-class="opacity-100" leave-to-class="opacity-0">
             <div v-show="ui.isSidebarOpen" class="overflow-hidden whitespace-nowrap">
               <h1 class="font-bold text-base tracking-tight" :style="{ color: 'hsl(var(--sidebar-foreground))' }">Wowin CRM</h1>
-              <p class="text-[10px] font-medium" :style="{ color: 'hsl(var(--sidebar-foreground) / 0.5)' }">Sales Automation</p>
+              <p class="text-[10px] font-medium" :style="{ color: 'hsl(var(--sidebar-foreground) / 0.5)' }">Otomatisasi Penjualan</p>
             </div>
           </transition>
         </div>
@@ -166,7 +166,7 @@ function handleLogout() {
               <DropdownMenuSeparator />
               <DropdownMenuItem @click="handleLogout" class="text-destructive focus:text-destructive">
                 <LogOut class="w-4 h-4 mr-2" />
-                Log out
+                Keluar
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -198,7 +198,7 @@ function handleLogout() {
                   </div>
                   <div>
                     <h1 class="font-bold text-base tracking-tight">Wowin CRM</h1>
-                    <p class="text-[10px] text-muted-foreground font-medium">Sales Automation</p>
+                    <p class="text-[10px] text-muted-foreground font-medium">Otomatisasi Penjualan</p>
                   </div>
                 </div>
                 <ScrollArea class="flex-1 py-4 h-[calc(100vh-56px)]">
