@@ -35,6 +35,35 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, UserEntity>> register({
+    required String name,
+    required String email,
+    required String password,
+    String companyName = '',
+  }) async {
+    try {
+      await remoteDataSource.register(
+        name: name,
+        email: email,
+        password: password,
+        companyName: companyName,
+      );
+      // After registration, automatically log the user in
+      final authModel = await remoteDataSource.login(email, password);
+      await tokenStorage.saveTokens(
+        access: authModel.accessToken,
+        refresh: authModel.refreshToken,
+      );
+      return Right(authModel.user);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Terjadi kesalahan yang tidak terduga'));
+    }
+  }
+
+
+  @override
   Future<Either<Failure, void>> logout() async {
     try {
       await tokenStorage.clearTokens();

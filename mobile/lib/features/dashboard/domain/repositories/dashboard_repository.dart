@@ -1,7 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
-import '../entities/kpi_summary.dart';
+import '../entities/kpi_dashboard.dart';
 
 abstract class DashboardRepository {
-  Future<Either<Failure, KpiSummary>> getKpiSummary();
+  Future<Either<Failure, KpiDashboard>> getKpiSummary();
 }

@@ -11,9 +11,13 @@ class CustomerRepositoryImpl implements CustomerRepository {
   CustomerRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<Either<Failure, List<Customer>>> getCustomers({String? query}) async {
+  Future<Either<Failure, List<Customer>>> getCustomers(
+      {String? query, String? status}) async {
     try {
-      final customers = await remoteDataSource.getCustomers(query: query);
+      final customers = await remoteDataSource.getCustomers(
+        query: query,
+        status: status,
+      );
       return Right(customers);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

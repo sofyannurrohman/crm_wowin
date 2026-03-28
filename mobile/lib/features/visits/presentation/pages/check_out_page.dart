@@ -1,15 +1,13 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
-import '../../../../core/theme/app_colors.dart';
 
 class CheckOutPage extends StatefulWidget {
   final String scheduleId;
@@ -23,12 +21,25 @@ class CheckOutPage extends StatefulWidget {
 class _CheckOutPageState extends State<CheckOutPage> {
   final _formKey = GlobalKey<FormState>();
   final _visitResultController = TextEditingController();
-  final _nextActionController = TextEditingController();
+
+  String? _selectedNextStep;
+  final List<String> _nextStepOptions = [
+    'Send Proposal',
+    'Schedule Call',
+    'Follow up Meeting',
+    'Close Deal',
+    'No Action Required'
+  ];
 
   DateTime? _nextVisitDate;
   Position? _currentPosition;
   bool _isLoadingLocation = true;
-  String? _locationError;
+
+  static const Color _orange = Color(0xFFE8622A);
+  static const Color _lightOrangeBg = Color(0xFFFFF7ED);
+  static const Color _lightOrangeBorder = Color(0xFFFFEDD5);
+  static const Color _textPrimary = Color(0xFF1F2937);
+  static const Color _textSecondary = Color(0xFF4B5563);
 
   @override
   void initState() {
@@ -39,30 +50,25 @@ class _CheckOutPageState extends State<CheckOutPage> {
   @override
   void dispose() {
     _visitResultController.dispose();
-    _nextActionController.dispose();
     super.dispose();
   }
 
   Future<void> _determinePosition() async {
-    setState(() {
-      _isLoadingLocation = true;
-      _locationError = null;
-    });
-
+    setState(() => _isLoadingLocation = true);
     try {
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-
-      setState(() {
-        _currentPosition = position;
-        _isLoadingLocation = false;
-      });
+      if (mounted) {
+        setState(() {
+          _currentPosition = position;
+          _isLoadingLocation = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoadingLocation = false;
-        _locationError = e.toString();
-      });
+      if (mounted) {
+        setState(() => _isLoadingLocation = false);
+      }
     }
   }
 
@@ -72,6 +78,18 @@ class _CheckOutPageState extends State<CheckOutPage> {
       initialDate: DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: _orange,
+              onPrimary: Colors.white,
+              onSurface: _textPrimary,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null && picked != _nextVisitDate) {
       setState(() {
@@ -93,7 +111,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
               latitude: _currentPosition!.latitude,
               longitude: _currentPosition!.longitude,
               visitResult: _visitResultController.text,
-              nextAction: _nextActionController.text,
+              nextAction: _selectedNextStep ?? '',
               nextVisitDate: formattedDate,
             ),
           );
@@ -103,182 +121,337 @@ class _CheckOutPageState extends State<CheckOutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Check-Out Kunjungan'),
+        backgroundColor: Colors.white,
+        elevation: 0,
         scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(LucideIcons.arrowLeft, color: _textPrimary),
+          onPressed: () => context.pop(),
+        ),
+        title: const Text(
+          'Visit Check-Out',
+          style: TextStyle(
+            color: _textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.more_vert, color: _orange),
+            onPressed: () {},
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(color: Colors.grey.shade100, height: 1.0),
+        ),
       ),
       body: BlocListener<VisitBloc, VisitState>(
         listener: (context, state) {
           if (state is VisitSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(state.message), backgroundColor: Colors.green),
+              SnackBar(content: Text(state.message), backgroundColor: const Color(0xFF10B981)),
             );
-            context.pop(); // Route back
+            context.pop();
           } else if (state is VisitError) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(state.message),
-                  backgroundColor: Theme.of(context).colorScheme.error),
+              SnackBar(content: Text(state.message), backgroundColor: const Color(0xFFEF4444)),
             );
           }
         },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Location Status
-                if (_isLoadingLocation)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_locationError != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(_locationError!,
-                        style: const TextStyle(color: AppColors.error)),
-                  )
-                else if (_currentPosition != null)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(16),
-                      border:
-                          Border.all(color: AppColors.success.withOpacity(0.1)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.person,
-                            color: AppColors.success, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Lokasi Berhasil Didapatkan',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                '${_currentPosition!.latitude.toStringAsFixed(4)}, ${_currentPosition!.longitude.toStringAsFixed(4)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                const SizedBox(height: 24),
-
-                // Form Fields
-                TextFormField(
-                  controller: _visitResultController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Hasil Kunjungan (Wajib)',
-                    alignLabelWithHint: true,
-                    hintText: 'Tuliskan hasil kunjungan di sini...',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Hasil kunjungan tidak boleh kosong';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                TextFormField(
-                  controller: _nextActionController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    labelText: 'Tindakan Selanjutya (Opsional)',
-                    alignLabelWithHint: true,
-                    hintText: 'Tindakan apa yang perlu dilakukan setelah ini?',
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildDurationCard(),
+                      const SizedBox(height: 24),
+                      _buildLabel('Visit Summary'),
+                      _buildSummaryField(),
+                      const SizedBox(height: 20),
+                      _buildLabel('Next Step'),
+                      _buildNextStepDropdown(),
+                      const SizedBox(height: 20),
+                      _buildLabel('Follow-up Date'),
+                      _buildDatePickerField(),
+                      const SizedBox(height: 20),
+                      _buildPhotoUploadField(),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                Container(
-                  margin: const EdgeInsets.only(top: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    title: const Text(
-                      'Jadwal Kunjungan Berikutnya',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                    ),
-                    subtitle: Text(
-                      _nextVisitDate == null
-                          ? 'Klik untuk mengatur jadwal'
-                          : DateFormat('dd MMMM yyyy').format(_nextVisitDate!),
-                      style: TextStyle(
-                        color: _nextVisitDate == null
-                            ? Colors.grey
-                            : AppColors.primary,
-                        fontWeight: _nextVisitDate == null
-                            ? FontWeight.normal
-                            : FontWeight.bold,
-                      ),
-                    ),
-                    trailing: const Icon(Icons.person,
-                        size: 20, color: AppColors.primary),
-                    onTap: _selectDate,
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Submit Button
-                BlocBuilder<VisitBloc, VisitState>(
-                  builder: (context, state) {
-                    final isLoading = state is VisitLoading;
-                    final canSubmit = _currentPosition != null && !isLoading;
-
-                    return ElevatedButton(
-                      onPressed: canSubmit ? _submitCheckOut : null,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 56),
-                      ),
-                      child: isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Text(
-                              'SUBMIT CHECK-OUT',
-                              style: TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                    );
-                  },
-                ),
-              ],
+              ),
             ),
-          ),
+            _buildBottomSection(),
+          ],
         ),
       ),
     );
   }
+
+  Widget _buildDurationCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      decoration: BoxDecoration(
+        color: _lightOrangeBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _lightOrangeBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'TOTAL VISIT DURATION',
+            style: TextStyle(
+              color: _textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(LucideIcons.alarmClock, color: _orange, size: 28),
+              const SizedBox(width: 12),
+              const Text(
+                '1h 24m',
+                style: TextStyle(
+                  color: _textPrimary,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: _textPrimary,
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryField() {
+    return TextFormField(
+      controller: _visitResultController,
+      maxLines: 4,
+      style: const TextStyle(fontSize: 14, color: _textPrimary),
+      decoration: InputDecoration(
+        hintText: 'Describe the meeting outcomes, pain points identified, and general sentiment...',
+        hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+        contentPadding: const EdgeInsets.all(16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _orange),
+        ),
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Result is required';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildNextStepDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedNextStep,
+      icon: Icon(LucideIcons.chevronDown, color: Colors.grey.shade500, size: 20),
+      style: const TextStyle(fontSize: 14, color: _textPrimary),
+      decoration: InputDecoration(
+        hintText: 'Select a follow-up action',
+        hintStyle: const TextStyle(color: _textPrimary, fontSize: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _orange),
+        ),
+      ),
+      items: _nextStepOptions.map((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value),
+        );
+      }).toList(),
+      onChanged: (newValue) {
+        setState(() {
+          _selectedNextStep = newValue;
+        });
+      },
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Action is required';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildDatePickerField() {
+    return GestureDetector(
+      onTap: _selectDate,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _nextVisitDate == null
+                  ? 'mm/dd/yyyy'
+                  : DateFormat('MM/dd/yyyy').format(_nextVisitDate!),
+              style: TextStyle(
+                fontSize: 14,
+                color: _nextVisitDate == null ? _textPrimary.withOpacity(0.9) : _textPrimary,
+              ),
+            ),
+            Icon(LucideIcons.calendar, color: Colors.grey.shade500, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhotoUploadField() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.grey.shade300,
+          width: 1.5,
+          style: BorderStyle.solid, 
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(LucideIcons.camera, color: Colors.grey.shade500, size: 20),
+          const SizedBox(width: 12),
+          Text(
+            'Add visit photos or document scans',
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade100)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BlocBuilder<VisitBloc, VisitState>(
+            builder: (context, state) {
+              final isLoading = state is VisitLoading || _isLoadingLocation;
+              final canSubmit = _currentPosition != null && !isLoading;
+
+              return ElevatedButton(
+                onPressed: canSubmit ? _submitCheckOut : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _orange,
+                  disabledBackgroundColor: _orange.withOpacity(0.5),
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(LucideIcons.checkCircle, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Complete Visit',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'WOWIN CR MOBILE V2.4.0',
+            style: TextStyle(
+              color: Color(0xFF9CA3AF),
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.0,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+

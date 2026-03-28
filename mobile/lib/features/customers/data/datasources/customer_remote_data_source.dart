@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import '../../domain/entities/customer.dart';
 
 abstract class CustomerRemoteDataSource {
-  Future<List<Customer>> getCustomers({String? query});
+  Future<List<Customer>> getCustomers({String? query, String? status});
   Future<Customer> getCustomerDetail(String id);
   Future<Customer> createCustomer(Customer customer);
 }
@@ -13,10 +13,16 @@ class CustomerRemoteDataSourceImpl implements CustomerRemoteDataSource {
   CustomerRemoteDataSourceImpl(this._dio);
 
   @override
-  Future<List<Customer>> getCustomers({String? query}) async {
+  Future<List<Customer>> getCustomers({String? query, String? status}) async {
+    final queryParams = <String, dynamic>{};
+    if (query != null && query.isNotEmpty) queryParams['search'] = query;
+    if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
+      queryParams['status'] = status.toUpperCase();
+    }
+
     final response = await _dio.get(
       '/customers',
-      queryParameters: query != null ? {'q': query} : null,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
     final List data = response.data['data'];

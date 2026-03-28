@@ -20,6 +20,14 @@ class Authenticated extends AuthState {
   List<Object> get props => [user];
 }
 
+class RegisterSuccess extends AuthState {
+  final UserEntity user;
+  const RegisterSuccess(this.user);
+
+  @override
+  List<Object> get props => [user];
+}
+
 class Unauthenticated extends AuthState {}
 
 class AuthError extends AuthState {

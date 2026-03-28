@@ -1,5 +1,6 @@
 // Constants for Routes Mapping
 const String kRouteLogin = 'login';
+const String kRouteRegister = 'register';
 const String kRouteDashboard = 'dashboard';
 const String kRouteCheckIn = 'check_in';
 const String kRouteCheckOut = 'check_out';
@@ -11,3 +12,16 @@ const String kRouteAddCustomer = 'add_customer';
 const String kRouteLeads = 'leads';
 const String kRouteDeals = 'deals';
 const String kRouteMap = 'map';
+const String kRouteSplash = 'splash';
+const String kRoutePhotoPreview = 'photo_preview';
+const String kRouteVisitHistory = 'visit_history';
+const String kRouteVisitDetail = 'visit_detail';
+const String kRouteDealDetail = 'deal_detail';
+const String kRouteRouteHistory = 'route_history';
+const String kRouteTasks = 'tasks';
+const String kRouteNewTask = 'new_task';
+const String kRouteActivityLog = 'activity_log';
+const String kRouteProfile = 'profile';
+const String kRouteAttendanceHome = 'attendance_home';
+const String kRouteSettings = 'settings';
+

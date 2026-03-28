@@ -1,7 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
-import '../../domain/entities/kpi_summary.dart';
+import '../../domain/entities/kpi_dashboard.dart';
 import '../../domain/repositories/dashboard_repository.dart';
 import '../datasources/dashboard_remote_data_source.dart';
 
@@ -11,10 +11,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
   DashboardRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<Either<Failure, KpiSummary>> getKpiSummary() async {
+  Future<Either<Failure, KpiDashboard>> getKpiSummary() async {
     try {
-      final summary = await remoteDataSource.getKpiSummary();
-      return Right(summary);
+      final dashboard = await remoteDataSource.getKpiSummary();
+      return Right(dashboard);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {

@@ -1,15 +1,14 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:intl/intl.dart';
 
 import '../bloc/deal_bloc.dart';
 import '../bloc/deal_event.dart';
 import '../bloc/deal_state.dart';
 import '../../domain/entities/deal.dart';
-import '../../../../core/theme/app_colors.dart';
-import 'package:intl/intl.dart';
+import '../../../../core/router/route_constants.dart';
 
 class DealKanbanPage extends StatefulWidget {
   const DealKanbanPage({super.key});
@@ -18,193 +17,416 @@ class DealKanbanPage extends StatefulWidget {
   State<DealKanbanPage> createState() => _DealKanbanPageState();
 }
 
-class _DealKanbanPageState extends State<DealKanbanPage> {
-  final List<String> stages = [
+class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final List<String> _stages = [
     'prospecting',
     'qualification',
-    'proposal',
     'negotiation',
-    'closed_won',
-    'closed_lost'
+    'proposal',
   ];
+
+  static const Color _orange = Color(0xFFE8622A);
+  static const Color _navy = Color(0xFF1A237E);
+  static const Color _bg = Color(0xFFF9FAFB);
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: _stages.length, vsync: this);
     context.read<DealBloc>().add(FetchDeals());
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Deals Pipeline'),
-        scrolledUnderElevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person, size: 20),
-            onPressed: () => context.read<DealBloc>().add(FetchDeals()),
-          ),
-          const SizedBox(width: 8),
-        ],
+      backgroundColor: _bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            _buildTabBar(),
+            Expanded(
+              child: BlocBuilder<DealBloc, DealState>(
+                builder: (context, state) {
+                  if (state is DealLoading) {
+                    return const Center(child: CircularProgressIndicator(color: _orange));
+                  } else if (state is DealsLoaded) {
+                    return TabBarView(
+                      controller: _tabController,
+                      children: _stages.map((stage) {
+                        final stageDeals = state.deals.where((d) => d.stage == stage).toList();
+                        return _buildStageContent(stageDeals);
+                      }).toList(),
+                    );
+                  } else if (state is DealError) {
+                    return Center(child: Text(state.message));
+                  }
+                  return const SizedBox();
+                },
+              ),
+            ),
+          ],
+        ),
       ),
-      body: BlocBuilder<DealBloc, DealState>(
-        builder: (context, state) {
-          if (state is DealLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is DealsLoaded) {
-            return _buildKanbanBoard(state.deals);
-          } else if (state is DealError) {
-            return Center(child: Text(state.message));
-          }
-          return const SizedBox();
-        },
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(LucideIcons.layoutGrid, color: _orange, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Sales Pipeline',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                Text(
+                  'Q3 Revenue Forecast',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade500,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.search, color: Color(0xFF4B5563)),
+            onPressed: () {},
+          ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: _orange,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(LucideIcons.plus, color: Colors.white, size: 22),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildKanbanBoard(List<Deal> deals) {
-    return ListView.builder(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.all(16),
-      itemCount: stages.length,
-      itemBuilder: (context, index) {
-        final stage = stages[index];
-        final stageDeals = deals.where((d) => d.stage == stage).toList();
+  Widget _buildTabBar() {
+    return TabBar(
+      controller: _tabController,
+      isScrollable: true,
+      indicatorColor: _orange,
+      indicatorWeight: 3,
+      labelColor: _orange,
+      unselectedLabelColor: Colors.grey.shade500,
+      labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      tabs: [
+        _buildTab('Lead', 4),
+        _buildTab('Prospect', 3),
+        _buildTab('Negotiation', 2),
+        _buildTab('Closing', 1),
+      ],
+    );
+  }
 
-        return Container(
-          width: 300,
-          margin: const EdgeInsets.only(right: 20),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.grey.shade200),
+  Widget _buildTab(String label, int count) {
+    return Tab(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          const SizedBox(width: 4),
+          Text('($count)', style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStageContent(List<Deal> deals) {
+    double totalValue = deals.fold(0, (sum, item) => sum + (item.amount ?? 0));
+    double weightedValue = deals.fold(0, (sum, item) => sum + ((item.amount ?? 0) * (item.probability ?? 0) / 100));
+
+    return RefreshIndicator(
+      color: _orange,
+      onRefresh: () async => context.read<DealBloc>().add(FetchDeals()),
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildSummaryCard(totalValue, weightedValue),
+          const SizedBox(height: 20),
+          ...deals.map((deal) => _DealCard(deal: deal)),
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard(double total, double weighted) {
+    final fmt = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20.0),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(24)),
-                  border:
-                      Border(bottom: BorderSide(color: Colors.grey.shade100)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'TOTAL PIPELINE',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF9CA3AF), letterSpacing: 0.5),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                const SizedBox(height: 4),
+                Text(
+                  fmt.format(total),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _orange),
+                ),
+              ],
+            ),
+          ),
+          Container(width: 1, height: 40, color: Colors.grey.shade100),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'WEIGHTED VALUE',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF9CA3AF), letterSpacing: 0.5),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  fmt.format(weighted),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _navy),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(LucideIcons.home, 'Home', false, onTap: () => context.goNamed(kRouteDashboard)),
+          _buildNavItem(LucideIcons.barChart2, 'Pipeline', true),
+          _buildNavItem(LucideIcons.checkSquare, 'Tasks', false),
+          _buildNavItem(LucideIcons.users, 'Contacts', false, onTap: () => context.pushNamed(kRouteCustomers)),
+          _buildAvatarNavItem(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, bool isActive, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: isActive ? _orange : const Color(0xFF9CA3AF), size: 24),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive ? _orange : const Color(0xFF9CA3AF),
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatarNavItem() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 26,
+          height: 26,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            image: DecorationImage(
+              image: NetworkImage('https://i.pravatar.cc/150?u=sales'),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Me',
+          style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 11, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
+class _DealCard extends StatelessWidget {
+  final Deal deal;
+  const _DealCard({required this.deal});
+
+  static const Color _orange = Color(0xFFE8622A);
+  static const Color _navy = Color(0xFF1A237E);
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isOverdue = deal.expectedClose != null && deal.expectedClose!.isBefore(DateTime.now());
+    final bool isFollowUp = deal.probability != null && deal.probability! < 50; // Manual mock logic
+
+    Color accentColor = isOverdue ? const Color(0xFFEF4444) : (isFollowUp ? const Color(0xFF10B981) : _navy);
+    String badgeText = isOverdue ? "! OVERDUE" : (isFollowUp ? "FOLLOW-UP TODAY" : "UPDATED 2H AGO");
+    Color badgeBg = isOverdue ? const Color(0xFFFEE2E2) : (isFollowUp ? const Color(0xFFD1FAE5) : const Color(0xFFF3F4F6));
+    Color badgeTextCol = isOverdue ? const Color(0xFFB91C1C) : (isFollowUp ? const Color(0xFF047857) : const Color(0xFF4B5563));
+
+    final fmt = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Container(
+              width: 5,
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _formatStageName(stage),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${stageDeals.length}',
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(6)),
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(color: badgeTextCol, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                          ),
                         ),
-                      ),
+                        const Icon(LucideIcons.moreHorizontal, color: Color(0xFF9CA3AF), size: 20),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      deal.title,
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
+                          child: const Icon(LucideIcons.building2, size: 12, color: Color(0xFF64748B)),
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Client Corporation', // Needs backend customer expand logic
+                            style: TextStyle(color: Color(0xFF6B7280), fontSize: 14, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(height: 1),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fmt.format(deal.amount ?? 0),
+                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${deal.probability ?? 0}% Probability',
+                              style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isOverdue ? _orange : const Color(0xFFF1F5F9),
+                            foregroundColor: isOverdue ? Colors.white : const Color(0xFF1A1A1A),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: const Text('Details', style: TextStyle(fontWeight: FontWeight.w700)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: stageDeals.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
-                  itemBuilder: (context, idx) {
-                    final deal = stageDeals[idx];
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade100),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              deal.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'Rp ${NumberFormat('#,###').format(deal.amount ?? 0)}',
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                if (deal.expectedClose != null)
-                                  Row(
-                                    children: [
-                                      Icon(Icons.person,
-                                          size: 12,
-                                          color: Colors.grey.shade400),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        DateFormat('dd MMM')
-                                            .format(deal.expectedClose!),
-                                        style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey.shade500),
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
-  }
-
-  String _formatStageName(String stage) {
-    return stage
-        .split('_')
-        .map((e) => e[0].toUpperCase() + e.substring(1))
-        .join(' ');
   }
 }

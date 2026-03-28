@@ -10,10 +10,11 @@ abstract class CustomerEvent extends Equatable {
 
 class FetchCustomers extends CustomerEvent {
   final String? query;
-  const FetchCustomers({this.query});
+  final String? status;
+  const FetchCustomers({this.query, this.status});
 
   @override
-  List<Object?> get props => [query];
+  List<Object?> get props => [query, status];
 }
 
 class FetchCustomerDetail extends CustomerEvent {

@@ -25,7 +25,7 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
     Emitter<CustomerState> emit,
   ) async {
     emit(CustomerLoading());
-    final result = await getCustomers(query: event.query);
+    final result = await getCustomers(query: event.query, status: event.status);
     result.fold(
       (failure) => emit(CustomerError(failure.message)),
       (customers) => emit(CustomersLoaded(customers)),

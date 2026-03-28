@@ -8,7 +8,8 @@ class GetCustomers {
 
   GetCustomers(this.repository);
 
-  Future<Either<Failure, List<Customer>>> call({String? query}) async {
-    return await repository.getCustomers(query: query);
+  Future<Either<Failure, List<Customer>>> call(
+      {String? query, String? status}) async {
+    return await repository.getCustomers(query: query, status: status);
   }
 }

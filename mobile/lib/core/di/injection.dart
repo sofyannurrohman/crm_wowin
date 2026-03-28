@@ -6,6 +6,7 @@ import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
+import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 
 import '../../features/visits/data/datasources/visit_remote_data_source.dart';
@@ -106,6 +107,7 @@ Future<void> initDependencies() async {
 
   // UseCases
   sl.registerLazySingleton(() => LoginUseCase(sl()));
+  sl.registerLazySingleton(() => RegisterUseCase(sl()));
   sl.registerLazySingleton(() => CheckInUseCase(sl()));
   sl.registerLazySingleton(() => CheckOutUseCase(sl()));
   sl.registerLazySingleton(() => GetCustomers(sl()));
@@ -120,6 +122,7 @@ Future<void> initDependencies() async {
   // Blocs
   sl.registerFactory(() => AuthBloc(
         loginUseCase: sl(),
+        registerUseCase: sl(),
         authRepository: sl(),
       ));
   sl.registerFactory(() => VisitBloc(
@@ -146,5 +149,6 @@ Future<void> initDependencies() async {
       ));
   sl.registerFactory(() => DashboardBloc(
         getKpiSummary: sl(),
+        remoteDataSource: sl(),
       ));
 }

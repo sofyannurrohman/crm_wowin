@@ -1,0 +1,24 @@
+import 'kpi_summary.dart';
+
+/// Wrapper that extends KpiSummary with extra dashboard fields
+/// parsed from the backend response that aren't in the freezed entity.
+class KpiDashboard {
+  final KpiSummary summary;
+  final double monthlyRevenue;
+  final double monthlyTarget;
+  final int daysLeft;
+
+  const KpiDashboard({
+    required this.summary,
+    required this.monthlyRevenue,
+    required this.monthlyTarget,
+    required this.daysLeft,
+  });
+
+  // Convenience getters
+  int get visitsToday => summary.visitsToday;
+  int get newLeads => summary.newLeads;
+  int get activeDeals => summary.activeDeals;
+  double get totalSales => summary.totalSales;
+  double get targetMetPercentage => summary.targetMetPercentage;
+}

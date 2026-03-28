@@ -5,6 +5,12 @@ import '../models/auth_model.dart';
 
 abstract class AuthRemoteDataSource {
   Future<AuthModel> login(String email, String password);
+  Future<void> register({
+    required String name,
+    required String email,
+    required String password,
+    String companyName,
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -32,6 +38,42 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
         throw AuthException('Email atau password salah');
+      }
+      throw ServerException(e.message ?? 'Server error occurred');
+    }
+  }
+
+  @override
+  Future<void> register({
+    required String name,
+    required String email,
+    required String password,
+    String companyName = '',
+  }) async {
+    try {
+      final response = await dio.post(
+        ApiEndpoints.register,
+        data: {
+          'name': name,
+          'email': email,
+          'password': password,
+          if (companyName.isNotEmpty) 'company_name': companyName,
+        },
+      );
+
+      if (response.statusCode != 201) {
+        throw ServerException(
+            response.data['message'] ?? 'Registrasi gagal');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        throw ServerException('Email sudah terdaftar');
+      }
+      if (e.response?.statusCode == 400) {
+        final msg = e.response?.data['message'] ??
+            e.response?.data['error'] ??
+            'Data registrasi tidak valid';
+        throw ServerException(msg.toString());
       }
       throw ServerException(e.message ?? 'Server error occurred');
     }
