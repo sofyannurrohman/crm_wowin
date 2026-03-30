@@ -34,4 +34,28 @@ class LeadRepositoryImpl implements LeadRepository {
       return const Left(ServerFailure('Gagal memperbarui status lead'));
     }
   }
+
+  @override
+  Future<Either<Failure, Lead>> createLead(Lead lead) async {
+    try {
+      final result = await remoteDataSource.createLead(lead);
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal membuat lead baru'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> convertLead(String id) async {
+    try {
+      await remoteDataSource.convertLead(id);
+      return const Right(unit);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal melakukan konversi lead'));
+    }
+  }
 }

@@ -14,6 +14,7 @@ import '../../features/visits/data/repositories/visit_repository_impl.dart';
 import '../../features/visits/domain/repositories/visit_repository.dart';
 import '../../features/visits/domain/usecases/check_in_usecase.dart';
 import '../../features/visits/domain/usecases/check_out_usecase.dart';
+import '../../features/visits/domain/usecases/get_activities.dart';
 import '../../features/visits/presentation/bloc/visit_bloc.dart';
 import '../../features/attendance/data/datasources/attendance_remote_data_source.dart';
 import '../../features/attendance/data/repositories/attendance_repository_impl.dart';
@@ -35,6 +36,8 @@ import '../../features/leads/data/repositories/lead_repository_impl.dart';
 import '../../features/leads/domain/repositories/lead_repository.dart';
 import '../../features/leads/domain/usecases/get_leads.dart';
 import '../../features/leads/domain/usecases/update_lead_status.dart';
+import '../../features/leads/domain/usecases/create_lead.dart';
+import '../../features/leads/domain/usecases/convert_lead.dart';
 import '../../features/leads/presentation/bloc/lead_bloc.dart';
 import '../../features/deals/data/datasources/deal_remote_data_source.dart';
 import '../../features/deals/data/repositories/deal_repository_impl.dart';
@@ -48,6 +51,20 @@ import '../../features/dashboard/data/repositories/dashboard_repository_impl.dar
 import '../../features/dashboard/domain/repositories/dashboard_repository.dart';
 import '../../features/dashboard/domain/usecases/get_kpi_summary.dart';
 import '../../features/dashboard/presentation/bloc/dashboard_bloc.dart';
+import '../../features/products/data/datasources/product_remote_data_source.dart';
+import '../../features/products/data/repositories/product_repository_impl.dart';
+import '../../features/products/domain/repositories/product_repository.dart';
+import '../../features/products/domain/usecases/get_products.dart';
+import '../../features/products/domain/usecases/get_product_detail.dart';
+import '../../features/products/presentation/bloc/product_bloc.dart';
+import '../../features/tasks/data/datasources/task_remote_data_source.dart';
+import '../../features/tasks/data/repositories/task_repository_impl.dart';
+import '../../features/tasks/domain/repositories/task_repository.dart';
+import '../../features/tasks/presentation/bloc/task_bloc.dart';
+import '../../features/deals/domain/usecases/get_deal_items.dart';
+import '../../features/deals/domain/usecases/add_deal_item.dart';
+import '../../features/deals/domain/usecases/remove_deal_item.dart';
+import '../../features/deals/domain/usecases/get_deal_detail.dart';
 
 final sl = GetIt.instance;
 
@@ -78,6 +95,11 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<DashboardRemoteDataSource>(
     () => DashboardRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<ProductRemoteDataSource>(
+    () => ProductRemoteDataSourceImpl(sl()),
+  );
+  sl.registerLazySingleton(() => TaskRemoteDataSource(sl()));
+
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
@@ -104,20 +126,36 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<DashboardRepository>(
     () => DashboardRepositoryImpl(sl()),
   );
+  sl.registerLazySingleton<ProductRepository>(
+    () => ProductRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<TaskRepository>(
+    () => TaskRepositoryImpl(remoteDataSource: sl()),
+  );
+
 
   // UseCases
   sl.registerLazySingleton(() => LoginUseCase(sl()));
   sl.registerLazySingleton(() => RegisterUseCase(sl()));
   sl.registerLazySingleton(() => CheckInUseCase(sl()));
   sl.registerLazySingleton(() => CheckOutUseCase(sl()));
+  sl.registerLazySingleton(() => GetActivities(sl()));
   sl.registerLazySingleton(() => GetCustomers(sl()));
   sl.registerLazySingleton(() => GetCustomerDetail(sl()));
   sl.registerLazySingleton(() => CreateCustomer(sl()));
   sl.registerLazySingleton(() => GetLeads(sl()));
   sl.registerLazySingleton(() => UpdateLeadStatus(sl()));
+  sl.registerLazySingleton(() => CreateLead(sl()));
+  sl.registerLazySingleton(() => ConvertLead(sl()));
   sl.registerLazySingleton(() => GetDeals(sl()));
+  sl.registerLazySingleton(() => GetDealDetail(sl()));
   sl.registerLazySingleton(() => UpdateDealStage(sl()));
+  sl.registerLazySingleton(() => GetDealItems(sl()));
+  sl.registerLazySingleton(() => AddDealItem(sl()));
+  sl.registerLazySingleton(() => RemoveDealItem(sl()));
   sl.registerLazySingleton(() => GetKpiSummary(sl()));
+  sl.registerLazySingleton(() => GetProducts(sl()));
+  sl.registerLazySingleton(() => GetProductDetail(sl()));
 
   // Blocs
   sl.registerFactory(() => AuthBloc(
@@ -128,6 +166,7 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => VisitBloc(
         checkInUseCase: sl(),
         checkOutUseCase: sl(),
+        getActivitiesUseCase: sl(),
       ));
   sl.registerFactory(() => AttendanceBloc(repository: sl()));
   sl.registerFactory(() => NotificationBloc(repository: sl()));
@@ -139,10 +178,16 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => LeadBloc(
         getLeads: sl(),
         updateLeadStatus: sl(),
+        createLead: sl(),
+        convertLead: sl(),
       ));
   sl.registerFactory(() => DealBloc(
         getDeals: sl(),
+        getDealDetail: sl(),
         updateDealStage: sl(),
+        getDealItems: sl(),
+        addDealItem: sl(),
+        removeDealItem: sl(),
       ));
   sl.registerFactory(() => MapBloc(
         getCustomers: sl(),
@@ -151,4 +196,10 @@ Future<void> initDependencies() async {
         getKpiSummary: sl(),
         remoteDataSource: sl(),
       ));
+  sl.registerFactory(() => ProductBloc(
+        getProducts: sl(),
+        getProductDetail: sl(),
+      ));
+  sl.registerFactory(() => TaskBloc(repository: sl()));
+
 }

@@ -6,7 +6,7 @@ import { computed, ref } from 'vue'
 import {
   PanelLeft, LogOut, LayoutDashboard, Users, UserPlus, FileText,
   Calendar, Map, MapPin, BarChart3, Settings, ChevronDown,
-  Sun, Moon, Bell, Search, Target, Flame
+  Sun, Moon, Bell, Search, Target, Flame, Package, ClipboardList, Timer
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -30,7 +30,10 @@ const navigation = [
   { name: 'Pelanggan', href: '/customers', icon: Users, group: 'crm' },
   { name: 'Prospek', href: '/leads', icon: UserPlus, group: 'crm' },
   { name: 'Penjualan', href: '/deals', icon: FileText, group: 'crm' },
+  { name: 'Produk', href: '/products', icon: Package, group: 'crm' },
+  { name: 'Tugas', href: '/tasks', icon: ClipboardList, group: 'crm' },
   { name: 'Kunjungan', href: '/visits', icon: Calendar, group: 'sales' },
+  { name: 'Presensi', href: '/attendance', icon: Timer, group: 'sales' },
   { name: 'Pelacakan Langsung', href: '/live-tracking', icon: MapPin, group: 'mapping' },
   { name: 'Wilayah', href: '/territories', icon: Map, group: 'mapping' },
   { name: 'Peta Panas', href: '/heatmap', icon: Flame, group: 'mapping' },

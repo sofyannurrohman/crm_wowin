@@ -4,7 +4,7 @@ part 'customer.freezed.dart';
 part 'customer.g.dart';
 
 @freezed
-class Customer with _$Customer {
+abstract class Customer with _$Customer {
   const factory Customer({
     required String id,
     String? code,

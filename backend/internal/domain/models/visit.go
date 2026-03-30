@@ -45,7 +45,9 @@ type VisitActivity struct {
 	Type        VisitType  `json:"type"`
 	Latitude    float64    `json:"latitude"`
 	Longitude   float64    `json:"longitude"`
-	PhotoPath   string     `json:"photo_path"` // Server path e.g., /uploads/visits/1234.jpg
+	PhotoPath        string     `json:"photo_path"`       // Server path e.g., /uploads/visits/1234.jpg (Legacy)
+	SelfiePhotoPath  string     `json:"selfie_photo_path"` // Face validation photo
+	PlacePhotoPath   string     `json:"place_photo_path"`  // Place validation photo
 	Distance    *float64   `json:"distance,omitempty"` // Distance to customer HQ during check-in
 	IsOffline   bool       `json:"is_offline"` // True if dispatched from SQLite backlog
 	Notes       *string    `json:"notes,omitempty"`

@@ -1,5 +1,5 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -9,198 +9,37 @@ part of 'kpi_summary.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
-
-KpiSummary _$KpiSummaryFromJson(Map<String, dynamic> json) {
-  return _KpiSummary.fromJson(json);
-}
 
 /// @nodoc
 mixin _$KpiSummary {
   @JsonKey(name: 'total_sales')
-  double get totalSales => throw _privateConstructorUsedError;
+  double get totalSales;
   @JsonKey(name: 'new_leads')
-  int get newLeads => throw _privateConstructorUsedError;
+  int get newLeads;
   @JsonKey(name: 'active_deals')
-  int get activeDeals => throw _privateConstructorUsedError;
+  int get activeDeals;
   @JsonKey(name: 'visits_today')
-  int get visitsToday => throw _privateConstructorUsedError;
+  int get visitsToday;
   @JsonKey(name: 'target_met_percentage')
-  double get targetMetPercentage => throw _privateConstructorUsedError;
-
-  /// Serializes this KpiSummary to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  double get targetMetPercentage;
 
   /// Create a copy of KpiSummary
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
   $KpiSummaryCopyWith<KpiSummary> get copyWith =>
-      throw _privateConstructorUsedError;
-}
+      _$KpiSummaryCopyWithImpl<KpiSummary>(this as KpiSummary, _$identity);
 
-/// @nodoc
-abstract class $KpiSummaryCopyWith<$Res> {
-  factory $KpiSummaryCopyWith(
-          KpiSummary value, $Res Function(KpiSummary) then) =
-      _$KpiSummaryCopyWithImpl<$Res, KpiSummary>;
-  @useResult
-  $Res call(
-      {@JsonKey(name: 'total_sales') double totalSales,
-      @JsonKey(name: 'new_leads') int newLeads,
-      @JsonKey(name: 'active_deals') int activeDeals,
-      @JsonKey(name: 'visits_today') int visitsToday,
-      @JsonKey(name: 'target_met_percentage') double targetMetPercentage});
-}
-
-/// @nodoc
-class _$KpiSummaryCopyWithImpl<$Res, $Val extends KpiSummary>
-    implements $KpiSummaryCopyWith<$Res> {
-  _$KpiSummaryCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of KpiSummary
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? totalSales = null,
-    Object? newLeads = null,
-    Object? activeDeals = null,
-    Object? visitsToday = null,
-    Object? targetMetPercentage = null,
-  }) {
-    return _then(_value.copyWith(
-      totalSales: null == totalSales
-          ? _value.totalSales
-          : totalSales // ignore: cast_nullable_to_non_nullable
-              as double,
-      newLeads: null == newLeads
-          ? _value.newLeads
-          : newLeads // ignore: cast_nullable_to_non_nullable
-              as int,
-      activeDeals: null == activeDeals
-          ? _value.activeDeals
-          : activeDeals // ignore: cast_nullable_to_non_nullable
-              as int,
-      visitsToday: null == visitsToday
-          ? _value.visitsToday
-          : visitsToday // ignore: cast_nullable_to_non_nullable
-              as int,
-      targetMetPercentage: null == targetMetPercentage
-          ? _value.targetMetPercentage
-          : targetMetPercentage // ignore: cast_nullable_to_non_nullable
-              as double,
-    ) as $Val);
-  }
-}
-
-/// @nodoc
-abstract class _$$KpiSummaryImplCopyWith<$Res>
-    implements $KpiSummaryCopyWith<$Res> {
-  factory _$$KpiSummaryImplCopyWith(
-          _$KpiSummaryImpl value, $Res Function(_$KpiSummaryImpl) then) =
-      __$$KpiSummaryImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call(
-      {@JsonKey(name: 'total_sales') double totalSales,
-      @JsonKey(name: 'new_leads') int newLeads,
-      @JsonKey(name: 'active_deals') int activeDeals,
-      @JsonKey(name: 'visits_today') int visitsToday,
-      @JsonKey(name: 'target_met_percentage') double targetMetPercentage});
-}
-
-/// @nodoc
-class __$$KpiSummaryImplCopyWithImpl<$Res>
-    extends _$KpiSummaryCopyWithImpl<$Res, _$KpiSummaryImpl>
-    implements _$$KpiSummaryImplCopyWith<$Res> {
-  __$$KpiSummaryImplCopyWithImpl(
-      _$KpiSummaryImpl _value, $Res Function(_$KpiSummaryImpl) _then)
-      : super(_value, _then);
-
-  /// Create a copy of KpiSummary
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? totalSales = null,
-    Object? newLeads = null,
-    Object? activeDeals = null,
-    Object? visitsToday = null,
-    Object? targetMetPercentage = null,
-  }) {
-    return _then(_$KpiSummaryImpl(
-      totalSales: null == totalSales
-          ? _value.totalSales
-          : totalSales // ignore: cast_nullable_to_non_nullable
-              as double,
-      newLeads: null == newLeads
-          ? _value.newLeads
-          : newLeads // ignore: cast_nullable_to_non_nullable
-              as int,
-      activeDeals: null == activeDeals
-          ? _value.activeDeals
-          : activeDeals // ignore: cast_nullable_to_non_nullable
-              as int,
-      visitsToday: null == visitsToday
-          ? _value.visitsToday
-          : visitsToday // ignore: cast_nullable_to_non_nullable
-              as int,
-      targetMetPercentage: null == targetMetPercentage
-          ? _value.targetMetPercentage
-          : targetMetPercentage // ignore: cast_nullable_to_non_nullable
-              as double,
-    ));
-  }
-}
-
-/// @nodoc
-@JsonSerializable()
-class _$KpiSummaryImpl implements _KpiSummary {
-  const _$KpiSummaryImpl(
-      {@JsonKey(name: 'total_sales') required this.totalSales,
-      @JsonKey(name: 'new_leads') required this.newLeads,
-      @JsonKey(name: 'active_deals') required this.activeDeals,
-      @JsonKey(name: 'visits_today') required this.visitsToday,
-      @JsonKey(name: 'target_met_percentage')
-      required this.targetMetPercentage});
-
-  factory _$KpiSummaryImpl.fromJson(Map<String, dynamic> json) =>
-      _$$KpiSummaryImplFromJson(json);
-
-  @override
-  @JsonKey(name: 'total_sales')
-  final double totalSales;
-  @override
-  @JsonKey(name: 'new_leads')
-  final int newLeads;
-  @override
-  @JsonKey(name: 'active_deals')
-  final int activeDeals;
-  @override
-  @JsonKey(name: 'visits_today')
-  final int visitsToday;
-  @override
-  @JsonKey(name: 'target_met_percentage')
-  final double targetMetPercentage;
-
-  @override
-  String toString() {
-    return 'KpiSummary(totalSales: $totalSales, newLeads: $newLeads, activeDeals: $activeDeals, visitsToday: $visitsToday, targetMetPercentage: $targetMetPercentage)';
-  }
+  /// Serializes this KpiSummary to a JSON map.
+  Map<String, dynamic> toJson();
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$KpiSummaryImpl &&
+            other is KpiSummary &&
             (identical(other.totalSales, totalSales) ||
                 other.totalSales == totalSales) &&
             (identical(other.newLeads, newLeads) ||
@@ -218,54 +57,376 @@ class _$KpiSummaryImpl implements _KpiSummary {
   int get hashCode => Object.hash(runtimeType, totalSales, newLeads,
       activeDeals, visitsToday, targetMetPercentage);
 
-  /// Create a copy of KpiSummary
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  @pragma('vm:prefer-inline')
-  _$$KpiSummaryImplCopyWith<_$KpiSummaryImpl> get copyWith =>
-      __$$KpiSummaryImplCopyWithImpl<_$KpiSummaryImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$KpiSummaryImplToJson(
-      this,
-    );
+  String toString() {
+    return 'KpiSummary(totalSales: $totalSales, newLeads: $newLeads, activeDeals: $activeDeals, visitsToday: $visitsToday, targetMetPercentage: $targetMetPercentage)';
   }
 }
 
-abstract class _KpiSummary implements KpiSummary {
-  const factory _KpiSummary(
-      {@JsonKey(name: 'total_sales') required final double totalSales,
-      @JsonKey(name: 'new_leads') required final int newLeads,
-      @JsonKey(name: 'active_deals') required final int activeDeals,
-      @JsonKey(name: 'visits_today') required final int visitsToday,
-      @JsonKey(name: 'target_met_percentage')
-      required final double targetMetPercentage}) = _$KpiSummaryImpl;
+/// @nodoc
+abstract mixin class $KpiSummaryCopyWith<$Res> {
+  factory $KpiSummaryCopyWith(
+          KpiSummary value, $Res Function(KpiSummary) _then) =
+      _$KpiSummaryCopyWithImpl;
+  @useResult
+  $Res call(
+      {@JsonKey(name: 'total_sales') double totalSales,
+      @JsonKey(name: 'new_leads') int newLeads,
+      @JsonKey(name: 'active_deals') int activeDeals,
+      @JsonKey(name: 'visits_today') int visitsToday,
+      @JsonKey(name: 'target_met_percentage') double targetMetPercentage});
+}
 
-  factory _KpiSummary.fromJson(Map<String, dynamic> json) =
-      _$KpiSummaryImpl.fromJson;
+/// @nodoc
+class _$KpiSummaryCopyWithImpl<$Res> implements $KpiSummaryCopyWith<$Res> {
+  _$KpiSummaryCopyWithImpl(this._self, this._then);
+
+  final KpiSummary _self;
+  final $Res Function(KpiSummary) _then;
+
+  /// Create a copy of KpiSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? totalSales = null,
+    Object? newLeads = null,
+    Object? activeDeals = null,
+    Object? visitsToday = null,
+    Object? targetMetPercentage = null,
+  }) {
+    return _then(_self.copyWith(
+      totalSales: null == totalSales
+          ? _self.totalSales
+          : totalSales // ignore: cast_nullable_to_non_nullable
+              as double,
+      newLeads: null == newLeads
+          ? _self.newLeads
+          : newLeads // ignore: cast_nullable_to_non_nullable
+              as int,
+      activeDeals: null == activeDeals
+          ? _self.activeDeals
+          : activeDeals // ignore: cast_nullable_to_non_nullable
+              as int,
+      visitsToday: null == visitsToday
+          ? _self.visitsToday
+          : visitsToday // ignore: cast_nullable_to_non_nullable
+              as int,
+      targetMetPercentage: null == targetMetPercentage
+          ? _self.targetMetPercentage
+          : targetMetPercentage // ignore: cast_nullable_to_non_nullable
+              as double,
+    ));
+  }
+}
+
+/// Adds pattern-matching-related methods to [KpiSummary].
+extension KpiSummaryPatterns on KpiSummary {
+  /// A variant of `map` that fallback to returning `orElse`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>(
+    TResult Function(_KpiSummary value)? $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _KpiSummary() when $default != null:
+        return $default(_that);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// Callbacks receives the raw object, upcasted.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case final Subclass2 value:
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>(
+    TResult Function(_KpiSummary value) $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _KpiSummary():
+        return $default(_that);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `map` that fallback to returning `null`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>(
+    TResult? Function(_KpiSummary value)? $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _KpiSummary() when $default != null:
+        return $default(_that);
+      case _:
+        return null;
+    }
+  }
+
+  /// A variant of `when` that fallback to an `orElse` callback.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>(
+    TResult Function(
+            @JsonKey(name: 'total_sales') double totalSales,
+            @JsonKey(name: 'new_leads') int newLeads,
+            @JsonKey(name: 'active_deals') int activeDeals,
+            @JsonKey(name: 'visits_today') int visitsToday,
+            @JsonKey(name: 'target_met_percentage') double targetMetPercentage)?
+        $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _KpiSummary() when $default != null:
+        return $default(_that.totalSales, _that.newLeads, _that.activeDeals,
+            _that.visitsToday, _that.targetMetPercentage);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// As opposed to `map`, this offers destructuring.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case Subclass2(:final field2):
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>(
+    TResult Function(
+            @JsonKey(name: 'total_sales') double totalSales,
+            @JsonKey(name: 'new_leads') int newLeads,
+            @JsonKey(name: 'active_deals') int activeDeals,
+            @JsonKey(name: 'visits_today') int visitsToday,
+            @JsonKey(name: 'target_met_percentage') double targetMetPercentage)
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _KpiSummary():
+        return $default(_that.totalSales, _that.newLeads, _that.activeDeals,
+            _that.visitsToday, _that.targetMetPercentage);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `when` that fallback to returning `null`
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>(
+    TResult? Function(
+            @JsonKey(name: 'total_sales') double totalSales,
+            @JsonKey(name: 'new_leads') int newLeads,
+            @JsonKey(name: 'active_deals') int activeDeals,
+            @JsonKey(name: 'visits_today') int visitsToday,
+            @JsonKey(name: 'target_met_percentage') double targetMetPercentage)?
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _KpiSummary() when $default != null:
+        return $default(_that.totalSales, _that.newLeads, _that.activeDeals,
+            _that.visitsToday, _that.targetMetPercentage);
+      case _:
+        return null;
+    }
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _KpiSummary implements KpiSummary {
+  const _KpiSummary(
+      {@JsonKey(name: 'total_sales') required this.totalSales,
+      @JsonKey(name: 'new_leads') required this.newLeads,
+      @JsonKey(name: 'active_deals') required this.activeDeals,
+      @JsonKey(name: 'visits_today') required this.visitsToday,
+      @JsonKey(name: 'target_met_percentage')
+      required this.targetMetPercentage});
+  factory _KpiSummary.fromJson(Map<String, dynamic> json) =>
+      _$KpiSummaryFromJson(json);
 
   @override
   @JsonKey(name: 'total_sales')
-  double get totalSales;
+  final double totalSales;
   @override
   @JsonKey(name: 'new_leads')
-  int get newLeads;
+  final int newLeads;
   @override
   @JsonKey(name: 'active_deals')
-  int get activeDeals;
+  final int activeDeals;
   @override
   @JsonKey(name: 'visits_today')
-  int get visitsToday;
+  final int visitsToday;
   @override
   @JsonKey(name: 'target_met_percentage')
-  double get targetMetPercentage;
+  final double targetMetPercentage;
 
   /// Create a copy of KpiSummary
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$KpiSummaryImplCopyWith<_$KpiSummaryImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  @pragma('vm:prefer-inline')
+  _$KpiSummaryCopyWith<_KpiSummary> get copyWith =>
+      __$KpiSummaryCopyWithImpl<_KpiSummary>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$KpiSummaryToJson(
+      this,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _KpiSummary &&
+            (identical(other.totalSales, totalSales) ||
+                other.totalSales == totalSales) &&
+            (identical(other.newLeads, newLeads) ||
+                other.newLeads == newLeads) &&
+            (identical(other.activeDeals, activeDeals) ||
+                other.activeDeals == activeDeals) &&
+            (identical(other.visitsToday, visitsToday) ||
+                other.visitsToday == visitsToday) &&
+            (identical(other.targetMetPercentage, targetMetPercentage) ||
+                other.targetMetPercentage == targetMetPercentage));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, totalSales, newLeads,
+      activeDeals, visitsToday, targetMetPercentage);
+
+  @override
+  String toString() {
+    return 'KpiSummary(totalSales: $totalSales, newLeads: $newLeads, activeDeals: $activeDeals, visitsToday: $visitsToday, targetMetPercentage: $targetMetPercentage)';
+  }
 }
+
+/// @nodoc
+abstract mixin class _$KpiSummaryCopyWith<$Res>
+    implements $KpiSummaryCopyWith<$Res> {
+  factory _$KpiSummaryCopyWith(
+          _KpiSummary value, $Res Function(_KpiSummary) _then) =
+      __$KpiSummaryCopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {@JsonKey(name: 'total_sales') double totalSales,
+      @JsonKey(name: 'new_leads') int newLeads,
+      @JsonKey(name: 'active_deals') int activeDeals,
+      @JsonKey(name: 'visits_today') int visitsToday,
+      @JsonKey(name: 'target_met_percentage') double targetMetPercentage});
+}
+
+/// @nodoc
+class __$KpiSummaryCopyWithImpl<$Res> implements _$KpiSummaryCopyWith<$Res> {
+  __$KpiSummaryCopyWithImpl(this._self, this._then);
+
+  final _KpiSummary _self;
+  final $Res Function(_KpiSummary) _then;
+
+  /// Create a copy of KpiSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? totalSales = null,
+    Object? newLeads = null,
+    Object? activeDeals = null,
+    Object? visitsToday = null,
+    Object? targetMetPercentage = null,
+  }) {
+    return _then(_KpiSummary(
+      totalSales: null == totalSales
+          ? _self.totalSales
+          : totalSales // ignore: cast_nullable_to_non_nullable
+              as double,
+      newLeads: null == newLeads
+          ? _self.newLeads
+          : newLeads // ignore: cast_nullable_to_non_nullable
+              as int,
+      activeDeals: null == activeDeals
+          ? _self.activeDeals
+          : activeDeals // ignore: cast_nullable_to_non_nullable
+              as int,
+      visitsToday: null == visitsToday
+          ? _self.visitsToday
+          : visitsToday // ignore: cast_nullable_to_non_nullable
+              as int,
+      targetMetPercentage: null == targetMetPercentage
+          ? _self.targetMetPercentage
+          : targetMetPercentage // ignore: cast_nullable_to_non_nullable
+              as double,
+    ));
+  }
+}
+
+// dart format on

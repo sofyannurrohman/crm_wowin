@@ -4,7 +4,7 @@ part 'lead.freezed.dart';
 part 'lead.g.dart';
 
 @freezed
-class Lead with _$Lead {
+abstract class Lead with _$Lead {
   const factory Lead({
     required String id,
     required String title,

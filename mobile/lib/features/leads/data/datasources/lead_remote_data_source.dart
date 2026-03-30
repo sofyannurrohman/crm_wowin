@@ -4,6 +4,8 @@ import '../../domain/entities/lead.dart';
 abstract class LeadRemoteDataSource {
   Future<List<Lead>> getLeads({String? status});
   Future<Lead> updateLeadStatus(String id, String status);
+  Future<Lead> createLead(Lead lead);
+  Future<void> convertLead(String id);
 }
 
 class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
@@ -29,5 +31,19 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
       data: {'status': status},
     );
     return Lead.fromJson(response.data['data']);
+  }
+
+  @override
+  Future<Lead> createLead(Lead lead) async {
+    final response = await _dio.post(
+      '/leads',
+      data: lead.toJson(),
+    );
+    return Lead.fromJson(response.data['data']);
+  }
+
+  @override
+  Future<void> convertLead(String id) async {
+    await _dio.post('/leads/$id/convert');
   }
 }

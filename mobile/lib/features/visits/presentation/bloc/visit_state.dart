@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../domain/entities/visit_activity.dart';
 
 abstract class VisitState extends Equatable {
   const VisitState();
@@ -25,4 +26,12 @@ class VisitError extends VisitState {
 
   @override
   List<Object> get props => [message];
+}
+
+class ActivitiesLoaded extends VisitState {
+  final List<VisitActivity> activities;
+  const ActivitiesLoaded(this.activities);
+
+  @override
+  List<Object> get props => [activities];
 }

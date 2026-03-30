@@ -6,7 +6,7 @@ part of 'lead.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$LeadImpl _$$LeadImplFromJson(Map<String, dynamic> json) => _$LeadImpl(
+_Lead _$LeadFromJson(Map<String, dynamic> json) => _Lead(
       id: json['id'] as String,
       title: json['title'] as String,
       name: json['name'] as String,
@@ -23,8 +23,7 @@ _$LeadImpl _$$LeadImplFromJson(Map<String, dynamic> json) => _$LeadImpl(
           : DateTime.parse(json['converted_at'] as String),
     );
 
-Map<String, dynamic> _$$LeadImplToJson(_$LeadImpl instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$LeadToJson(_Lead instance) => <String, dynamic>{
       'id': instance.id,
       'title': instance.title,
       'name': instance.name,

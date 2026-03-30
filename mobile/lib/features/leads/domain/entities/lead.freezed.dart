@@ -1,5 +1,5 @@
-// coverage:ignore-file
 // GENERATED CODE - DO NOT MODIFY BY HAND
+// coverage:ignore-file
 // ignore_for_file: type=lint
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
@@ -9,149 +9,74 @@ part of 'lead.dart';
 // FreezedGenerator
 // **************************************************************************
 
+// dart format off
 T _$identity<T>(T value) => value;
-
-final _privateConstructorUsedError = UnsupportedError(
-    'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
-
-Lead _$LeadFromJson(Map<String, dynamic> json) {
-  return _Lead.fromJson(json);
-}
 
 /// @nodoc
 mixin _$Lead {
-  String get id => throw _privateConstructorUsedError;
-  String get title => throw _privateConstructorUsedError;
-  String get name => throw _privateConstructorUsedError;
-  String? get company => throw _privateConstructorUsedError;
-  String? get email => throw _privateConstructorUsedError;
-  String? get phone => throw _privateConstructorUsedError;
-  String get source => throw _privateConstructorUsedError;
-  String get status => throw _privateConstructorUsedError;
+  String get id;
+  String get title;
+  String get name;
+  String? get company;
+  String? get email;
+  String? get phone;
+  String get source;
+  String get status;
   @JsonKey(name: 'customer_id')
-  String? get customerId => throw _privateConstructorUsedError;
+  String? get customerId;
   @JsonKey(name: 'estimated_value')
-  double? get estimatedValue => throw _privateConstructorUsedError;
-  String? get notes => throw _privateConstructorUsedError;
+  double? get estimatedValue;
+  String? get notes;
   @JsonKey(name: 'converted_at')
-  DateTime? get convertedAt => throw _privateConstructorUsedError;
-
-  /// Serializes this Lead to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+  DateTime? get convertedAt;
 
   /// Create a copy of Lead
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
-  $LeadCopyWith<Lead> get copyWith => throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class $LeadCopyWith<$Res> {
-  factory $LeadCopyWith(Lead value, $Res Function(Lead) then) =
-      _$LeadCopyWithImpl<$Res, Lead>;
-  @useResult
-  $Res call(
-      {String id,
-      String title,
-      String name,
-      String? company,
-      String? email,
-      String? phone,
-      String source,
-      String status,
-      @JsonKey(name: 'customer_id') String? customerId,
-      @JsonKey(name: 'estimated_value') double? estimatedValue,
-      String? notes,
-      @JsonKey(name: 'converted_at') DateTime? convertedAt});
-}
-
-/// @nodoc
-class _$LeadCopyWithImpl<$Res, $Val extends Lead>
-    implements $LeadCopyWith<$Res> {
-  _$LeadCopyWithImpl(this._value, this._then);
-
-  // ignore: unused_field
-  final $Val _value;
-  // ignore: unused_field
-  final $Res Function($Val) _then;
-
-  /// Create a copy of Lead
-  /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
+  $LeadCopyWith<Lead> get copyWith =>
+      _$LeadCopyWithImpl<Lead>(this as Lead, _$identity);
+
+  /// Serializes this Lead to a JSON map.
+  Map<String, dynamic> toJson();
+
   @override
-  $Res call({
-    Object? id = null,
-    Object? title = null,
-    Object? name = null,
-    Object? company = freezed,
-    Object? email = freezed,
-    Object? phone = freezed,
-    Object? source = null,
-    Object? status = null,
-    Object? customerId = freezed,
-    Object? estimatedValue = freezed,
-    Object? notes = freezed,
-    Object? convertedAt = freezed,
-  }) {
-    return _then(_value.copyWith(
-      id: null == id
-          ? _value.id
-          : id // ignore: cast_nullable_to_non_nullable
-              as String,
-      title: null == title
-          ? _value.title
-          : title // ignore: cast_nullable_to_non_nullable
-              as String,
-      name: null == name
-          ? _value.name
-          : name // ignore: cast_nullable_to_non_nullable
-              as String,
-      company: freezed == company
-          ? _value.company
-          : company // ignore: cast_nullable_to_non_nullable
-              as String?,
-      email: freezed == email
-          ? _value.email
-          : email // ignore: cast_nullable_to_non_nullable
-              as String?,
-      phone: freezed == phone
-          ? _value.phone
-          : phone // ignore: cast_nullable_to_non_nullable
-              as String?,
-      source: null == source
-          ? _value.source
-          : source // ignore: cast_nullable_to_non_nullable
-              as String,
-      status: null == status
-          ? _value.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as String,
-      customerId: freezed == customerId
-          ? _value.customerId
-          : customerId // ignore: cast_nullable_to_non_nullable
-              as String?,
-      estimatedValue: freezed == estimatedValue
-          ? _value.estimatedValue
-          : estimatedValue // ignore: cast_nullable_to_non_nullable
-              as double?,
-      notes: freezed == notes
-          ? _value.notes
-          : notes // ignore: cast_nullable_to_non_nullable
-              as String?,
-      convertedAt: freezed == convertedAt
-          ? _value.convertedAt
-          : convertedAt // ignore: cast_nullable_to_non_nullable
-              as DateTime?,
-    ) as $Val);
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is Lead &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.title, title) || other.title == title) &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.company, company) || other.company == company) &&
+            (identical(other.email, email) || other.email == email) &&
+            (identical(other.phone, phone) || other.phone == phone) &&
+            (identical(other.source, source) || other.source == source) &&
+            (identical(other.status, status) || other.status == status) &&
+            (identical(other.customerId, customerId) ||
+                other.customerId == customerId) &&
+            (identical(other.estimatedValue, estimatedValue) ||
+                other.estimatedValue == estimatedValue) &&
+            (identical(other.notes, notes) || other.notes == notes) &&
+            (identical(other.convertedAt, convertedAt) ||
+                other.convertedAt == convertedAt));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(runtimeType, id, title, name, company, email,
+      phone, source, status, customerId, estimatedValue, notes, convertedAt);
+
+  @override
+  String toString() {
+    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, notes: $notes, convertedAt: $convertedAt)';
   }
 }
 
 /// @nodoc
-abstract class _$$LeadImplCopyWith<$Res> implements $LeadCopyWith<$Res> {
-  factory _$$LeadImplCopyWith(
-          _$LeadImpl value, $Res Function(_$LeadImpl) then) =
-      __$$LeadImplCopyWithImpl<$Res>;
-  @override
+abstract mixin class $LeadCopyWith<$Res> {
+  factory $LeadCopyWith(Lead value, $Res Function(Lead) _then) =
+      _$LeadCopyWithImpl;
   @useResult
   $Res call(
       {String id,
@@ -169,11 +94,11 @@ abstract class _$$LeadImplCopyWith<$Res> implements $LeadCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$LeadImplCopyWithImpl<$Res>
-    extends _$LeadCopyWithImpl<$Res, _$LeadImpl>
-    implements _$$LeadImplCopyWith<$Res> {
-  __$$LeadImplCopyWithImpl(_$LeadImpl _value, $Res Function(_$LeadImpl) _then)
-      : super(_value, _then);
+class _$LeadCopyWithImpl<$Res> implements $LeadCopyWith<$Res> {
+  _$LeadCopyWithImpl(this._self, this._then);
+
+  final Lead _self;
+  final $Res Function(Lead) _then;
 
   /// Create a copy of Lead
   /// with the given fields replaced by the non-null parameter values.
@@ -193,63 +118,295 @@ class __$$LeadImplCopyWithImpl<$Res>
     Object? notes = freezed,
     Object? convertedAt = freezed,
   }) {
-    return _then(_$LeadImpl(
+    return _then(_self.copyWith(
       id: null == id
-          ? _value.id
+          ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
       title: null == title
-          ? _value.title
+          ? _self.title
           : title // ignore: cast_nullable_to_non_nullable
               as String,
       name: null == name
-          ? _value.name
+          ? _self.name
           : name // ignore: cast_nullable_to_non_nullable
               as String,
       company: freezed == company
-          ? _value.company
+          ? _self.company
           : company // ignore: cast_nullable_to_non_nullable
               as String?,
       email: freezed == email
-          ? _value.email
+          ? _self.email
           : email // ignore: cast_nullable_to_non_nullable
               as String?,
       phone: freezed == phone
-          ? _value.phone
+          ? _self.phone
           : phone // ignore: cast_nullable_to_non_nullable
               as String?,
       source: null == source
-          ? _value.source
+          ? _self.source
           : source // ignore: cast_nullable_to_non_nullable
               as String,
       status: null == status
-          ? _value.status
+          ? _self.status
           : status // ignore: cast_nullable_to_non_nullable
               as String,
       customerId: freezed == customerId
-          ? _value.customerId
+          ? _self.customerId
           : customerId // ignore: cast_nullable_to_non_nullable
               as String?,
       estimatedValue: freezed == estimatedValue
-          ? _value.estimatedValue
+          ? _self.estimatedValue
           : estimatedValue // ignore: cast_nullable_to_non_nullable
               as double?,
       notes: freezed == notes
-          ? _value.notes
+          ? _self.notes
           : notes // ignore: cast_nullable_to_non_nullable
               as String?,
       convertedAt: freezed == convertedAt
-          ? _value.convertedAt
+          ? _self.convertedAt
           : convertedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
     ));
   }
 }
 
+/// Adds pattern-matching-related methods to [Lead].
+extension LeadPatterns on Lead {
+  /// A variant of `map` that fallback to returning `orElse`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>(
+    TResult Function(_Lead value)? $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _Lead() when $default != null:
+        return $default(_that);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// Callbacks receives the raw object, upcasted.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case final Subclass2 value:
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>(
+    TResult Function(_Lead value) $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _Lead():
+        return $default(_that);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `map` that fallback to returning `null`.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case final Subclass value:
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>(
+    TResult? Function(_Lead value)? $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _Lead() when $default != null:
+        return $default(_that);
+      case _:
+        return null;
+    }
+  }
+
+  /// A variant of `when` that fallback to an `orElse` callback.
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return orElse();
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>(
+    TResult Function(
+            String id,
+            String title,
+            String name,
+            String? company,
+            String? email,
+            String? phone,
+            String source,
+            String status,
+            @JsonKey(name: 'customer_id') String? customerId,
+            @JsonKey(name: 'estimated_value') double? estimatedValue,
+            String? notes,
+            @JsonKey(name: 'converted_at') DateTime? convertedAt)?
+        $default, {
+    required TResult orElse(),
+  }) {
+    final _that = this;
+    switch (_that) {
+      case _Lead() when $default != null:
+        return $default(
+            _that.id,
+            _that.title,
+            _that.name,
+            _that.company,
+            _that.email,
+            _that.phone,
+            _that.source,
+            _that.status,
+            _that.customerId,
+            _that.estimatedValue,
+            _that.notes,
+            _that.convertedAt);
+      case _:
+        return orElse();
+    }
+  }
+
+  /// A `switch`-like method, using callbacks.
+  ///
+  /// As opposed to `map`, this offers destructuring.
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case Subclass2(:final field2):
+  ///     return ...;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>(
+    TResult Function(
+            String id,
+            String title,
+            String name,
+            String? company,
+            String? email,
+            String? phone,
+            String source,
+            String status,
+            @JsonKey(name: 'customer_id') String? customerId,
+            @JsonKey(name: 'estimated_value') double? estimatedValue,
+            String? notes,
+            @JsonKey(name: 'converted_at') DateTime? convertedAt)
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _Lead():
+        return $default(
+            _that.id,
+            _that.title,
+            _that.name,
+            _that.company,
+            _that.email,
+            _that.phone,
+            _that.source,
+            _that.status,
+            _that.customerId,
+            _that.estimatedValue,
+            _that.notes,
+            _that.convertedAt);
+      case _:
+        throw StateError('Unexpected subclass');
+    }
+  }
+
+  /// A variant of `when` that fallback to returning `null`
+  ///
+  /// It is equivalent to doing:
+  /// ```dart
+  /// switch (sealedClass) {
+  ///   case Subclass(:final field):
+  ///     return ...;
+  ///   case _:
+  ///     return null;
+  /// }
+  /// ```
+
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>(
+    TResult? Function(
+            String id,
+            String title,
+            String name,
+            String? company,
+            String? email,
+            String? phone,
+            String source,
+            String status,
+            @JsonKey(name: 'customer_id') String? customerId,
+            @JsonKey(name: 'estimated_value') double? estimatedValue,
+            String? notes,
+            @JsonKey(name: 'converted_at') DateTime? convertedAt)?
+        $default,
+  ) {
+    final _that = this;
+    switch (_that) {
+      case _Lead() when $default != null:
+        return $default(
+            _that.id,
+            _that.title,
+            _that.name,
+            _that.company,
+            _that.email,
+            _that.phone,
+            _that.source,
+            _that.status,
+            _that.customerId,
+            _that.estimatedValue,
+            _that.notes,
+            _that.convertedAt);
+      case _:
+        return null;
+    }
+  }
+}
+
 /// @nodoc
 @JsonSerializable()
-class _$LeadImpl implements _Lead {
-  const _$LeadImpl(
+class _Lead implements Lead {
+  const _Lead(
       {required this.id,
       required this.title,
       required this.name,
@@ -262,9 +419,7 @@ class _$LeadImpl implements _Lead {
       @JsonKey(name: 'estimated_value') this.estimatedValue,
       this.notes,
       @JsonKey(name: 'converted_at') this.convertedAt});
-
-  factory _$LeadImpl.fromJson(Map<String, dynamic> json) =>
-      _$$LeadImplFromJson(json);
+  factory _Lead.fromJson(Map<String, dynamic> json) => _$LeadFromJson(json);
 
   @override
   final String id;
@@ -294,16 +449,26 @@ class _$LeadImpl implements _Lead {
   @JsonKey(name: 'converted_at')
   final DateTime? convertedAt;
 
+  /// Create a copy of Lead
+  /// with the given fields replaced by the non-null parameter values.
   @override
-  String toString() {
-    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, notes: $notes, convertedAt: $convertedAt)';
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @pragma('vm:prefer-inline')
+  _$LeadCopyWith<_Lead> get copyWith =>
+      __$LeadCopyWithImpl<_Lead>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$LeadToJson(
+      this,
+    );
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$LeadImpl &&
+            other is _Lead &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.title, title) || other.title == title) &&
             (identical(other.name, name) || other.name == name) &&
@@ -326,71 +491,109 @@ class _$LeadImpl implements _Lead {
   int get hashCode => Object.hash(runtimeType, id, title, name, company, email,
       phone, source, status, customerId, estimatedValue, notes, convertedAt);
 
-  /// Create a copy of Lead
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  @pragma('vm:prefer-inline')
-  _$$LeadImplCopyWith<_$LeadImpl> get copyWith =>
-      __$$LeadImplCopyWithImpl<_$LeadImpl>(this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$LeadImplToJson(
-      this,
-    );
+  String toString() {
+    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, notes: $notes, convertedAt: $convertedAt)';
   }
 }
 
-abstract class _Lead implements Lead {
-  const factory _Lead(
-      {required final String id,
-      required final String title,
-      required final String name,
-      final String? company,
-      final String? email,
-      final String? phone,
-      required final String source,
-      required final String status,
-      @JsonKey(name: 'customer_id') final String? customerId,
-      @JsonKey(name: 'estimated_value') final double? estimatedValue,
-      final String? notes,
-      @JsonKey(name: 'converted_at') final DateTime? convertedAt}) = _$LeadImpl;
+/// @nodoc
+abstract mixin class _$LeadCopyWith<$Res> implements $LeadCopyWith<$Res> {
+  factory _$LeadCopyWith(_Lead value, $Res Function(_Lead) _then) =
+      __$LeadCopyWithImpl;
+  @override
+  @useResult
+  $Res call(
+      {String id,
+      String title,
+      String name,
+      String? company,
+      String? email,
+      String? phone,
+      String source,
+      String status,
+      @JsonKey(name: 'customer_id') String? customerId,
+      @JsonKey(name: 'estimated_value') double? estimatedValue,
+      String? notes,
+      @JsonKey(name: 'converted_at') DateTime? convertedAt});
+}
 
-  factory _Lead.fromJson(Map<String, dynamic> json) = _$LeadImpl.fromJson;
+/// @nodoc
+class __$LeadCopyWithImpl<$Res> implements _$LeadCopyWith<$Res> {
+  __$LeadCopyWithImpl(this._self, this._then);
 
-  @override
-  String get id;
-  @override
-  String get title;
-  @override
-  String get name;
-  @override
-  String? get company;
-  @override
-  String? get email;
-  @override
-  String? get phone;
-  @override
-  String get source;
-  @override
-  String get status;
-  @override
-  @JsonKey(name: 'customer_id')
-  String? get customerId;
-  @override
-  @JsonKey(name: 'estimated_value')
-  double? get estimatedValue;
-  @override
-  String? get notes;
-  @override
-  @JsonKey(name: 'converted_at')
-  DateTime? get convertedAt;
+  final _Lead _self;
+  final $Res Function(_Lead) _then;
 
   /// Create a copy of Lead
   /// with the given fields replaced by the non-null parameter values.
   @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$LeadImplCopyWith<_$LeadImpl> get copyWith =>
-      throw _privateConstructorUsedError;
+  @pragma('vm:prefer-inline')
+  $Res call({
+    Object? id = null,
+    Object? title = null,
+    Object? name = null,
+    Object? company = freezed,
+    Object? email = freezed,
+    Object? phone = freezed,
+    Object? source = null,
+    Object? status = null,
+    Object? customerId = freezed,
+    Object? estimatedValue = freezed,
+    Object? notes = freezed,
+    Object? convertedAt = freezed,
+  }) {
+    return _then(_Lead(
+      id: null == id
+          ? _self.id
+          : id // ignore: cast_nullable_to_non_nullable
+              as String,
+      title: null == title
+          ? _self.title
+          : title // ignore: cast_nullable_to_non_nullable
+              as String,
+      name: null == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
+      company: freezed == company
+          ? _self.company
+          : company // ignore: cast_nullable_to_non_nullable
+              as String?,
+      email: freezed == email
+          ? _self.email
+          : email // ignore: cast_nullable_to_non_nullable
+              as String?,
+      phone: freezed == phone
+          ? _self.phone
+          : phone // ignore: cast_nullable_to_non_nullable
+              as String?,
+      source: null == source
+          ? _self.source
+          : source // ignore: cast_nullable_to_non_nullable
+              as String,
+      status: null == status
+          ? _self.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String,
+      customerId: freezed == customerId
+          ? _self.customerId
+          : customerId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      estimatedValue: freezed == estimatedValue
+          ? _self.estimatedValue
+          : estimatedValue // ignore: cast_nullable_to_non_nullable
+              as double?,
+      notes: freezed == notes
+          ? _self.notes
+          : notes // ignore: cast_nullable_to_non_nullable
+              as String?,
+      convertedAt: freezed == convertedAt
+          ? _self.convertedAt
+          : convertedAt // ignore: cast_nullable_to_non_nullable
+              as DateTime?,
+    ));
+  }
 }
+
+// dart format on

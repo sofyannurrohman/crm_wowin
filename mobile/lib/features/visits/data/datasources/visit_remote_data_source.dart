@@ -2,16 +2,36 @@ import 'package:dio/dio.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../domain/entities/visit_request_entities.dart';
+import '../models/visit_activity_model.dart';
 
 abstract class VisitRemoteDataSource {
   Future<void> checkIn(CheckInRequest request);
   Future<void> checkOut(CheckOutRequest request);
+  Future<List<VisitActivityModel>> getActivities({String? salesId, String? customerId});
 }
 
 class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
   final Dio dio;
 
   VisitRemoteDataSourceImpl(this.dio);
+
+  @override
+  Future<List<VisitActivityModel>> getActivities({String? salesId, String? customerId}) async {
+    final response = await dio.get(
+      '/visits/activities', // Assuming unified endpoint
+      queryParameters: {
+        if (salesId != null) 'sales_id': salesId,
+        if (customerId != null) 'customer_id': customerId,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List data = response.data['data'];
+      return data.map((json) => VisitActivityModel.fromJson(json)).toList();
+    } else {
+      throw ServerException('Gagal mengambil log aktivitas');
+    }
+  }
 
   @override
   Future<void> checkIn(CheckInRequest request) async {

@@ -10,6 +10,14 @@ abstract class DealEvent extends Equatable {
 
 class FetchDeals extends DealEvent {}
 
+class FetchDealDetail extends DealEvent {
+  final String id;
+  const FetchDealDetail(this.id);
+
+  @override
+  List<Object> get props => [id];
+}
+
 class UpdateDealStageSubmitted extends DealEvent {
   final String id;
   final String stage;
@@ -17,4 +25,42 @@ class UpdateDealStageSubmitted extends DealEvent {
 
   @override
   List<Object> get props => [id, stage];
+}
+
+class FetchDealItems extends DealEvent {
+  final String dealId;
+  const FetchDealItems(this.dealId);
+
+  @override
+  List<Object> get props => [dealId];
+}
+
+class AddDealItemSubmitted extends DealEvent {
+  final String dealId;
+  final String productId;
+  final int quantity;
+  final double price;
+  final double discount;
+  final String? notes;
+
+  const AddDealItemSubmitted({
+    required this.dealId,
+    required this.productId,
+    required this.quantity,
+    required this.price,
+    this.discount = 0,
+    this.notes,
+  });
+
+  @override
+  List<Object?> get props => [dealId, productId, quantity, price, discount, notes];
+}
+
+class RemoveDealItemSubmitted extends DealEvent {
+  final String itemId;
+  final String dealId; // To refetch
+  const RemoveDealItemSubmitted(this.itemId, this.dealId);
+
+  @override
+  List<Object> get props => [itemId, dealId];
 }

@@ -236,7 +236,7 @@ class _NewTaskPageState extends State<NewTaskPage> {
         TextField(
           controller: _customerSearchController,
           decoration: InputDecoration(
-            hintText: 'Search customers...',
+            hintText: 'Cari Customer...',
             hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 16),
             suffixIcon: const Icon(LucideIcons.search, color: Color(0xFF9CA3AF), size: 20),
             filled: true,

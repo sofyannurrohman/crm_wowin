@@ -25,6 +25,12 @@ import '../../features/activities/presentation/pages/activity_log_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/attendance/presentation/pages/attendance_home_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
+import '../../features/products/presentation/pages/product_list_page.dart';
+import '../../features/products/presentation/pages/product_detail_page.dart';
+import '../../features/leads/presentation/pages/add_lead_page.dart';
+import '../../features/leads/presentation/pages/convert_lead_page.dart';
+import '../../features/leads/domain/entities/lead.dart';
+
 
 
 import 'route_constants.dart';
@@ -190,6 +196,35 @@ final GoRouter appRouter = GoRouter(
       name: kRouteSettings,
       path: '/settings',
       builder: (context, state) => const SettingsPage(),
+    ),
+    GoRoute(
+      name: kRouteProducts,
+      path: '/products',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        final isSelection = extra?['isSelectionMode'] as bool? ?? false;
+        return ProductListPage(isSelectionMode: isSelection);
+      },
+    ),
+    GoRoute(
+      name: kRouteProductDetail,
+      path: '/products/:id',
+      builder: (context, state) => ProductDetailPage(
+        id: state.pathParameters['id']!,
+      ),
+    ),
+    GoRoute(
+      name: kRouteAddLead,
+      path: '/leads/add',
+      builder: (context, state) => const AddLeadPage(),
+    ),
+    GoRoute(
+      name: kRouteConvertLead,
+      path: '/leads/convert',
+      builder: (context, state) {
+        final lead = state.extra as Lead;
+        return ConvertLeadPage(lead: lead);
+      },
     ),
   ],
   redirect: (context, state) async {

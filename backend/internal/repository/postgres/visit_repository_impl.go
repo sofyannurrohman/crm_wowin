@@ -120,21 +120,19 @@ func (r *visitRepoImpl) DeleteSchedule(ctx context.Context, id uuid.UUID) error 
 // === EXECUTION FOOTPRINTS (Activities) ===
 
 func (r *visitRepoImpl) LogActivity(ctx context.Context, a *models.VisitActivity) error {
-	// Notice that the distance formula will automatically be generated via postgis geometry if not offline 
-	// To keep it simple, we store geometry points implicitly into location via MakePoint.
-	// We allow passing of pre-calculated 'distance' param if computed by mobile or Go Usecase.
-
 	query := `INSERT INTO visit_activities (
 				schedule_id, sales_id, customer_id, type, 
-				location, photo_path, distance, is_offline, notes
+				location, photo_path, selfie_photo_path, place_photo_path,
+				distance, is_offline, notes
 			  ) VALUES (
 				$1, $2, $3, $4, 
-				ST_SetSRID(ST_MakePoint($5, $6), 4326), $7, $8, $9, $10
+				ST_SetSRID(ST_MakePoint($5, $6), 4326), $7, $8, $9, $10, $11, $12
 			  ) RETURNING id, created_at`
 	
 	err := r.db.QueryRow(ctx, query, 
 		a.ScheduleID, a.SalesID, a.CustomerID, a.Type,
-		a.Longitude, a.Latitude, a.PhotoPath, a.Distance, a.IsOffline, a.Notes,
+		a.Longitude, a.Latitude, a.PhotoPath, a.SelfiePhotoPath, a.PlacePhotoPath,
+		a.Distance, a.IsOffline, a.Notes,
 	).Scan(&a.ID, &a.CreatedAt)
 
 	return err
@@ -144,7 +142,8 @@ func (r *visitRepoImpl) GetActivitiesBySchedule(ctx context.Context, scheduleID 
 	query := `
 		SELECT 	id, schedule_id, sales_id, customer_id, type, 
 				ST_Y(location::geometry) as lat, ST_X(location::geometry) as lon, 
-				photo_path, distance, is_offline, notes, created_at
+				photo_path, selfie_photo_path, place_photo_path,
+				distance, is_offline, notes, created_at
 		FROM visit_activities WHERE schedule_id=$1 ORDER BY created_at ASC
 	`
 	rows, err := r.db.Query(ctx, query, scheduleID)
@@ -159,7 +158,8 @@ func (r *visitRepoImpl) GetActivitiesByCustomer(ctx context.Context, customerID 
 	query := `
 		SELECT 	id, schedule_id, sales_id, customer_id, type, 
 				ST_Y(location::geometry) as lat, ST_X(location::geometry) as lon, 
-				photo_path, distance, is_offline, notes, created_at
+				photo_path, selfie_photo_path, place_photo_path,
+				distance, is_offline, notes, created_at
 		FROM visit_activities WHERE customer_id=$1 ORDER BY created_at DESC
 	`
 	rows, err := r.db.Query(ctx, query, customerID)
@@ -176,7 +176,8 @@ func scanActivities(rows pgx.Rows) ([]*models.VisitActivity, error) {
 		var a models.VisitActivity
 		err := rows.Scan(
 			&a.ID, &a.ScheduleID, &a.SalesID, &a.CustomerID, &a.Type,
-			&a.Latitude, &a.Longitude, &a.PhotoPath, &a.Distance, &a.IsOffline, &a.Notes, &a.CreatedAt,
+			&a.Latitude, &a.Longitude, &a.PhotoPath, &a.SelfiePhotoPath, &a.PlacePhotoPath,
+			&a.Distance, &a.IsOffline, &a.Notes, &a.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -184,4 +185,47 @@ func scanActivities(rows pgx.Rows) ([]*models.VisitActivity, error) {
 		results = append(results, &a)
 	}
 	return results, nil
+}
+
+func (r *visitRepoImpl) ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error) {
+	baseQuery := `
+		SELECT 	id, schedule_id, sales_id, customer_id, type, 
+				ST_Y(location::geometry) as lat, ST_X(location::geometry) as lon, 
+				photo_path, selfie_photo_path, place_photo_path,
+				distance, is_offline, notes, created_at
+		FROM visit_activities WHERE 1=1
+	`
+	args := []interface{}{}
+	argCount := 1
+
+	if filter.SalesID != nil {
+		baseQuery += fmt.Sprintf(" AND sales_id = $%d", argCount)
+		args = append(args, *filter.SalesID)
+		argCount++
+	}
+	if filter.CustomerID != nil {
+		baseQuery += fmt.Sprintf(" AND customer_id = $%d", argCount)
+		args = append(args, *filter.CustomerID)
+		argCount++
+	}
+	if filter.StartDate != nil {
+		baseQuery += fmt.Sprintf(" AND created_at >= $%d", argCount)
+		args = append(args, *filter.StartDate)
+		argCount++
+	}
+	if filter.EndDate != nil {
+		baseQuery += fmt.Sprintf(" AND created_at <= $%d", argCount)
+		args = append(args, *filter.EndDate)
+		argCount++
+	}
+
+	baseQuery += " ORDER BY created_at DESC"
+
+	rows, err := r.db.Query(ctx, baseQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanActivities(rows)
 }

@@ -24,3 +24,19 @@ class UpdateLeadStatusSubmitted extends LeadEvent {
   @override
   List<Object> get props => [id, status];
 }
+
+class CreateLeadSubmitted extends LeadEvent {
+  final Lead lead;
+  const CreateLeadSubmitted(this.lead);
+
+  @override
+  List<Object> get props => [lead];
+}
+
+class ConvertLeadSubmitted extends LeadEvent {
+  final String id;
+  const ConvertLeadSubmitted(this.id);
+
+  @override
+  List<Object> get props => [id];
+}

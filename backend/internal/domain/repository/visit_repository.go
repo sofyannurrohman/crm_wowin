@@ -29,4 +29,12 @@ type VisitRepository interface {
 	LogActivity(ctx context.Context, activity *models.VisitActivity) error
 	GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error)
 	GetActivitiesByCustomer(ctx context.Context, customerID uuid.UUID) ([]*models.VisitActivity, error)
+	ListActivities(ctx context.Context, filter ActivityFilter) ([]*models.VisitActivity, error)
+}
+
+type ActivityFilter struct {
+	SalesID    *uuid.UUID
+	CustomerID *uuid.UUID
+	StartDate  *time.Time
+	EndDate    *time.Time
 }

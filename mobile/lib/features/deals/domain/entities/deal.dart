@@ -1,10 +1,11 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'deal_item.dart';
 
 part 'deal.freezed.dart';
 part 'deal.g.dart';
 
 @freezed
-class Deal with _$Deal {
+abstract class Deal with _$Deal {
   const factory Deal({
     required String id,
     required String title,
@@ -16,6 +17,7 @@ class Deal with _$Deal {
     int? probability,
     @JsonKey(name: 'expected_close') DateTime? expectedClose,
     String? description,
+    List<DealItem>? items,
   }) = _Deal;
 
   factory Deal.fromJson(Map<String, dynamic> json) => _$DealFromJson(json);

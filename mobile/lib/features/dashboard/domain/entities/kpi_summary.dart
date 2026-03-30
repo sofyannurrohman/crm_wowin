@@ -4,7 +4,7 @@ part 'kpi_summary.freezed.dart';
 part 'kpi_summary.g.dart';
 
 @freezed
-class KpiSummary with _$KpiSummary {
+abstract class KpiSummary with _$KpiSummary {
   const factory KpiSummary({
     @JsonKey(name: 'total_sales') required double totalSales,
     @JsonKey(name: 'new_leads') required int newLeads,

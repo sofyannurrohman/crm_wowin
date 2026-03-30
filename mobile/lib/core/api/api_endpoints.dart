@@ -14,6 +14,7 @@ class ApiEndpoints {
   // Leads & Deals
   static const String leads = '/leads';
   static const String deals = '/deals';
+  static const String tasks = '/tasks';
 
   // Visits & Schedules
   static const String visitSchedules = '/visits/schedules';

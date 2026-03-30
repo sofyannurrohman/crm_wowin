@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/router/route_constants.dart';
+import '../bloc/task_bloc.dart';
+import '../bloc/task_event.dart';
+import '../bloc/task_state.dart';
+import '../../domain/entities/task.dart' as ent;
 
 class TaskListPage extends StatefulWidget {
   const TaskListPage({super.key});
@@ -19,62 +25,19 @@ class _TaskListPageState extends State<TaskListPage> {
   int _selectedTab = 0;
   final List<String> _tabs = ['To-do', 'In Progress', 'Completed'];
 
-  // Mock Backend State
-  bool _isLoading = false;
-  List<Map<String, dynamic>> _tasks = [];
-
   @override
   void initState() {
     super.initState();
     _fetchTasks();
   }
 
-  Future<void> _fetchTasks() async {
-    setState(() => _isLoading = true);
-    // Simulate API call
-    await Future.delayed(const Duration(milliseconds: 600));
+  void _fetchTasks() {
+    ent.TaskStatus? status;
+    if (_selectedTab == 0) status = ent.TaskStatus.TODO;
+    if (_selectedTab == 1) status = ent.TaskStatus.IN_PROGRESS;
+    if (_selectedTab == 2) status = ent.TaskStatus.COMPLETED;
     
-    setState(() {
-      _isLoading = false;
-      _tasks = [
-        {
-          'title': 'Contract Renewal Review',
-          'priority': 'HIGH',
-          'desc': 'Reviewing the annual service terms for Q4 renewal.',
-          'timeStr': 'Today, 2:00 PM',
-          'company': 'Acme Corp',
-          'isOverdue': false,
-          'completed': false,
-        },
-        {
-          'title': 'Follow up on Demo',
-          'priority': 'MEDIUM',
-          'desc': "Send additional resources requested after Tuesday's demo.",
-          'timeStr': 'Overdue (Oct 22)',
-          'company': 'Globex Ltd',
-          'isOverdue': true,
-          'completed': false,
-        },
-        {
-          'title': 'Quarterly QBR Prep',
-          'priority': 'LOW',
-          'desc': 'Prepare slides for the business review with the executive team.',
-          'timeStr': 'Oct 28',
-          'company': 'Stark Industries',
-          'isOverdue': false,
-          'completed': false,
-        },
-        {
-          'title': 'Introduction Call',
-          'priority': 'MEDIUM',
-          'desc': 'First contact with the new regional manager.',
-          'timeStr': 'Oct 30',
-          'company': 'Weyland Corp',
-          'isOverdue': false,
-          'completed': false,
-        },
-      ];
-    });
+    context.read<TaskBloc>().add(FetchTasks(status: status));
   }
 
   @override
@@ -86,13 +49,45 @@ class _TaskListPageState extends State<TaskListPage> {
         children: [
           _buildFilterChips(),
           Expanded(
-            child: _isLoading 
-              ? const Center(child: CircularProgressIndicator(color: _orange))
-              : _buildTaskList(),
+            child: BlocBuilder<TaskBloc, TaskState>(
+              builder: (context, state) {
+                if (state is TaskLoading) {
+                  return const Center(child: CircularProgressIndicator(color: _orange));
+                } else if (state is TasksLoaded) {
+                  if (state.tasks.isEmpty) {
+                    return _buildEmptyState();
+                  }
+                  return _buildTaskList(state.tasks);
+                } else if (state is TaskError) {
+                  return Center(child: Text(state.message));
+                }
+                return const Center(child: Text('Tarik untuk memuat tugas'));
+              },
+            ),
           ),
         ],
       ),
       bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(LucideIcons.clipboardCheck, size: 64, color: _textSecondary.withOpacity(0.3)),
+          const SizedBox(height: 16),
+          Text(
+            'Tidak ada tugas',
+            style: TextStyle(
+              color: _textSecondary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -231,32 +226,34 @@ class _TaskListPageState extends State<TaskListPage> {
     );
   }
 
-  Widget _buildTaskList() {
+  Widget _buildTaskList(List<ent.Task> tasks) {
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      itemCount: _tasks.length,
+      itemCount: tasks.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
-        return _buildTaskCard(_tasks[index], index);
+        return _buildTaskCard(tasks[index], index);
       },
     );
   }
 
-  Widget _buildTaskCard(Map<String, dynamic> task, int index) {
-    // Styling attributes based on task
+  Widget _buildTaskCard(ent.Task task, int index) {
     Color badgeColor;
     Color badgeBgColor;
     
-    if (task['priority'] == 'HIGH') {
+    if (task.priority == ent.TaskPriority.HIGH) {
       badgeColor = const Color(0xFFDC2626);
       badgeBgColor = const Color(0xFFFEE2E2);
-    } else if (task['priority'] == 'MEDIUM') {
+    } else if (task.priority == ent.TaskPriority.MEDIUM) {
       badgeColor = _orange;
       badgeBgColor = const Color(0xFFFFF7ED);
     } else {
-      badgeColor = const Color(0xFF2563EB); // Blue
+      badgeColor = const Color(0xFF2563EB);
       badgeBgColor = const Color(0xFFDBEAFE);
     }
+
+    final isCompleted = task.status == ent.TaskStatus.COMPLETED;
+    final isOverdue = task.dueDate != null && task.dueDate!.isBefore(DateTime.now()) && !isCompleted;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -264,35 +261,26 @@ class _TaskListPageState extends State<TaskListPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Checkbox toggle backend interaction
           GestureDetector(
             onTap: () {
-              setState(() {
-                task['completed'] = !task['completed'];
-                // Implement backend sync here...
-              });
+              if (!isCompleted) {
+                context.read<TaskBloc>().add(CompleteTask(task.id));
+              }
             },
             child: Container(
               margin: const EdgeInsets.only(top: 2),
               width: 20,
               height: 20,
               decoration: BoxDecoration(
-                color: task['completed'] ? _orange : Colors.transparent,
+                color: isCompleted ? _orange : Colors.transparent,
                 borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: task['completed'] ? _orange : Colors.grey.shade300, width: 1.5),
+                border: Border.all(color: isCompleted ? _orange : Colors.grey.shade300, width: 1.5),
               ),
-              child: task['completed'] ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
+              child: isCompleted ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
             ),
           ),
           const SizedBox(width: 16),
@@ -306,12 +294,12 @@ class _TaskListPageState extends State<TaskListPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        task['title'],
+                        task.title,
                         style: TextStyle(
-                          color: task['completed'] ? Colors.grey : _textPrimary,
+                          color: isCompleted ? Colors.grey : _textPrimary,
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          decoration: task['completed'] ? TextDecoration.lineThrough : null,
+                          decoration: isCompleted ? TextDecoration.lineThrough : null,
                         ),
                       ),
                     ),
@@ -323,12 +311,11 @@ class _TaskListPageState extends State<TaskListPage> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        task['priority'],
+                        task.priority.name,
                         style: TextStyle(
                           color: badgeColor,
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
                         ),
                       ),
                     ),
@@ -336,53 +323,38 @@ class _TaskListPageState extends State<TaskListPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  task['desc'],
+                  task.description,
                   style: const TextStyle(
                     color: _textSecondary,
                     fontSize: 13,
-                    height: 1.4,
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                const SizedBox(height: 12),
                 Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(task['isOverdue'] ? LucideIcons.alertCircle : LucideIcons.clock, 
-                             size: 14, color: task['isOverdue'] ? Colors.red : _textSecondary),
-                        const SizedBox(width: 6),
-                        Text(
-                          task['timeStr'],
-                          style: TextStyle(
-                            color: task['isOverdue'] ? Colors.red : _textSecondary,
-                            fontSize: 12,
-                            fontWeight: task['isOverdue'] ? FontWeight.bold : FontWeight.w500,
-                          ),
-                        ),
-                      ],
+                    Icon(isOverdue ? LucideIcons.alertCircle : LucideIcons.clock, 
+                         size: 14, color: isOverdue ? Colors.red : _textSecondary),
+                    const SizedBox(width: 6),
+                    Text(
+                      task.dueDate != null ? DateFormat('MMM d, HH:mm').format(task.dueDate!) : 'No deadline',
+                      style: TextStyle(
+                        color: isOverdue ? Colors.red : _textSecondary,
+                        fontSize: 12,
+                        fontWeight: isOverdue ? FontWeight.bold : FontWeight.w500,
+                      ),
                     ),
                     const SizedBox(width: 16),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          const Icon(LucideIcons.building2, size: 14, color: _textSecondary),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              task['company'],
-                              style: const TextStyle(
-                                color: _textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                    if (task.customerName != null) ...[
+                      const Icon(LucideIcons.building2, size: 14, color: _textSecondary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          task.customerName!,
+                          style: const TextStyle(color: _textSecondary, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    )
+                    ]
                   ],
                 )
               ],

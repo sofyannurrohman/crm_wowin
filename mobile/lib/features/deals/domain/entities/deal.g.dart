@@ -6,7 +6,7 @@ part of 'deal.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$DealImpl _$$DealImplFromJson(Map<String, dynamic> json) => _$DealImpl(
+_Deal _$DealFromJson(Map<String, dynamic> json) => _Deal(
       id: json['id'] as String,
       title: json['title'] as String,
       customerId: json['customer_id'] as String,
@@ -19,10 +19,12 @@ _$DealImpl _$$DealImplFromJson(Map<String, dynamic> json) => _$DealImpl(
           ? null
           : DateTime.parse(json['expected_close'] as String),
       description: json['description'] as String?,
+      items: (json['items'] as List<dynamic>?)
+          ?.map((e) => DealItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
 
-Map<String, dynamic> _$$DealImplToJson(_$DealImpl instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$DealToJson(_Deal instance) => <String, dynamic>{
       'id': instance.id,
       'title': instance.title,
       'customer_id': instance.customerId,
@@ -33,4 +35,5 @@ Map<String, dynamic> _$$DealImplToJson(_$DealImpl instance) =>
       'probability': instance.probability,
       'expected_close': instance.expectedClose?.toIso8601String(),
       'description': instance.description,
+      'items': instance.items,
     };

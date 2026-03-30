@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/visit_request_entities.dart';
+import '../../domain/entities/visit_activity.dart';
 import '../../domain/repositories/visit_repository.dart';
 import '../datasources/visit_remote_data_source.dart';
 
@@ -33,6 +34,18 @@ class VisitRepositoryImpl implements VisitRepository {
     } catch (e) {
       return const Left(
           ServerFailure('Terjadi kesalahan yang tidak terduga saat Check-out'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<VisitActivity>>> getActivities({String? salesId, String? customerId}) async {
+    try {
+      final result = await remoteDataSource.getActivities(salesId: salesId, customerId: customerId);
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
     }
   }
 }

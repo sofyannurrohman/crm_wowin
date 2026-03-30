@@ -1,9 +1,14 @@
 import 'package:dio/dio.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_item.dart';
 
 abstract class DealRemoteDataSource {
   Future<List<Deal>> getDeals();
+  Future<Deal> getDeal(String id);
   Future<Deal> updateDealStage(String id, String stage);
+  Future<List<DealItem>> getDealItems(String dealId);
+  Future<DealItem> addDealItem(Map<String, dynamic> data);
+  Future<void> removeDealItem(String id);
 }
 
 class DealRemoteDataSourceImpl implements DealRemoteDataSource {
@@ -19,11 +24,36 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
   }
 
   @override
+  Future<Deal> getDeal(String id) async {
+    final response = await _dio.get('/deals/$id');
+    // Backend returns { "deal": ..., "history": ... }
+    return Deal.fromJson(response.data['data']['deal']);
+  }
+
+  @override
   Future<Deal> updateDealStage(String id, String stage) async {
     final response = await _dio.patch(
-      '/deals/$id',
+      '/deals/$id/stage',
       data: {'stage': stage},
     );
     return Deal.fromJson(response.data['data']);
+  }
+
+  @override
+  Future<List<DealItem>> getDealItems(String dealId) async {
+    final response = await _dio.get('/deals/$dealId/items');
+    final List data = response.data['data'];
+    return data.map((e) => DealItem.fromJson(e)).toList();
+  }
+
+  @override
+  Future<DealItem> addDealItem(Map<String, dynamic> data) async {
+    final response = await _dio.post('/deal-items', data: data);
+    return DealItem.fromJson(response.data['data']);
+  }
+
+  @override
+  Future<void> removeDealItem(String id) async {
+    await _dio.delete('/deal-items/$id');
   }
 }

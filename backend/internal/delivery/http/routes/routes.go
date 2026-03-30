@@ -22,6 +22,7 @@ func SetupRouter(
 	attendanceHandler *handlers.AttendanceHandler, 
 	notificationHandler *handlers.NotificationHandler,
 	targetHandler *handlers.TargetHandler,
+	taskHandler *handlers.TaskHandler,
 ) {
 
 	v1 := r.Group("/api/v1")
@@ -101,6 +102,7 @@ func SetupRouter(
 		visitGroup.PUT("/schedules/:id", visitHandler.UpdateSchedule)
 		
 		visitGroup.POST("/activities", visitHandler.LogActivity) // Check-in / Checkout
+		visitGroup.GET("/activities", visitHandler.ListActivities)
 		visitGroup.GET("/schedules/:schedule_id/activities", visitHandler.GetActivitiesBySchedule)
 		
 		// GPS Tracking & Live Monitoring
@@ -139,6 +141,14 @@ func SetupRouter(
 		targetGroup := protected.Group("/settings/targets")
 		targetGroup.GET("", targetHandler.Get)
 		targetGroup.PUT("", targetHandler.Update)
+
+		// Tasks
+		taskGroup := protected.Group("/tasks")
+		taskGroup.POST("", taskHandler.Create)
+		taskGroup.GET("", taskHandler.List)
+		taskGroup.PUT("/:id", taskHandler.Update)
+		taskGroup.PATCH("/:id/complete", taskHandler.Complete)
+		taskGroup.DELETE("/:id", taskHandler.Delete)
 		
 		// Example of RBAC implementation
 		// managerOnly := protected.Group("/admin")

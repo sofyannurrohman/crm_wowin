@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/deal.dart';
+import '../../domain/entities/deal_item.dart';
 
 abstract class DealState extends Equatable {
   const DealState();
@@ -18,6 +19,22 @@ class DealsLoaded extends DealState {
 
   @override
   List<Object> get props => [deals];
+}
+
+class DealDetailLoaded extends DealState {
+  final Deal deal;
+  const DealDetailLoaded(this.deal);
+
+  @override
+  List<Object> get props => [deal];
+}
+
+class DealItemsLoaded extends DealState {
+  final List<DealItem> items;
+  const DealItemsLoaded(this.items);
+
+  @override
+  List<Object> get props => [items];
 }
 
 class DealOperationSuccess extends DealState {

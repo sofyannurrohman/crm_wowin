@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../../visits/presentation/bloc/visit_bloc.dart';
+import '../../../visits/presentation/bloc/visit_event.dart';
+import '../../../visits/presentation/bloc/visit_state.dart';
+import '../../../visits/domain/entities/visit_activity.dart';
 
 class ActivityLogPage extends StatefulWidget {
   const ActivityLogPage({super.key});
@@ -17,11 +23,7 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
   static const Color _textSecondary = Color(0xFF6B7280);
 
   int _selectedTab = 0;
-  final List<String> _tabs = ['All', 'Calls', 'Emails', 'Meetings'];
-
-  // Mock Backend State
-  bool _isLoading = false;
-  List<Map<String, dynamic>> _activities = [];
+  final List<String> _tabs = ['Semua', 'Check-in', 'Check-out'];
 
   @override
   void initState() {
@@ -29,50 +31,8 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
     _fetchActivities();
   }
 
-  Future<void> _fetchActivities() async {
-    setState(() => _isLoading = true);
-    // Simulate API call
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    setState(() {
-      _isLoading = false;
-      _activities = [
-        {
-          'group': 'TODAY',
-          'items': [
-            {
-              'title': 'Call with Acme Corp',
-              'desc': 'Discussed Q4 projections and budget approvals for the upcoming product launch.',
-              'time': '10:30 AM',
-              'type': 'call',
-            },
-            {
-              'title': 'Email sent to John Doe',
-              'desc': 'Sent follow-up proposal with adjusted pricing tiers as requested during the demo.',
-              'time': '09:15 AM',
-              'type': 'email',
-            },
-          ]
-        },
-        {
-          'group': 'YESTERDAY',
-          'items': [
-            {
-              'title': 'Meeting at TechCorp',
-              'desc': 'Initial project kickoff. Met with the engineering lead and defined technical constraints.',
-              'time': '02:00 PM',
-              'type': 'meeting',
-            },
-            {
-              'title': 'Note added to Leads',
-              'desc': 'Customer expressed high interest in the enterprise dashboard feature.',
-              'time': '11:45 AM',
-              'type': 'note',
-            },
-          ]
-        }
-      ];
-    });
+  void _fetchActivities() {
+    context.read<VisitBloc>().add(const FetchActivities());
   }
 
   @override
@@ -80,17 +40,36 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
     return Scaffold(
       backgroundColor: _bg,
       appBar: _buildAppBar(context),
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator(color: _orange))
-          : _buildActivityList(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: _orange,
-        shape: const CircleBorder(),
-        elevation: 4,
-        child: const Icon(LucideIcons.plus, color: Colors.white, size: 28),
+      body: BlocBuilder<VisitBloc, VisitState>(
+        builder: (context, state) {
+          if (state is VisitLoading) {
+            return const Center(child: CircularProgressIndicator(color: _orange));
+          } else if (state is ActivitiesLoaded) {
+            final activities = state.activities;
+            if (activities.isEmpty) {
+              return _buildEmptyState();
+            }
+            return _buildActivityList(activities);
+          } else if (state is VisitError) {
+            return Center(child: Text(state.message));
+          }
+          return const Center(child: Text('Tarik untuk memuat aktivitas'));
+        },
       ),
       bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(LucideIcons.history, size: 64, color: _textSecondary.withOpacity(0.3)),
+          const SizedBox(height: 16),
+          const Text('Belum ada riwayat aktivitas', style: TextStyle(color: _textSecondary)),
+        ],
+      ),
     );
   }
 
@@ -105,19 +84,13 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
       ),
       centerTitle: true,
       title: const Text(
-        'Activity Log',
+        'Log Aktivitas',
         style: TextStyle(
           color: _textPrimary,
           fontSize: 18,
           fontWeight: FontWeight.w800,
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(LucideIcons.search, color: Color(0xFF4B5563), size: 22),
-          onPressed: () {},
-        ),
-      ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(48),
         child: Container(
@@ -160,67 +133,36 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
     );
   }
 
-  Widget _buildActivityList() {
+  Widget _buildActivityList(List<VisitActivity> activities) {
+    // Filter by tab
+    final filtered = activities.where((a) {
+      if (_selectedTab == 1) return a.type == 'checkin';
+      if (_selectedTab == 2) return a.type == 'checkout';
+      return true;
+    }).toList();
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      itemCount: _activities.length,
-      itemBuilder: (context, groupIndex) {
-        final group = _activities[groupIndex];
-        final items = group['items'] as List;
-        
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: Text(
-                group['group'],
-                style: TextStyle(
-                  color: _textSecondary.withOpacity(0.7),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.0,
-                ),
-              ),
-            ),
-            ...List.generate(items.length, (index) {
-              final item = items[index];
-              return _buildActivityNode(item, isLast: index == items.length - 1 && groupIndex == _activities.length - 1);
-            }),
-            const SizedBox(height: 16),
-          ],
-        );
+      itemCount: filtered.length,
+      itemBuilder: (context, index) {
+        return _buildActivityNode(filtered[index], isLast: index == filtered.length - 1);
       },
     );
   }
 
-  Widget _buildActivityNode(Map<String, dynamic> item, {required bool isLast}) {
+  Widget _buildActivityNode(VisitActivity item, {required bool isLast}) {
     IconData icon;
     Color iconColor;
     Color iconBgColor;
 
-    switch (item['type']) {
-      case 'call':
-        icon = LucideIcons.phone;
-        iconColor = _orange;
-        iconBgColor = const Color(0xFFFFF7ED);
-        break;
-      case 'email':
-        icon = LucideIcons.mail;
-        iconColor = const Color(0xFF3B82F6); // Blue
-        iconBgColor = const Color(0xFFEFF6FF);
-        break;
-      case 'meeting':
-        icon = LucideIcons.users;
-        iconColor = const Color(0xFF10B981); // Green
-        iconBgColor = const Color(0xFFF0FDF4);
-        break;
-      case 'note':
-      default:
-        icon = LucideIcons.fileText;
-        iconColor = const Color(0xFF4B5563); // Gray
-        iconBgColor = const Color(0xFFF3F4F6);
-        break;
+    if (item.type == 'checkin') {
+      icon = LucideIcons.mapPin;
+      iconColor = _orange;
+      iconBgColor = const Color(0xFFFFF7ED);
+    } else {
+      icon = LucideIcons.checkCircle;
+      iconColor = const Color(0xFF10B981);
+      iconBgColor = const Color(0xFFF0FDF4);
     }
 
     return IntrinsicHeight(
@@ -259,34 +201,33 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          item['title'],
+                          item.type == 'checkin' ? 'Check-in di Lokasi' : 'Check-out & Hasil Kunjungan',
                           style: const TextStyle(
                             color: _textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Text(
-                        item['time'],
+                        DateFormat('HH:mm').format(item.createdAt),
                         style: TextStyle(
                           color: _textSecondary.withOpacity(0.7),
                           fontSize: 12,
-                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    item['desc'],
-                    style: const TextStyle(
-                      color: _textSecondary,
-                      fontSize: 14,
-                      height: 1.5,
+                  if (item.notes != null && item.notes!.isNotEmpty)
+                    Text(
+                      item.notes!,
+                      style: const TextStyle(color: _textSecondary, fontSize: 14),
                     ),
+                  const SizedBox(height: 4),
+                  Text(
+                    DateFormat('MMM d, yyyy').format(item.createdAt),
+                    style: TextStyle(color: _textSecondary.withOpacity(0.5), fontSize: 11),
                   ),
                 ],
               ),
@@ -309,7 +250,7 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
         children: [
           _buildNavItem(LucideIcons.home, 'Home', false, () => context.goNamed(kRouteDashboard)),
           _buildNavItem(LucideIcons.users, 'Leads', false, () {}),
-          _buildNavItem(LucideIcons.history, 'Activities', true, () {}), // Activities active
+          _buildNavItem(LucideIcons.history, 'Activities', true, () {}),
           _buildNavItem(LucideIcons.checkSquare, 'Tasks', false, () => context.goNamed(kRouteTasks)),
           _buildNavItem(Icons.more_horiz, 'More', false, () {}),
         ],

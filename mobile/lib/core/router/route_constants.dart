@@ -24,4 +24,8 @@ const String kRouteActivityLog = 'activity_log';
 const String kRouteProfile = 'profile';
 const String kRouteAttendanceHome = 'attendance_home';
 const String kRouteSettings = 'settings';
+const String kRouteProducts = 'products';
+const String kRouteProductDetail = 'product_detail';
+const String kRouteAddLead = 'add_lead';
+const String kRouteConvertLead = 'convert_lead';
 

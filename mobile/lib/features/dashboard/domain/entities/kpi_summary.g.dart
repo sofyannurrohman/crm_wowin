@@ -6,8 +6,7 @@ part of 'kpi_summary.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$KpiSummaryImpl _$$KpiSummaryImplFromJson(Map<String, dynamic> json) =>
-    _$KpiSummaryImpl(
+_KpiSummary _$KpiSummaryFromJson(Map<String, dynamic> json) => _KpiSummary(
       totalSales: (json['total_sales'] as num).toDouble(),
       newLeads: (json['new_leads'] as num).toInt(),
       activeDeals: (json['active_deals'] as num).toInt(),
@@ -15,7 +14,7 @@ _$KpiSummaryImpl _$$KpiSummaryImplFromJson(Map<String, dynamic> json) =>
       targetMetPercentage: (json['target_met_percentage'] as num).toDouble(),
     );
 
-Map<String, dynamic> _$$KpiSummaryImplToJson(_$KpiSummaryImpl instance) =>
+Map<String, dynamic> _$KpiSummaryToJson(_KpiSummary instance) =>
     <String, dynamic>{
       'total_sales': instance.totalSales,
       'new_leads': instance.newLeads,

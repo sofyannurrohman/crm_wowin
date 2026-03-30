@@ -721,6 +721,10 @@ class _DashboardPageState extends State<DashboardPage> {
             context.pop();
             context.pushNamed(kRouteCustomers); // Or kRouteLeads
           }),
+          _buildDrawerItem(context, LucideIcons.package, 'Product Catalog', () {
+            context.pop();
+            context.pushNamed(kRouteProducts);
+          }),
           _buildDrawerItem(context, LucideIcons.briefcase, 'Deals Pipeline', () {
             context.pop();
             context.pushNamed(kRouteDeals);

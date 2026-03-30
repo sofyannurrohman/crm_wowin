@@ -6,8 +6,7 @@ part of 'customer.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_$CustomerImpl _$$CustomerImplFromJson(Map<String, dynamic> json) =>
-    _$CustomerImpl(
+_Customer _$CustomerFromJson(Map<String, dynamic> json) => _Customer(
       id: json['id'] as String,
       code: json['code'] as String?,
       name: json['name'] as String,
@@ -24,8 +23,7 @@ _$CustomerImpl _$$CustomerImplFromJson(Map<String, dynamic> json) =>
       checkinRadius: (json['checkin_radius'] as num?)?.toInt(),
     );
 
-Map<String, dynamic> _$$CustomerImplToJson(_$CustomerImpl instance) =>
-    <String, dynamic>{
+Map<String, dynamic> _$CustomerToJson(_Customer instance) => <String, dynamic>{
       'id': instance.id,
       'code': instance.code,
       'name': instance.name,

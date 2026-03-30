@@ -4,6 +4,7 @@ import (
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/usecase"
 	"crm_wowin_backend/pkg/response"
+	"crm_wowin_backend/pkg/utils"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -56,11 +57,11 @@ func (h *AttendanceHandler) handleAttendance(c *gin.Context, aType models.Attend
 	saveDir := filepath.Join(h.upldir, subDir)
 	os.MkdirAll(saveDir, 0755)
 	
-	fileName := uuid.New().String() + filepath.Ext(fileHeader.Filename)
+	fileName := uuid.New().String() + ".jpg"
 	savePath := filepath.Join(saveDir, fileName)
 
-	if err := c.SaveUploadedFile(fileHeader, savePath); err != nil {
-		response.Fail(c, http.StatusInternalServerError, "failed saving photo")
+	if err := utils.ProcessAndSaveImage(fileHeader, savePath, 1080, 1080, 75); err != nil {
+		response.Fail(c, http.StatusInternalServerError, "failed processing photo: "+err.Error())
 		return
 	}
 

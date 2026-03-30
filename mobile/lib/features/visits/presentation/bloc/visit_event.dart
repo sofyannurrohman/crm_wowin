@@ -48,3 +48,13 @@ class CheckOutSubmitted extends VisitEvent {
   List<Object> get props =>
       [scheduleId, latitude, longitude, visitResult, nextAction, nextVisitDate];
 }
+
+class FetchActivities extends VisitEvent {
+  final String? salesId;
+  final String? customerId;
+
+  const FetchActivities({this.salesId, this.customerId});
+
+  @override
+  List<Object?> get props => [salesId, customerId];
+}

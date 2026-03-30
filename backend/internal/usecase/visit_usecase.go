@@ -21,6 +21,7 @@ type VisitUseCase interface {
 	// Check-in and Check-out
 	LogActivity(ctx context.Context, activity *models.VisitActivity) (*models.VisitActivity, error)
 	GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error)
+	ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error)
 }
 
 type visitUseCaseImpl struct {
@@ -122,6 +123,10 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 
 func (u *visitUseCaseImpl) GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error) {
 	return u.visitRepo.GetActivitiesBySchedule(ctx, scheduleID)
+}
+
+func (u *visitUseCaseImpl) ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error) {
+	return u.visitRepo.ListActivities(ctx, filter)
 }
 
 // ==============

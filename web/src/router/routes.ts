@@ -49,6 +49,26 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/views/crm/deals/DealKanbanView.vue'),
         meta: { roles: ['super_admin', 'manager', 'supervisor', 'sales'] }
       },
+      {
+        path: 'deals/:id',
+        name: 'deal-detail',
+        component: () => import('@/views/crm/deals/DealDetailView.vue'),
+        meta: { roles: ['super_admin', 'manager', 'supervisor', 'sales'] }
+      },
+      // CRM Products
+      {
+        path: 'products',
+        name: 'products',
+        component: () => import('@/views/crm/products/ProductListView.vue'),
+        meta: { roles: ['super_admin', 'manager', 'supervisor', 'sales'] }
+      },
+      // CRM Tasks
+      {
+        path: 'tasks',
+        name: 'tasks',
+        component: () => import('@/views/crm/tasks/TaskListView.vue'),
+        meta: { roles: ['super_admin', 'manager', 'supervisor', 'sales'] }
+      },
       // Sales Visits
       {
         path: 'visits',
@@ -61,6 +81,13 @@ export const routes: RouteRecordRaw[] = [
         name: 'visit-detail',
         component: () => import('@/views/sales/VisitDetailView.vue'),
         meta: { roles: ['super_admin', 'manager', 'supervisor', 'sales'] }
+      },
+      // Sales Attendance
+      {
+        path: 'attendance',
+        name: 'attendance',
+        component: () => import('@/views/sales/AttendanceHistoryView.vue'),
+        meta: { roles: ['super_admin', 'manager', 'supervisor'] }
       },
       // Mapping Tools 
       {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useDealStore } from '@/stores/deals.store'
 import { VueDraggable } from 'vue-draggable-plus'
 import { DEAL_STAGES } from '@/constants'
@@ -11,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 
 const store = useDealStore()
+const router = useRouter()
 
 onMounted(() => {
   store.fetchAll()
@@ -96,19 +98,22 @@ const getStageColor = (key: string) => {
             @change="handleDragEnd($event, stage.key)"
           >
             <template #item="{ element }">
-              <Card class="cursor-grab hover:shadow-md transition-all relative group"
-                    :class="{ 'opacity-50 pointer-events-none': store.loadingStageUpdate === element.id }">
-                <div v-if="store.loadingStageUpdate === element.id"
-                     class="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center rounded-lg z-10">
-                  <Loader2 class="w-5 h-5 animate-spin text-primary" />
-                </div>
-                <CardContent class="p-4">
-                  <h4 class="font-medium text-sm leading-tight line-clamp-2">{{ element.title }}</h4>
-
-                  <div class="flex items-center mt-2.5 text-xs text-muted-foreground gap-1.5">
-                    <FileText class="w-3.5 h-3.5 flex-shrink-0" />
-                    <span class="truncate">{{ element.customer_name }}</span>
+                <Card
+                  class="cursor-pointer hover:shadow-md transition-all relative group"
+                  :class="{ 'opacity-50 pointer-events-none': store.loadingStageUpdate === element.id }"
+                  @click="router.push(`/deals/${element.id}`)"
+                >
+                  <div v-if="store.loadingStageUpdate === element.id"
+                       class="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center rounded-lg z-10">
+                    <Loader2 class="w-5 h-5 animate-spin text-primary" />
                   </div>
+                  <CardContent class="p-4">
+                    <h4 class="font-medium text-sm leading-tight line-clamp-2">{{ element.title }}</h4>
+
+                    <div class="flex items-center mt-2.5 text-xs text-muted-foreground gap-1.5">
+                      <FileText class="w-3.5 h-3.5 flex-shrink-0" />
+                      <span class="truncate">{{ element.customer_name }}</span>
+                    </div>
 
                   <div class="mt-3 flex items-center justify-between pt-3 border-t">
                     <span class="text-sm font-semibold flex items-center gap-1">

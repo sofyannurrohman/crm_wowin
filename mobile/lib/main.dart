@@ -16,6 +16,8 @@ import 'features/deals/presentation/bloc/deal_bloc.dart';
 import 'features/map/presentation/bloc/map_bloc.dart';
 import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'features/dashboard/presentation/bloc/dashboard_event.dart';
+import 'features/tasks/presentation/bloc/task_bloc.dart';
+import 'features/tasks/presentation/bloc/task_event.dart';
 
 import 'core/theme/app_theme.dart';
 
@@ -63,6 +65,9 @@ class WowinCrmApp extends StatelessWidget {
         ),
         BlocProvider<DashboardBloc>(
           create: (_) => sl<DashboardBloc>()..add(FetchDashboardKpis()),
+        ),
+        BlocProvider<TaskBloc>(
+          create: (_) => sl<TaskBloc>()..add(const FetchTasks()),
         ),
       ],
       child: MaterialApp.router(

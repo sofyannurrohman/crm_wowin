@@ -427,7 +427,7 @@ class _CheckInPageState extends State<CheckInPage> {
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              'A photo of the customer\'s storefront or reception is required to verify your location. GPS timestamp will be attached to the visit record.',
+              'Diperlukan foto bagian depan toko atau ruang tunggu pelanggan untuk memverifikasi lokasi Anda. Cap waktu GPS akan dilampirkan pada catatan kunjungan.',
               style: TextStyle(
                 color: Color(0xFF9A3412),
                 fontSize: 13,

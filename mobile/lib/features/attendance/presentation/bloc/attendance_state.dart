@@ -29,3 +29,13 @@ class AttendanceError extends AttendanceState {
   @override
   List<Object> get props => [message];
 }
+
+class AttendanceSuccess extends AttendanceState {
+  final AttendanceRecord record;
+  final String message;
+
+  const AttendanceSuccess(this.record, this.message);
+
+  @override
+  List<Object> get props => [record, message];
+}

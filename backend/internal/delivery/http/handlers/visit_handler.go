@@ -5,6 +5,7 @@ import (
 	"crm_wowin_backend/internal/domain/repository"
 	"crm_wowin_backend/internal/usecase"
 	"crm_wowin_backend/pkg/response"
+	"crm_wowin_backend/pkg/utils"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -125,25 +126,56 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	}
 
 	// 2. Extract strictly structured File and Form attributes
-	file, fileHeader, err := c.Request.FormFile("photo")
-	if err != nil {
-		response.Fail(c, http.StatusBadRequest, "photo is required for check in/out")
-		return
-	}
-	defer file.Close()
+	// Support dual photos: selfie and place
+	selfieFile, selfieHeader, errSelfie := c.Request.FormFile("selfie")
+	placeFile, placeHeader, errPlace := c.Request.FormFile("place")
 
-	if fileHeader.Size > 5*1024*1024 { // 5MB limit
-		response.Fail(c, http.StatusRequestEntityTooLarge, "uploaded photo size exceeds 5MB")
-		return
+	var selfiePath, placePath string
+
+	if errSelfie == nil && errPlace == nil {
+		defer selfieFile.Close()
+		defer placeFile.Close()
+
+		// Save & Compress Selfie
+		selfieSavePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
+		if err := utils.ProcessAndSaveImage(selfieHeader, selfieSavePath, 1080, 1080, 75); err != nil {
+			response.Fail(c, http.StatusInternalServerError, "failed processing selfie: "+err.Error())
+			return
+		}
+		selfiePath = "/uploads/visits/" + filepath.Base(selfieSavePath)
+
+		// Save & Compress Place
+		placeSavePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
+		if err := utils.ProcessAndSaveImage(placeHeader, placeSavePath, 1080, 1080, 75); err != nil {
+			response.Fail(c, http.StatusInternalServerError, "failed processing place photo: "+err.Error())
+			return
+		}
+		placePath = "/uploads/visits/" + filepath.Base(placeSavePath)
+	} else {
+		// FALLBACK: Legacy single 'photo'
+		file, fileHeader, err := c.Request.FormFile("photo")
+		if err != nil {
+			response.Fail(c, http.StatusBadRequest, "selfie and place photos (or legacy photo) are required")
+			return
+		}
+		defer file.Close()
+
+		savePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
+		if err := utils.ProcessAndSaveImage(fileHeader, savePath, 1080, 1080, 75); err != nil {
+			response.Fail(c, http.StatusInternalServerError, "failed processing photo: "+err.Error())
+			return
+		}
+		selfiePath = "/uploads/visits/" + filepath.Base(savePath)
+		placePath = selfiePath
 	}
-	
+
 	lat, _ := strconv.ParseFloat(c.Request.FormValue("latitude"), 64)
 	lon, _ := strconv.ParseFloat(c.Request.FormValue("longitude"), 64)
 	if lat == 0 || lon == 0 {
 		response.Fail(c, http.StatusBadRequest, "valid latitude and longitude coordinates are required")
 		return
 	}
-	
+
 	salesIDStr := c.GetString("user_id")
 	salesID, _ := uuid.Parse(salesIDStr)
 
@@ -164,6 +196,10 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	activity.CustomerID = customerID
 	activity.Latitude = lat
 	activity.Longitude = lon
+	activity.SelfiePhotoPath = selfiePath
+	activity.PlacePhotoPath = placePath
+	activity.PhotoPath = selfiePath // for legacy DB column support if needed
+
 	// Notes and Offline status are optional overrides
 	notesParams := c.Request.FormValue("notes")
 	if notesParams != "" {
@@ -179,24 +215,9 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 		}
 	}
 
-	// 3. Persist incoming physical file to local disk (Phase 1 Storage implementation)
-	savePath := filepath.Join(h.upldir, "visits", uuid.New().String()+filepath.Ext(fileHeader.Filename))
-	os.MkdirAll(filepath.Dir(savePath), 0755)
-
-	if err := c.SaveUploadedFile(fileHeader, savePath); err != nil {
-		response.Fail(c, http.StatusInternalServerError, "failed saving photo on server disk")
-		return
-	}
-	
-	// Map internal logical path for the DB, separating from filesystem abstraction
-	// Usually returned via '/static/visits/...' url mapping later in nginx/gin config.
-	activity.PhotoPath = "/uploads/visits/" + filepath.Base(savePath)
-
 	// 4. Register logical algorithm mapping
 	respAct, err := h.uc.LogActivity(c.Request.Context(), &activity)
 	if err != nil {
-		// Clean up photo on DB transaction fail
-		_ = os.Remove(savePath)
 		response.Fail(c, http.StatusForbidden, err.Error())
 		return
 	}
@@ -212,6 +233,46 @@ func (h *VisitHandler) GetActivitiesBySchedule(c *gin.Context) {
 	}
 
 	acts, err := h.uc.GetActivitiesBySchedule(c.Request.Context(), sID)
+	if err != nil {
+		response.MapDBError(c, err)
+		return
+	}
+
+	response.OK(c, acts)
+}
+
+func (h *VisitHandler) ListActivities(c *gin.Context) {
+	var filter repository.ActivityFilter
+	
+	if sID := c.Query("sales_id"); sID != "" {
+		if u, err := uuid.Parse(sID); err == nil {
+			filter.SalesID = &u
+		}
+	} else {
+		// Default to current user if no sales_id specified (for sales personnel use case)
+		userID, _ := uuid.Parse(c.GetString("user_id"))
+		filter.SalesID = &userID
+	}
+
+	if cID := c.Query("customer_id"); cID != "" {
+		if u, err := uuid.Parse(cID); err == nil {
+			filter.CustomerID = &u
+		}
+	}
+
+	// Optional date range
+	if startStr := c.Query("start_date"); startStr != "" {
+		if t, err := time.Parse("2006-01-02", startStr); err == nil {
+			filter.StartDate = &t
+		}
+	}
+	if endStr := c.Query("end_date"); endStr != "" {
+		if t, err := time.Parse("2006-01-02", endStr); err == nil {
+			filter.EndDate = &t
+		}
+	}
+
+	acts, err := h.uc.ListActivities(c.Request.Context(), filter)
 	if err != nil {
 		response.MapDBError(c, err)
 		return
