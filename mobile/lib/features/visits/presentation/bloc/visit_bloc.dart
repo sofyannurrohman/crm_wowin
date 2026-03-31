@@ -45,14 +45,22 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
       latitude: event.latitude,
       longitude: event.longitude,
       photoFile: event.photoFile,
+      selfiePhotoFile: event.selfiePhotoFile,
       checkInNotes: event.notes,
+      dealId: event.dealId,
+      overrideReason: event.overrideReason,
     );
 
     final result = await checkInUseCase(request);
 
     result.fold(
       (failure) => emit(VisitError(failure.message)),
-      (_) => emit(const VisitSuccess('Check-in berhasil dilakukan!')),
+      (_) => emit(VisitSuccess(
+        'Check-in berhasil dilakukan!',
+        scheduleId: event.scheduleId,
+        customerName: event.customerName,
+        checkInTime: DateTime.now(),
+      )),
     );
   }
 
@@ -69,6 +77,8 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
       visitResult: event.visitResult,
       nextAction: event.nextAction,
       nextVisitDate: event.nextVisitDate,
+      signaturePath: event.signaturePath,
+      inventoryData: event.inventoryData,
     );
 
     final result = await checkOutUseCase(request);

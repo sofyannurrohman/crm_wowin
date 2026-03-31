@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../../../core/widgets/app_sidebar.dart';
 import '../bloc/product_bloc.dart';
 import '../bloc/product_event.dart';
 import '../bloc/product_state.dart';
@@ -37,6 +38,7 @@ class _ProductListViewState extends State<ProductListView> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      drawer: widget.isSelectionMode ? null : AppSidebar(),
       appBar: AppBar(
         title: Text(
           widget.isSelectionMode ? 'Select Product' : 'Product Catalog',

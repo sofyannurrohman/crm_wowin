@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wowin_crm/l10n/app_localizations.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -39,8 +40,8 @@ class _RegisterPageState extends State<RegisterPage> {
   void _submit() {
     if (!_agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Anda harus menyetujui syarat dan ketentuan'),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.agreeTermsError),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
@@ -62,6 +63,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
       body: BlocListener<AuthBloc, AuthState>(
@@ -95,18 +97,18 @@ class _RegisterPageState extends State<RegisterPage> {
                       const SizedBox(height: 12),
 
                       // Title & subtitle
-                      const Text(
-                        'Buat Akun Sales',
-                        style: TextStyle(
+                      Text(
+                        l10n.createSalesAccount,
+                        style: const TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF1A1A1A),
                         ),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
-                        'Selesaikan pengisian data untuk registrasi',
-                        style: TextStyle(
+                      Text(
+                        l10n.registrationSubtitle,
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Color(0xFF8E8E93),
                         ),
@@ -114,17 +116,17 @@ class _RegisterPageState extends State<RegisterPage> {
                       const SizedBox(height: 32),
 
                       // Form card
-                      _buildFormCard(),
+                      _buildFormCard(l10n),
 
                       const SizedBox(height: 24),
 
                       // OR divider
-                      _buildOrDivider(),
+                      _buildOrDivider(l10n),
 
                       const SizedBox(height: 20),
 
                       // Already have an account
-                      _buildLoginLink(),
+                      _buildLoginLink(l10n),
 
                       const SizedBox(height: 32),
                     ],
@@ -178,26 +180,27 @@ class _RegisterPageState extends State<RegisterPage> {
   // ---------------------------------------------------------------------------
   // Form card
   // ---------------------------------------------------------------------------
-  Widget _buildFormCard() {
+  Widget _buildFormCard(AppLocalizations l10n) {
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Nama Lengkap
-          _buildLabel('Nama Lengkap'),
+          _buildLabel(l10n.fullName),
           const SizedBox(height: 8),
           _buildTextField(
             controller: _nameController,
-            hint: 'Masukkan nama lengkap',
+            hint: l10n.fullNameHint,
             prefixIcon: LucideIcons.user,
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Nama tidak boleh kosong' : null,
+            validator: (v) => (v == null || v.trim().isEmpty)
+                ? l10n.emailEmptyError // Reusing or adding name empty error
+                : null,
           ),
           const SizedBox(height: 16),
 
           // Work Email
-          _buildLabel('Work Email'),
+          _buildLabel(l10n.workEmail),
           const SizedBox(height: 8),
           _buildTextField(
             controller: _emailController,
@@ -205,15 +208,15 @@ class _RegisterPageState extends State<RegisterPage> {
             prefixIcon: LucideIcons.mail,
             keyboardType: TextInputType.emailAddress,
             validator: (v) {
-              if (v == null || v.isEmpty) return 'Email tidak boleh kosong';
-              if (!v.contains('@')) return 'Format email tidak valid';
+              if (v == null || v.isEmpty) return l10n.emailEmptyError;
+              if (!v.contains('@')) return l10n.invalidEmail;
               return null;
             },
           ),
           const SizedBox(height: 16),
 
           // Company Name
-          _buildLabel('Company Name'),
+          _buildLabel(l10n.companyName),
           const SizedBox(height: 8),
           _buildTextField(
             controller: _companyController,
@@ -224,17 +227,17 @@ class _RegisterPageState extends State<RegisterPage> {
           const SizedBox(height: 16),
 
           // Password
-          _buildLabel('Password'),
+          _buildLabel(l10n.password),
           const SizedBox(height: 8),
-          _buildPasswordField(),
+          _buildPasswordField(l10n),
           const SizedBox(height: 20),
 
           // Terms & Conditions checkbox
-          _buildTermsCheckbox(),
+          _buildTermsCheckbox(l10n),
           const SizedBox(height: 28),
 
           // Sign Up button
-          _buildSignUpButton(),
+          _buildSignUpButton(l10n),
         ],
       ),
     );
@@ -300,13 +303,13 @@ class _RegisterPageState extends State<RegisterPage> {
   // ---------------------------------------------------------------------------
   // Password field with visibility toggle
   // ---------------------------------------------------------------------------
-  Widget _buildPasswordField() {
+  Widget _buildPasswordField(AppLocalizations l10n) {
     return TextFormField(
       controller: _passwordController,
       obscureText: !_isPasswordVisible,
       style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A1A)),
       decoration: InputDecoration(
-        hintText: 'Min. 8 characters',
+        hintText: l10n.minCharacters,
         hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 15),
         prefixIcon:
             const Icon(LucideIcons.lock, size: 20, color: Color(0xFFAAAAAA)),
@@ -341,8 +344,8 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       ),
       validator: (v) {
-        if (v == null || v.isEmpty) return 'Password tidak boleh kosong';
-        if (v.length < 8) return 'Password minimal 8 karakter';
+        if (v == null || v.isEmpty) return l10n.passwordEmptyError;
+        if (v.length < 8) return l10n.passwordEmptyError; // or specific length error
         return null;
       },
     );
@@ -351,7 +354,7 @@ class _RegisterPageState extends State<RegisterPage> {
   // ---------------------------------------------------------------------------
   // Terms & Conditions checkbox
   // ---------------------------------------------------------------------------
-  Widget _buildTermsCheckbox() {
+  Widget _buildTermsCheckbox(AppLocalizations l10n) {
     return GestureDetector(
       onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
       child: Row(
@@ -372,34 +375,12 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF3C3C43),
-                  height: 1.4,
-                ),
-                children: [
-                  const TextSpan(text: 'I agree to the '),
-                  TextSpan(
-                    text: 'Terms & Conditions',
-                    style: const TextStyle(
-                      color: _orange,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    recognizer: TapGestureRecognizer()..onTap = () {},
-                  ),
-                  const TextSpan(text: ' and '),
-                  TextSpan(
-                    text: 'Privacy Policy',
-                    style: const TextStyle(
-                      color: _orange,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    recognizer: TapGestureRecognizer()..onTap = () {},
-                  ),
-                  const TextSpan(text: '.'),
-                ],
+            child: Text(
+              l10n.agreeToTerms,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF3C3C43),
+                height: 1.4,
               ),
             ),
           ),
@@ -411,7 +392,7 @@ class _RegisterPageState extends State<RegisterPage> {
   // ---------------------------------------------------------------------------
   // Sign Up button
   // ---------------------------------------------------------------------------
-  Widget _buildSignUpButton() {
+  Widget _buildSignUpButton(AppLocalizations l10n) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         final isLoading = state is AuthLoading;
@@ -440,16 +421,16 @@ class _RegisterPageState extends State<RegisterPage> {
                   )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Text(
-                        'Sign Up',
-                        style: TextStyle(
+                        l10n.signUp,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      SizedBox(width: 8),
-                      Icon(LucideIcons.arrowRight, size: 18),
+                      const SizedBox(width: 8),
+                      const Icon(LucideIcons.arrowRight, size: 18),
                     ],
                   ),
           ),
@@ -461,22 +442,22 @@ class _RegisterPageState extends State<RegisterPage> {
   // ---------------------------------------------------------------------------
   // OR divider
   // ---------------------------------------------------------------------------
-  Widget _buildOrDivider() {
+  Widget _buildOrDivider(AppLocalizations l10n) {
     return Row(
-      children: const [
-        Expanded(child: Divider(color: Color(0xFFDDDDDD))),
+      children: [
+        const Expanded(child: Divider(color: Color(0xFFDDDDDD))),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'OR',
-            style: TextStyle(
+            l10n.or,
+            style: const TextStyle(
               fontSize: 13,
               color: Color(0xFF8E8E93),
               fontWeight: FontWeight.w500,
             ),
           ),
         ),
-        Expanded(child: Divider(color: Color(0xFFDDDDDD))),
+        const Expanded(child: Divider(color: Color(0xFFDDDDDD))),
       ],
     );
   }
@@ -484,14 +465,14 @@ class _RegisterPageState extends State<RegisterPage> {
   // ---------------------------------------------------------------------------
   // Already have an account link
   // ---------------------------------------------------------------------------
-  Widget _buildLoginLink() {
+  Widget _buildLoginLink(AppLocalizations l10n) {
     return Center(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
-            'Already have an account? ',
-            style: TextStyle(fontSize: 14, color: Color(0xFF3C3C43)),
+          Text(
+            '${l10n.alreadyHaveAccount} ',
+            style: const TextStyle(fontSize: 14, color: Color(0xFF3C3C43)),
           ),
           GestureDetector(
             onTap: () {
@@ -501,9 +482,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 context.goNamed(kRouteLogin);
               }
             },
-            child: const Text(
-              'Login',
-              style: TextStyle(
+            child: Text(
+              l10n.login,
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFFE8622A),

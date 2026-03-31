@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -11,7 +12,8 @@ import '../bloc/customer_state.dart';
 import '../../domain/entities/customer.dart';
 
 class AddCustomerPage extends StatefulWidget {
-  const AddCustomerPage({super.key});
+  final Customer? initialCustomer;
+  const AddCustomerPage({super.key, this.initialCustomer});
 
   @override
   State<AddCustomerPage> createState() => _AddCustomerPageState();
@@ -26,12 +28,29 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
   final _emailController = TextEditingController();
 
   LatLng? _selectedLocation;
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
   bool _isGettingLocation = false;
 
   static const Color _orange = Color(0xFFE8622A);
   static const Color _navy = Color(0xFF1A237E);
   static const Color _bg = Color(0xFFF9FAFB);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialCustomer != null) {
+      _nameController.text = widget.initialCustomer!.name;
+      _industryController.text = widget.initialCustomer!.industry ?? '';
+      _fullNameController.text = widget.initialCustomer!.name;
+      _phoneController.text = widget.initialCustomer!.phone ?? '';
+      _emailController.text = widget.initialCustomer!.email ?? '';
+      if (widget.initialCustomer!.latitude != null &&
+          widget.initialCustomer!.longitude != null) {
+        _selectedLocation = LatLng(widget.initialCustomer!.latitude!,
+            widget.initialCustomer!.longitude!);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -53,12 +72,14 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
         _selectedLocation = latLng;
         _isGettingLocation = false;
       });
-      _mapController?.animateCamera(CameraUpdate.newLatLngZoom(latLng, 15));
+      _mapController.move(latLng, 15.0);
     } catch (e) {
       setState(() => _isGettingLocation = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error getting location: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Error getting location: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -67,23 +88,28 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       final customer = Customer(
-        id: '', // Backend will generate
+        id: widget.initialCustomer?.id ?? '', // Backend will generate if empty
         name: _nameController.text,
         companyName: _nameController.text,
         industry: _industryController.text,
         email: _emailController.text,
         phone: _phoneController.text,
-        status: 'prospect',
+        status: widget.initialCustomer?.status ?? 'prospect',
         latitude: _selectedLocation?.latitude,
         longitude: _selectedLocation?.longitude,
       );
 
-      context.read<CustomerBloc>().add(CreateCustomerSubmitted(customer));
+      if (widget.initialCustomer != null) {
+        context.read<CustomerBloc>().add(UpdateCustomerSubmitted(customer));
+      } else {
+        context.read<CustomerBloc>().add(CreateCustomerSubmitted(customer));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEdit = widget.initialCustomer != null;
     return Scaffold(
       backgroundColor: _bg,
       appBar: AppBar(
@@ -93,9 +119,12 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
           icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF1A1A1A)),
           onPressed: () => context.pop(),
         ),
-        title: const Text(
-          'Add New Customer',
-          style: TextStyle(color: Color(0xFF1A1A1A), fontSize: 18, fontWeight: FontWeight.w800),
+        title: Text(
+          isEdit ? 'Edit Customer' : 'Add New Customer',
+          style: const TextStyle(
+              color: Color(0xFF1A1A1A),
+              fontSize: 18,
+              fontWeight: FontWeight.w800),
         ),
         actions: [
           Padding(
@@ -106,9 +135,11 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
                 backgroundColor: _orange,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
-              child: const Text('Save Customer', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: Text(isEdit ? 'Update' : 'Save Customer',
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
             ),
           ),
         ],
@@ -181,7 +212,14 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
                           backgroundColor: _orange,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Create Customer Profile', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                        child: Text(
+                            isEdit
+                                ? 'Update Customer Profile'
+                                : 'Create Customer Profile',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16)),
                       ),
                     ),
                   ],
@@ -340,15 +378,28 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
         borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
-            GoogleMap(
-              initialCameraPosition: const CameraPosition(target: LatLng(-6.200000, 106.816666), zoom: 10),
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: false,
-              onMapCreated: (c) => _mapController = c,
-              onTap: (latLng) => setState(() => _selectedLocation = latLng),
-              markers: _selectedLocation == null ? {} : {
-                Marker(markerId: const MarkerId('selected'), position: _selectedLocation!),
-              },
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: const LatLng(-6.200000, 106.816666),
+                initialZoom: 10.0,
+                onTap: (tapPosition, latLng) => setState(() => _selectedLocation = latLng),
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.wowin.crm',
+                ),
+                if (_selectedLocation != null)
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: _selectedLocation!,
+                        child: const Icon(LucideIcons.mapPin, color: _orange, size: 40),
+                      ),
+                    ],
+                  ),
+              ],
             ),
             if (_selectedLocation == null)
               Center(

@@ -9,11 +9,12 @@ abstract class LeadEvent extends Equatable {
 }
 
 class FetchLeads extends LeadEvent {
+  final String? query;
   final String? status;
-  const FetchLeads({this.status});
+  const FetchLeads({this.query, this.status});
 
   @override
-  List<Object?> get props => [status];
+  List<Object?> get props => [query, status];
 }
 
 class UpdateLeadStatusSubmitted extends LeadEvent {
@@ -31,6 +32,22 @@ class CreateLeadSubmitted extends LeadEvent {
 
   @override
   List<Object> get props => [lead];
+}
+
+class UpdateLeadSubmitted extends LeadEvent {
+  final Lead lead;
+  const UpdateLeadSubmitted(this.lead);
+
+  @override
+  List<Object> get props => [lead];
+}
+
+class DeleteLeadSubmitted extends LeadEvent {
+  final String id;
+  const DeleteLeadSubmitted(this.id);
+
+  @override
+  List<Object> get props => [id];
 }
 
 class ConvertLeadSubmitted extends LeadEvent {

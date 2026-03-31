@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/auth_model.dart';
+import '../../domain/entities/user_entity.dart';
 
 abstract class AuthRemoteDataSource {
   Future<AuthModel> login(String email, String password);
@@ -11,6 +12,7 @@ abstract class AuthRemoteDataSource {
     required String password,
     String companyName,
   });
+  Future<UserEntity> getMe();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -75,6 +77,20 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             'Data registrasi tidak valid';
         throw ServerException(msg.toString());
       }
+      throw ServerException(e.message ?? 'Server error occurred');
+    }
+  }
+
+  @override
+  Future<UserEntity> getMe() async {
+    try {
+      final response = await dio.get(ApiEndpoints.getMe);
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        return UserEntity.fromJson(response.data['data']);
+      } else {
+        throw ServerException('Gagal mengambil data profil');
+      }
+    } on DioException catch (e) {
       throw ServerException(e.message ?? 'Server error occurred');
     }
   }

@@ -1,9 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/router/route_constants.dart';
-
+import '../../../../core/widgets/app_sidebar.dart';
+import '../bloc/settings_bloc.dart';
+import '../../domain/entities/user_settings.dart';
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -17,11 +20,6 @@ class _SettingsPageState extends State<SettingsPage> {
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
 
-  // Mock Backend / Preferences State
-  bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
-  String _appLanguage = 'English';
-  String _gpsInterval = '5 mins';
   String _cacheSize = '124 MB';
 
   Future<void> _handleClearCache() async {
@@ -31,14 +29,13 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (context) => const Center(child: CircularProgressIndicator(color: _orange)),
     );
     
-    // Simulate cache clearing backend logic
     await Future.delayed(const Duration(seconds: 1));
     
     if (mounted) {
       setState(() {
         _cacheSize = '0 MB';
       });
-      context.pop(); // Remove dialog
+      context.pop();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Cache cleared successfully'), backgroundColor: Colors.green),
       );
@@ -50,21 +47,37 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       backgroundColor: _bg,
       appBar: _buildAppBar(context),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildSectionTitle('GENERAL PREFERENCES'),
-            _buildGeneralPreferencesSection(),
-            const SizedBox(height: 16),
-            _buildSectionTitle('TRACKING & SYSTEM'),
-            _buildTrackingSystemSection(),
-            const SizedBox(height: 40),
-            _buildAppFooter(),
-            const SizedBox(height: 48),
-          ],
-        ),
+      drawer: AppSidebar(),
+      body: BlocBuilder<SettingsBloc, SettingsState>(
+        builder: (context, state) {
+          if (state is SettingsInitial || state is SettingsLoading) {
+            return const Center(child: CircularProgressIndicator(color: _orange));
+          }
+          
+          if (state is SettingsError) {
+            return Center(child: Text(state.message));
+          }
+
+          if (state is SettingsLoaded) {
+            final s = state.settings;
+            return SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildSectionTitle('GENERAL PREFERENCES'),
+                  _buildGeneralPreferencesSection(s),
+                  const SizedBox(height: 16),
+                  _buildSectionTitle('TRACKING & SYSTEM'),
+                  _buildTrackingSystemSection(s),
+                  const SizedBox(height: 40),
+                  _buildAppFooter(),
+                  const SizedBox(height: 48),
+                ],
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        },
       ),
-      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -73,9 +86,11 @@ class _SettingsPageState extends State<SettingsPage> {
       backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,
-      leading: IconButton(
-        icon: const Icon(LucideIcons.arrowLeft, color: _orange),
-        onPressed: () => context.pop(),
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: const Icon(LucideIcons.menu, color: _orange),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
       ),
       centerTitle: true,
       title: const Text(
@@ -109,7 +124,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildGeneralPreferencesSection() {
+  Widget _buildGeneralPreferencesSection(UserSettings settings) {
     return Container(
       color: Colors.white,
       child: Column(
@@ -121,7 +136,7 @@ class _SettingsPageState extends State<SettingsPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _appLanguage,
+                  settings.language,
                   style: TextStyle(
                     color: _textSecondary.withOpacity(0.8),
                     fontSize: 14,
@@ -139,11 +154,10 @@ class _SettingsPageState extends State<SettingsPage> {
             icon: LucideIcons.bell,
             title: 'Notifications',
             trailingWidget: CupertinoSwitch(
-              value: _notificationsEnabled,
+              value: settings.notificationsEnabled,
               activeColor: _orange,
               onChanged: (val) {
-                setState(() => _notificationsEnabled = val);
-                // Trigger backend preference update
+                context.read<SettingsBloc>().add(UpdateSettingChanged('mobile.notifications_enabled', val));
               },
             ),
             onTap: null,
@@ -153,11 +167,10 @@ class _SettingsPageState extends State<SettingsPage> {
             icon: LucideIcons.moon,
             title: 'Dark Mode',
             trailingWidget: CupertinoSwitch(
-              value: _darkModeEnabled,
+              value: settings.darkModeEnabled,
               activeColor: _orange,
               onChanged: (val) {
-                setState(() => _darkModeEnabled = val);
-                // Trigger backend preference update
+                context.read<SettingsBloc>().add(UpdateSettingChanged('mobile.dark_mode_enabled', val));
               },
             ),
             onTap: null,
@@ -168,7 +181,10 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildTrackingSystemSection() {
+  Widget _buildTrackingSystemSection(UserSettings settings) {
+    final interval = settings.gpsIntervalSeconds;
+    final intervalLabel = interval < 60 ? '$interval secs' : '${interval ~/ 60} mins';
+
     return Container(
       color: Colors.white,
       child: Column(
@@ -181,7 +197,7 @@ class _SettingsPageState extends State<SettingsPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  _gpsInterval,
+                  intervalLabel,
                   style: TextStyle(
                     color: _textSecondary.withOpacity(0.8),
                     fontSize: 14,
@@ -301,48 +317,4 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(LucideIcons.home, 'Home', false, () => context.goNamed(kRouteDashboard)),
-          _buildNavItem(LucideIcons.fileText, 'Reports', false, () {}),
-          _buildNavItem(LucideIcons.checkSquare, 'Tasks', false, () => context.goNamed(kRouteTasks)),
-          _buildNavItem(LucideIcons.settings, 'Settings', true, () {}),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon, 
-            color: isActive ? _orange : const Color(0xFF9CA3AF), 
-            size: 24
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? _orange : const Color(0xFF9CA3AF),
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

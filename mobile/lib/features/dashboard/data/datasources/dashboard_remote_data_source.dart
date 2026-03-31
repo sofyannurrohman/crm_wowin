@@ -5,7 +5,7 @@ import '../../domain/entities/kpi_dashboard.dart';
 
 abstract class DashboardRemoteDataSource {
   Future<KpiDashboard> getKpiSummary();
-  Future<List<Map<String, dynamic>>> getVisitSchedules();
+  Future<List<Map<String, dynamic>>> getVisitRecommendations();
 }
 
 class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
@@ -27,9 +27,9 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getVisitSchedules() async {
+  Future<List<Map<String, dynamic>>> getVisitRecommendations() async {
     try {
-      final response = await _dio.get(ApiEndpoints.visitSchedules);
+      final response = await _dio.get(ApiEndpoints.visitRecommendations);
       final List data = response.data['data'] ?? [];
       return data.map((e) => Map<String, dynamic>.from(e)).toList();
     } catch (_) {

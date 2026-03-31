@@ -10,7 +10,9 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/customers/presentation/pages/customer_list_page.dart';
 import '../../features/customers/presentation/pages/customer_detail_page.dart';
 import '../../features/leads/presentation/pages/lead_list_page.dart';
+import '../../features/deals/presentation/pages/deal_detail_page.dart';
 import '../../features/deals/presentation/pages/deal_kanban_page.dart';
+import '../../features/customers/domain/entities/customer.dart';
 import '../../features/map/presentation/pages/customer_map_page.dart';
 import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/customers/presentation/pages/add_customer_page.dart';
@@ -30,6 +32,7 @@ import '../../features/products/presentation/pages/product_detail_page.dart';
 import '../../features/leads/presentation/pages/add_lead_page.dart';
 import '../../features/leads/presentation/pages/convert_lead_page.dart';
 import '../../features/leads/domain/entities/lead.dart';
+import '../../features/visits/presentation/pages/visit_summary_result_page.dart';
 
 
 
@@ -64,14 +67,15 @@ final GoRouter appRouter = GoRouter(
       name: kRouteCheckIn,
       path: '/check-in',
       builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>;
+        final args = state.extra as Map<String, dynamic>?;
         return CheckInPage(
-          scheduleId: args['scheduleId'] as String,
-          customerName: args['customerName'] as String? ?? 'Unknown Customer',
-          customerAddress: args['customerAddress'] as String? ?? 'No Address',
-          targetLat: args['targetLat'] as double,
-          targetLng: args['targetLng'] as double,
-          targetRadiusMeters: args['targetRadiusMeters'] as double,
+          scheduleId: args?['scheduleId'] as String? ?? 'adhoc',
+          customerName: args?['customerName'] as String?,
+          customerAddress: args?['customerAddress'] as String?,
+          targetLat: args?['targetLat'] as double?,
+          targetLng: args?['targetLng'] as double?,
+          targetRadiusMeters: args?['targetRadiusMeters'] as double? ?? 200.0,
+          dealId: args?['dealId'] as String?,
         );
       },
     ),
@@ -110,7 +114,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       name: kRouteAddCustomer,
       path: '/customers/add',
-      builder: (context, state) => const AddCustomerPage(),
+      builder: (context, state) {
+        final customer = state.extra as Customer?;
+        return AddCustomerPage(initialCustomer: customer);
+      },
     ),
     GoRoute(
       name: kRouteLeads,

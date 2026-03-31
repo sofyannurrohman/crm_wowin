@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:wowin_crm/l10n/app_localizations.dart';
 import 'core/router/app_router.dart';
 import 'core/di/injection.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
@@ -18,6 +20,7 @@ import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'features/dashboard/presentation/bloc/dashboard_event.dart';
 import 'features/tasks/presentation/bloc/task_bloc.dart';
 import 'features/tasks/presentation/bloc/task_event.dart';
+import 'features/settings/presentation/bloc/settings_bloc.dart';
 
 import 'core/theme/app_theme.dart';
 
@@ -25,7 +28,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initDependencies(); // Boot GetIt dependency injection
   if (!kIsWeb) {
-    await TrackingBackgroundService.initialize(); // Register WorkManager
+    await TrackingBackgroundService.initialize();
+    await TrackingBackgroundService.startSyncJob();
   }
 
   runApp(const WowinCrmApp());
@@ -69,12 +73,26 @@ class WowinCrmApp extends StatelessWidget {
         BlocProvider<TaskBloc>(
           create: (_) => sl<TaskBloc>()..add(const FetchTasks()),
         ),
+        BlocProvider<SettingsBloc>(
+          create: (_) => sl<SettingsBloc>()..add(FetchSettings()),
+        ),
       ],
       child: MaterialApp.router(
         title: 'Wowin CRM',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: appRouter,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('en'), // English
+          Locale('id'), // Indonesian
+        ],
+        locale: const Locale('id'), // Set default to Indonesian
       ),
     );
   }

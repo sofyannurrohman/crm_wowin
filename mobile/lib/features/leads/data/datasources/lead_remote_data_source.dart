@@ -2,9 +2,11 @@ import 'package:dio/dio.dart';
 import '../../domain/entities/lead.dart';
 
 abstract class LeadRemoteDataSource {
-  Future<List<Lead>> getLeads({String? status});
+  Future<List<Lead>> getLeads({String? query, String? status});
   Future<Lead> updateLeadStatus(String id, String status);
   Future<Lead> createLead(Lead lead);
+  Future<Lead> updateLead(Lead lead);
+  Future<void> deleteLead(String id);
   Future<void> convertLead(String id);
 }
 
@@ -14,10 +16,14 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
   LeadRemoteDataSourceImpl(this._dio);
 
   @override
-  Future<List<Lead>> getLeads({String? status}) async {
+  Future<List<Lead>> getLeads({String? query, String? status}) async {
+    final queryParams = <String, dynamic>{};
+    if (query != null && query.isNotEmpty) queryParams['search'] = query;
+    if (status != null && status.isNotEmpty) queryParams['status'] = status;
+
     final response = await _dio.get(
       '/leads',
-      queryParameters: status != null ? {'status': status} : null,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
     final List data = response.data['data'];
@@ -40,6 +46,20 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
       data: lead.toJson(),
     );
     return Lead.fromJson(response.data['data']);
+  }
+
+  @override
+  Future<Lead> updateLead(Lead lead) async {
+    final response = await _dio.put(
+      '/leads/${lead.id}',
+      data: lead.toJson(),
+    );
+    return Lead.fromJson(response.data['data']);
+  }
+
+  @override
+  Future<void> deleteLead(String id) async {
+    await _dio.delete('/leads/$id');
   }
 
   @override

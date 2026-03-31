@@ -10,6 +10,7 @@ import '../bloc/attendance_event.dart';
 import '../bloc/attendance_state.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_sidebar.dart';
 
 class AttendanceHistoryPage extends StatefulWidget {
   const AttendanceHistoryPage({super.key});
@@ -39,7 +40,14 @@ class _AttendanceHistoryPageState extends State<AttendanceHistoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppSidebar(),
       appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(LucideIcons.menu, color: AppColors.primary),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         title: const Text('Riwayat Absensi'),
         scrolledUnderElevation: 0,
         actions: [

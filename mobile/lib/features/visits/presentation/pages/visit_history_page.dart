@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-
+import 'package:intl/intl.dart';
+import '../widgets/check_out_sheet.dart';
 import '../bloc/visit_bloc.dart';
+import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../../../core/widgets/app_sidebar.dart' as sidebar;
 
 class VisitHistoryPage extends StatefulWidget {
   const VisitHistoryPage({super.key});
@@ -23,49 +26,10 @@ class _VisitHistoryPageState extends State<VisitHistoryPage> {
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
 
-  // Mock data representing the UI design
-  final List<Map<String, dynamic>> _mockVisitsToday = [
-    {
-      'company': 'TechCorp Solutions',
-      'contact': 'John Doe',
-      'purpose': 'Quarterly Review',
-      'time': '10:30 AM',
-      'status': 'COMPLETED',
-      'imageUrl': 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=120&h=120&fit=crop',
-    },
-    {
-      'company': 'Green Valley Grocers',
-      'contact': 'Sarah Miller',
-      'purpose': 'Site Inspection',
-      'time': '02:15 PM',
-      'status': 'FOLLOW-UP SET',
-      'imageUrl': 'https://images.unsplash.com/photo-1497215848143-df9c16b25206?w=120&h=120&fit=crop',
-    },
-  ];
-
-  final List<Map<String, dynamic>> _mockVisitsYesterday = [
-    {
-      'company': 'Apex Manufacturing',
-      'contact': 'Robert Chen',
-      'purpose': 'Equipment Demo',
-      'time': '11:00 AM',
-      'status': 'COMPLETED',
-      'imageUrl': 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=120&h=120&fit=crop',
-    },
-    {
-      'company': 'Blue Harbor Logistics',
-      'contact': 'Jessica Hunt',
-      'purpose': 'Contract Signing',
-      'time': '04:45 PM',
-      'status': 'ON HOLD',
-      'imageUrl': 'https://images.unsplash.com/photo-1586528116311-ad8ed7c663e0?w=120&h=120&fit=crop',
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
-    // In a real implementation: context.read<VisitBloc>().add(FetchVisits());
+    context.read<VisitBloc>().add(const FetchActivities());
   }
 
   @override
@@ -73,36 +37,44 @@ class _VisitHistoryPageState extends State<VisitHistoryPage> {
     return Scaffold(
       backgroundColor: _bg,
       appBar: _buildAppBar(),
+      drawer: const sidebar.AppSidebar(),
       body: BlocBuilder<VisitBloc, VisitState>(
         builder: (context, state) {
-          // Replace with real logic: if (state is VisitsLoading) ...
-          return Column(
-            children: [
-              _buildSearchBar(),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.only(bottom: 80), // For FAB
-                  children: [
-                    _buildSectionHeader('TODAY, OCT 24'),
-                    ..._mockVisitsToday.map((v) => _buildVisitItem(v)).toList(),
-                    _buildSectionHeader('YESTERDAY, OCT 23'),
-                    ..._mockVisitsYesterday.map((v) => _buildVisitItem(v)).toList(),
-                  ],
+          if (state is VisitLoading) {
+            return const Center(child: CircularProgressIndicator(color: _orange));
+          }
+          
+          if (state is ActivitiesLoaded) {
+            final activities = state.activities;
+            if (activities.isEmpty) {
+              return _buildEmptyState();
+            }
+
+            return Column(
+              children: [
+                _buildSearchBar(),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemCount: activities.length,
+                    itemBuilder: (context, index) {
+                      return _buildVisitItem(activities[index]);
+                    },
+                  ),
                 ),
-              ),
-            ],
-          );
+              ],
+            );
+          }
+          
+          return const Center(child: Text('Gagal memuat riwayat kunjungan'));
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Logic for scheduling a new visit
-        },
+        onPressed: () {},
         backgroundColor: _orange,
         elevation: 4,
         child: const Icon(LucideIcons.plus, color: Colors.white, size: 28),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -111,17 +83,10 @@ class _VisitHistoryPageState extends State<VisitHistoryPage> {
       backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 16.0, top: 4.0, bottom: 4.0),
-        child: GestureDetector(
-          onTap: () => context.pop(),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: _lightOrangeBtn,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(LucideIcons.arrowLeft, color: _orange, size: 20),
-          ),
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: const Icon(LucideIcons.menu, color: _orange),
+          onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
       title: const Text(
@@ -182,156 +147,101 @@ class _VisitHistoryPageState extends State<VisitHistoryPage> {
     );
   }
 
-  Widget _buildVisitItem(Map<String, dynamic> visit) {
-    Color badgeColor;
-    Color badgeBgColor;
-    Color badgeTextColor;
-
-    switch (visit['status']) {
-      case 'COMPLETED':
-        badgeColor = const Color(0xFF22C55E);      // Green
-        badgeBgColor = const Color(0xFFDCFCE7);    // Light Green
-        badgeTextColor = const Color(0xFF166534);  // Dark Green Text
-        break;
-      case 'FOLLOW-UP SET':
-        badgeColor = const Color(0xFFEA580C);      // Orange
-        badgeBgColor = const Color(0xFFFFF7ED);    // Light Orange
-        badgeTextColor = const Color(0xFFC2410C);  // Dark Orange Text
-        break;
-      case 'ON HOLD':
-      default:
-        badgeColor = const Color(0xFF6B7280);      // Gray
-        badgeBgColor = const Color(0xFFF3F4F6);    // Light Gray
-        badgeTextColor = const Color(0xFF374151);  // Dark Gray Text
-        break;
-    }
-
-    return GestureDetector(
-      onTap: () {
-        // Navigation route to Visit Detail Page parameterized by visit ID.
-        // E.g., context.pushNamed(kRouteVisitDetail, pathParameters: {'id': visit['id']});
-        context.pushNamed(kRouteVisitDetail, pathParameters: {'id': '123'});
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
-        ),
-        child: Row(
+  Widget _buildVisitItem(dynamic item) {
+    final bool isCheckIn = item.type.toLowerCase().contains('check-in') || item.type.toLowerCase() == 'checkin';
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              image: DecorationImage(
-                image: NetworkImage(visit['imageUrl']),
-                fit: BoxFit.cover,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: isCheckIn ? _orange.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  isCheckIn ? LucideIcons.mapPin : LucideIcons.checkCircle,
+                  color: isCheckIn ? _orange : Colors.green,
+                  size: 20,
+                ),
               ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        visit['company'],
-                        style: const TextStyle(
-                          color: _textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isCheckIn ? 'Check-in Visit' : 'Check-out Recorded',
+                            style: const TextStyle(
+                              color: _textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        Text(
+                          DateFormat('HH:mm').format(item.createdAt),
+                          style: const TextStyle(color: _textSecondary, fontSize: 12),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 4),
                     Text(
-                      visit['time'],
-                      style: const TextStyle(
-                        color: _textSecondary,
-                        fontSize: 12,
-                      ),
+                      item.notes ?? 'No notes provided',
+                      style: const TextStyle(color: _textSecondary, fontSize: 13),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${visit['contact']} - ${visit['purpose']}',
-                  style: const TextStyle(
-                    color: _textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: badgeBgColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    visit['status'],
-                    style: TextStyle(
-                      color: badgeTextColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
+              ),
+            ],
+          ),
+          if (isCheckIn) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => CheckOutSheet(
+                      scheduleId: item.scheduleId ?? 'adhoc',
+                      customerName: 'Customer Visit', 
                     ),
-                  ),
+                  );
+                },
+                icon: const Icon(LucideIcons.clipboardCheck, size: 14),
+                label: const Text('Complete Outcome', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _orange,
+                  side: const BorderSide(color: _orange),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(LucideIcons.home, 'Home', false, onTap: () => context.goNamed(kRouteDashboard)),
-          _buildNavItem(LucideIcons.history, 'Visits', true), // Visits is active with History style icon
-          _buildNavItem(LucideIcons.users, 'Customers', false, onTap: () => context.goNamed(kRouteCustomers)),
-          _buildNavItem(LucideIcons.settings, 'Settings', false),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isActive, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: isActive ? _orange : const Color(0xFF9CA3AF), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? _orange : const Color(0xFF9CA3AF),
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
+  Widget _buildEmptyState() {
+    return const Center(child: Text('Belum ada riwayat kunjungan'));
   }
+
 }

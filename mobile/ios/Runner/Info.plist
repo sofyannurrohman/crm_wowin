@@ -8,6 +8,10 @@
 	<string>Aplikasi ini membutuhkan akses lokasi di latar belakang untuk merekam jejak rute perjalanan petugas lapangan (GPS Tracking).</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>Aplikasi membutuhkan akses lokasi Anda setiap saat untuk merekam rute kunjungan lapangan harian secara akurat.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikasi membutuhkan akses kamera untuk mengambil foto selfie saat absensi dan verifikasi kunjungan.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Aplikasi membutuhkan akses mikrofon untuk fitur video jika diperlukan di masa depan.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

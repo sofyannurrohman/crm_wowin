@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/kpi_dashboard.dart';
+import '../../domain/entities/visit_recommendation.dart';
 
 abstract class DashboardState extends Equatable {
   const DashboardState();
@@ -14,12 +15,12 @@ class DashboardLoading extends DashboardState {}
 
 class DashboardLoaded extends DashboardState {
   final KpiDashboard dashboard;
-  final List<Map<String, dynamic>> schedules;
+  final List<VisitRecommendation> recommendations;
 
-  const DashboardLoaded(this.dashboard, {this.schedules = const []});
+  const DashboardLoaded(this.dashboard, {this.recommendations = const []});
 
   @override
-  List<Object> get props => [dashboard, schedules];
+  List<Object> get props => [dashboard, recommendations];
 }
 
 class DashboardError extends DashboardState {

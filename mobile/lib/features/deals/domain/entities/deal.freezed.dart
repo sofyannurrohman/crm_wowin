@@ -28,6 +28,7 @@ mixin _$Deal {
   DateTime? get expectedClose;
   String? get description;
   List<DealItem>? get items;
+  Customer? get customer;
 
   /// Create a copy of Deal
   /// with the given fields replaced by the non-null parameter values.
@@ -59,7 +60,9 @@ mixin _$Deal {
                 other.expectedClose == expectedClose) &&
             (identical(other.description, description) ||
                 other.description == description) &&
-            const DeepCollectionEquality().equals(other.items, items));
+            const DeepCollectionEquality().equals(other.items, items) &&
+            (identical(other.customer, customer) ||
+                other.customer == customer));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -76,11 +79,12 @@ mixin _$Deal {
       probability,
       expectedClose,
       description,
-      const DeepCollectionEquality().hash(items));
+      const DeepCollectionEquality().hash(items),
+      customer);
 
   @override
   String toString() {
-    return 'Deal(id: $id, title: $title, customerId: $customerId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items)';
+    return 'Deal(id: $id, title: $title, customerId: $customerId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items, customer: $customer)';
   }
 }
 
@@ -100,7 +104,10 @@ abstract mixin class $DealCopyWith<$Res> {
       int? probability,
       @JsonKey(name: 'expected_close') DateTime? expectedClose,
       String? description,
-      List<DealItem>? items});
+      List<DealItem>? items,
+      Customer? customer});
+
+  $CustomerCopyWith<$Res>? get customer;
 }
 
 /// @nodoc
@@ -126,6 +133,7 @@ class _$DealCopyWithImpl<$Res> implements $DealCopyWith<$Res> {
     Object? expectedClose = freezed,
     Object? description = freezed,
     Object? items = freezed,
+    Object? customer = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -172,7 +180,25 @@ class _$DealCopyWithImpl<$Res> implements $DealCopyWith<$Res> {
           ? _self.items
           : items // ignore: cast_nullable_to_non_nullable
               as List<DealItem>?,
+      customer: freezed == customer
+          ? _self.customer
+          : customer // ignore: cast_nullable_to_non_nullable
+              as Customer?,
     ));
+  }
+
+  /// Create a copy of Deal
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $CustomerCopyWith<$Res>? get customer {
+    if (_self.customer == null) {
+      return null;
+    }
+
+    return $CustomerCopyWith<$Res>(_self.customer!, (value) {
+      return _then(_self.copyWith(customer: value));
+    });
   }
 }
 
@@ -280,7 +306,8 @@ extension DealPatterns on Deal {
             int? probability,
             @JsonKey(name: 'expected_close') DateTime? expectedClose,
             String? description,
-            List<DealItem>? items)?
+            List<DealItem>? items,
+            Customer? customer)?
         $default, {
     required TResult orElse(),
   }) {
@@ -298,7 +325,8 @@ extension DealPatterns on Deal {
             _that.probability,
             _that.expectedClose,
             _that.description,
-            _that.items);
+            _that.items,
+            _that.customer);
       case _:
         return orElse();
     }
@@ -330,7 +358,8 @@ extension DealPatterns on Deal {
             int? probability,
             @JsonKey(name: 'expected_close') DateTime? expectedClose,
             String? description,
-            List<DealItem>? items)
+            List<DealItem>? items,
+            Customer? customer)
         $default,
   ) {
     final _that = this;
@@ -347,7 +376,8 @@ extension DealPatterns on Deal {
             _that.probability,
             _that.expectedClose,
             _that.description,
-            _that.items);
+            _that.items,
+            _that.customer);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -378,7 +408,8 @@ extension DealPatterns on Deal {
             int? probability,
             @JsonKey(name: 'expected_close') DateTime? expectedClose,
             String? description,
-            List<DealItem>? items)?
+            List<DealItem>? items,
+            Customer? customer)?
         $default,
   ) {
     final _that = this;
@@ -395,7 +426,8 @@ extension DealPatterns on Deal {
             _that.probability,
             _that.expectedClose,
             _that.description,
-            _that.items);
+            _that.items,
+            _that.customer);
       case _:
         return null;
     }
@@ -416,7 +448,8 @@ class _Deal implements Deal {
       this.probability,
       @JsonKey(name: 'expected_close') this.expectedClose,
       this.description,
-      final List<DealItem>? items})
+      final List<DealItem>? items,
+      this.customer})
       : _items = items;
   factory _Deal.fromJson(Map<String, dynamic> json) => _$DealFromJson(json);
 
@@ -453,6 +486,9 @@ class _Deal implements Deal {
     return EqualUnmodifiableListView(value);
   }
 
+  @override
+  final Customer? customer;
+
   /// Create a copy of Deal
   /// with the given fields replaced by the non-null parameter values.
   @override
@@ -488,7 +524,9 @@ class _Deal implements Deal {
                 other.expectedClose == expectedClose) &&
             (identical(other.description, description) ||
                 other.description == description) &&
-            const DeepCollectionEquality().equals(other._items, _items));
+            const DeepCollectionEquality().equals(other._items, _items) &&
+            (identical(other.customer, customer) ||
+                other.customer == customer));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -505,11 +543,12 @@ class _Deal implements Deal {
       probability,
       expectedClose,
       description,
-      const DeepCollectionEquality().hash(_items));
+      const DeepCollectionEquality().hash(_items),
+      customer);
 
   @override
   String toString() {
-    return 'Deal(id: $id, title: $title, customerId: $customerId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items)';
+    return 'Deal(id: $id, title: $title, customerId: $customerId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items, customer: $customer)';
   }
 }
 
@@ -530,7 +569,11 @@ abstract mixin class _$DealCopyWith<$Res> implements $DealCopyWith<$Res> {
       int? probability,
       @JsonKey(name: 'expected_close') DateTime? expectedClose,
       String? description,
-      List<DealItem>? items});
+      List<DealItem>? items,
+      Customer? customer});
+
+  @override
+  $CustomerCopyWith<$Res>? get customer;
 }
 
 /// @nodoc
@@ -556,6 +599,7 @@ class __$DealCopyWithImpl<$Res> implements _$DealCopyWith<$Res> {
     Object? expectedClose = freezed,
     Object? description = freezed,
     Object? items = freezed,
+    Object? customer = freezed,
   }) {
     return _then(_Deal(
       id: null == id
@@ -602,7 +646,25 @@ class __$DealCopyWithImpl<$Res> implements _$DealCopyWith<$Res> {
           ? _self._items
           : items // ignore: cast_nullable_to_non_nullable
               as List<DealItem>?,
+      customer: freezed == customer
+          ? _self.customer
+          : customer // ignore: cast_nullable_to_non_nullable
+              as Customer?,
     ));
+  }
+
+  /// Create a copy of Deal
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $CustomerCopyWith<$Res>? get customer {
+    if (_self.customer == null) {
+      return null;
+    }
+
+    return $CustomerCopyWith<$Res>(_self.customer!, (value) {
+      return _then(_self.copyWith(customer: value));
+    });
   }
 }
 

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../../../core/widgets/app_sidebar.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
@@ -45,6 +46,7 @@ class _TaskListPageState extends State<TaskListPage> {
     return Scaffold(
       backgroundColor: _bg,
       appBar: _buildAppBar(context),
+      drawer: const AppSidebar(),
       body: Column(
         children: [
           _buildFilterChips(),
@@ -59,15 +61,82 @@ class _TaskListPageState extends State<TaskListPage> {
                   }
                   return _buildTaskList(state.tasks);
                 } else if (state is TaskError) {
-                  return Center(child: Text(state.message));
+                  return _buildErrorState(state.message);
                 }
-                return const Center(child: Text('Tarik untuk memuat tugas'));
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(LucideIcons.list, size: 48, color: Colors.grey.withOpacity(0.5)),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Tarik untuk memuat tugas',
+                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _fetchTasks,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _orange,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                        child: const Text('Refresh', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                );
               },
             ),
           ),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(context),
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(LucideIcons.alertCircle, size: 64, color: Colors.redAccent),
+            const SizedBox(height: 24),
+            Text(
+              'Oops!',
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _fetchTasks,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _orange,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Coba Lagi',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -76,14 +145,32 @@ class _TaskListPageState extends State<TaskListPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.clipboardCheck, size: 64, color: _textSecondary.withOpacity(0.3)),
-          const SizedBox(height: 16),
+          Icon(LucideIcons.clipboardCheck, size: 80, color: _textSecondary.withOpacity(0.1)),
+          const SizedBox(height: 20),
           Text(
             'Tidak ada tugas',
             style: TextStyle(
-              color: _textSecondary,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+              color: _textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Semua tugas untuk filter ini sudah selesai atau belum dibuat.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _textSecondary, fontSize: 14),
+          ),
+          const SizedBox(height: 32),
+          OutlinedButton.icon(
+            onPressed: _fetchTasks,
+            icon: const Icon(LucideIcons.refreshCw, size: 18),
+            label: const Text('Perbarui Data'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _orange,
+              side: const BorderSide(color: _orange),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),
         ],
@@ -365,45 +452,4 @@ class _TaskListPageState extends State<TaskListPage> {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(LucideIcons.home, 'HOME', false, () => context.goNamed(kRouteDashboard)),
-          _buildNavItem(LucideIcons.checkSquare, 'TASKS', true, () {}),
-          _buildNavItem(LucideIcons.users, 'LEADS', false, () {}),
-          _buildNavItem(LucideIcons.building2, 'CLIENTS', false, () => context.goNamed(kRouteCustomers)),
-          _buildNavItem(Icons.more_horiz, 'MORE', false, () {}),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: isActive ? _orange : const Color(0xFF9CA3AF), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? _orange : const Color(0xFF9CA3AF),
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-              letterSpacing: 1.0,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

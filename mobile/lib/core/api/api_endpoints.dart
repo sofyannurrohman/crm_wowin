@@ -6,6 +6,7 @@ class ApiEndpoints {
   // Auth
   static const String login = '/auth/login';
   static const String register = '/auth/register';
+  static const String getMe = '/users/me';
   static const String refresh = '/auth/refresh';
 
   // Customers & Contacts
@@ -40,4 +41,5 @@ class ApiEndpoints {
   // Reports
   static const String kpiSummary = '/reports/kpi-summary';
   static const String analytics = '/reports/analytics';
+  static const String visitRecommendations = '/reports/recommendations';
 }

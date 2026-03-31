@@ -36,18 +36,23 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
   @override
   Future<void> checkIn(CheckInRequest request) async {
     try {
-      final fileName = request.photoFile.path.split('/').last;
-
       final formData = FormData.fromMap({
-        'visit_schedule_id': request.scheduleId,
-        'activity_type': 'check_in',
+        'schedule_id': request.scheduleId == 'adhoc' ? null : request.scheduleId,
+        'type': 'check-in',
         'latitude': request.latitude,
         'longitude': request.longitude,
         'notes': request.checkInNotes,
+        'deal_id': request.dealId,
+        'override_reason': request.overrideReason,
         'photo': await MultipartFile.fromFile(
           request.photoFile.path,
-          filename: fileName,
+          filename: request.photoFile.path.split('/').last,
         ),
+        if (request.selfiePhotoFile != null)
+          'selfie_photo': await MultipartFile.fromFile(
+            request.selfiePhotoFile!.path,
+            filename: request.selfiePhotoFile!.path.split('/').last,
+          ),
       });
 
       final response = await dio.post(
@@ -75,19 +80,32 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
   @override
   Future<void> checkOut(CheckOutRequest request) async {
     try {
-      final data = {
-        'visit_schedule_id': request.scheduleId,
-        'activity_type': 'check_out',
+      final formMap = <String, dynamic>{
+        'schedule_id': request.scheduleId == 'adhoc' ? null : request.scheduleId,
+        'type': 'check-out',
         'latitude': request.latitude,
         'longitude': request.longitude,
         'visit_result': request.visitResult,
         'next_action': request.nextAction,
         'next_visit_date': request.nextVisitDate,
+        if (request.inventoryData != null)
+          'inventory_data': request.inventoryData,
       };
+
+      // Attach signature image if captured
+      if (request.signaturePath != null && request.signaturePath!.isNotEmpty) {
+        formMap['signature_photo'] = await MultipartFile.fromFile(
+          request.signaturePath!,
+          filename: request.signaturePath!.split('/').last,
+        );
+      }
+
+      final formData = FormData.fromMap(formMap);
 
       final response = await dio.post(
         ApiEndpoints.visitActivities,
-        data: data,
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
       );
 
       if (response.statusCode != 200 && response.statusCode != 201) {

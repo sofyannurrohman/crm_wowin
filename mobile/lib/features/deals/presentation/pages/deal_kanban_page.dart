@@ -9,6 +9,7 @@ import '../bloc/deal_event.dart';
 import '../bloc/deal_state.dart';
 import '../../domain/entities/deal.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../../../core/widgets/app_sidebar.dart';
 
 class DealKanbanPage extends StatefulWidget {
   const DealKanbanPage({super.key});
@@ -47,6 +48,7 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
+      drawer: const AppSidebar(),
       body: SafeArea(
         child: Column(
           children: [
@@ -75,7 +77,6 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -84,13 +85,18 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _orange.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
+          Builder(
+            builder: (context) => GestureDetector(
+              onTap: () => Scaffold.of(context).openDrawer(),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(LucideIcons.menu, color: _orange, size: 24),
+              ),
             ),
-            child: const Icon(LucideIcons.layoutGrid, color: _orange, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -240,70 +246,6 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
     );
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(LucideIcons.home, 'Home', false, onTap: () => context.goNamed(kRouteDashboard)),
-          _buildNavItem(LucideIcons.barChart2, 'Pipeline', true),
-          _buildNavItem(LucideIcons.checkSquare, 'Tasks', false),
-          _buildNavItem(LucideIcons.users, 'Contacts', false, onTap: () => context.pushNamed(kRouteCustomers)),
-          _buildAvatarNavItem(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: isActive ? _orange : const Color(0xFF9CA3AF), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? _orange : const Color(0xFF9CA3AF),
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAvatarNavItem() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 26,
-          height: 26,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            image: DecorationImage(
-              image: NetworkImage('https://i.pravatar.cc/150?u=sales'),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Me',
-          style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 11, fontWeight: FontWeight.w600),
-        ),
-      ],
-    );
-  }
 }
 
 class _DealCard extends StatelessWidget {

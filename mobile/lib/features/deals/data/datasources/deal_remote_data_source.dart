@@ -26,8 +26,12 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
   @override
   Future<Deal> getDeal(String id) async {
     final response = await _dio.get('/deals/$id');
-    // Backend returns { "deal": ..., "history": ... }
-    return Deal.fromJson(response.data['data']['deal']);
+    final data = response.data['data'];
+    final Map<String, dynamic> dealPart = data['deal'];
+    if (data['customer'] != null) {
+      dealPart['customer'] = data['customer'];
+    }
+    return Deal.fromJson(dealPart);
   }
 
   @override

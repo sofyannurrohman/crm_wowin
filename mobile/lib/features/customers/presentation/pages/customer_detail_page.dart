@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/router/route_constants.dart';
 import '../../../../core/di/injection.dart';
 import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
@@ -38,44 +41,122 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     return BlocProvider(
       create: (context) => sl<CustomerBloc>()..add(FetchCustomerDetail(widget.id)),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          leading: IconButton(
-            icon: const Icon(LucideIcons.arrowLeft, color: AppColors.textPrimary),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: const Text(
-            'Customer Details',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              icon: const Icon(LucideIcons.moreVertical, color: AppColors.textPrimary),
-              onPressed: () {},
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
         body: BlocBuilder<CustomerBloc, CustomerState>(
           builder: (context, state) {
             if (state is CustomerLoading) {
               return const Center(child: CircularProgressIndicator());
             } else if (state is CustomerDetailLoaded) {
-              return _buildContent(state.customer);
+              final customer = state.customer;
+              return Scaffold(
+                backgroundColor: const Color(0xFFF9FAFB),
+                appBar: AppBar(
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  leading: IconButton(
+                    icon: const Icon(LucideIcons.arrowLeft,
+                        color: AppColors.textPrimary),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  title: const Text(
+                    'Customer Details',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  centerTitle: true,
+                  actions: [
+                    PopupMenuButton<String>(
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          context.pushNamed(
+                            kRouteAddCustomer,
+                            extra: state.customer,
+                          );
+                        } else if (value == 'delete') {
+                          _showDeleteConfirmation(context, state.customer);
+                        }
+                      },
+                      icon: const Icon(LucideIcons.moreVertical,
+                          color: AppColors.textPrimary),
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(LucideIcons.edit2, size: 18),
+                              SizedBox(width: 8),
+                              const Text('Edit'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(LucideIcons.trash2,
+                                  size: 18, color: Colors.red),
+                              SizedBox(width: 8),
+                              const Text('Delete',
+                                  style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+                body: BlocListener<CustomerBloc, CustomerState>(
+                  listener: (context, state) {
+                    if (state is CustomerOperationSuccess) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(state.message),
+                            backgroundColor: Colors.green),
+                      );
+                      if (state.message.contains('hapus')) {
+                        Navigator.of(context).pop(); // Back to list on delete
+                      }
+                    }
+                  },
+                  child: _buildContent(customer),
+                ),
+              );
             } else if (state is CustomerError) {
               return Center(child: Text(state.message));
             }
             return const SizedBox();
           },
         ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, Customer customer) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hapus Pelanggan'),
+        content: Text(
+            'Apakah Anda yakin ingin menghapus ${customer.companyName ?? customer.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              context
+                  .read<CustomerBloc>()
+                  .add(DeleteCustomerSubmitted(customer.id));
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }
@@ -274,20 +355,26 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
       ),
       child: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: LatLng(lat, lng),
-              zoom: 14,
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: LatLng(lat, lng),
+              initialZoom: 14.0,
+              interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
             ),
-            markers: {
-              Marker(
-                markerId: const MarkerId('customer_loc'),
-                position: LatLng(lat, lng),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.wowin.crm',
               ),
-            },
-            zoomControlsEnabled: false,
-            mapToolbarEnabled: false,
-            myLocationButtonEnabled: false,
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: LatLng(lat, lng),
+                    child: const Icon(Icons.location_on, color: Color(0xFFF97316), size: 30),
+                  ),
+                ],
+              ),
+            ],
           ),
           Positioned(
             bottom: 12,

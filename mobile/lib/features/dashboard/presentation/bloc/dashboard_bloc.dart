@@ -4,13 +4,16 @@ import '../../domain/usecases/get_kpi_summary.dart';
 import 'dashboard_event.dart';
 import 'dashboard_state.dart';
 
+import '../../domain/entities/visit_recommendation.dart';
+import '../../domain/repositories/dashboard_repository.dart';
+
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final GetKpiSummary getKpiSummary;
-  final DashboardRemoteDataSource remoteDataSource;
+  final DashboardRepository repository;
 
   DashboardBloc({
     required this.getKpiSummary,
-    required this.remoteDataSource,
+    required this.repository,
   }) : super(DashboardInitial()) {
     on<FetchDashboardKpis>(_onFetchDashboardKpis);
   }
@@ -22,12 +25,23 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     emit(DashboardLoading());
 
     final kpiResult = await getKpiSummary();
-    final schedules = await remoteDataSource.getVisitSchedules();
+    final recsResult = await repository.getVisitRecommendations();
 
     kpiResult.fold(
       (failure) => emit(DashboardError(failure.message)),
-      (dashboard) =>
-          emit(DashboardLoaded(dashboard, schedules: schedules)),
+      (dashboard) {
+        final List<VisitRecommendation> recommendations = [];
+        recsResult.fold(
+          (_) => null,
+          (data) {
+            recommendations.addAll(
+              data.map((e) => VisitRecommendation.fromJson(e)).toList(),
+            );
+          },
+        );
+
+        emit(DashboardLoaded(dashboard, recommendations: recommendations));
+      },
     );
   }
 }

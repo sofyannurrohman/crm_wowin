@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:uuid/uuid.dart';
+import '../bloc/task_bloc.dart';
+import '../bloc/task_event.dart';
+import '../bloc/task_state.dart';
+import '../../domain/entities/task.dart' as ent;
 
 class NewTaskPage extends StatefulWidget {
   const NewTaskPage({super.key});
@@ -19,39 +25,57 @@ class _NewTaskPageState extends State<NewTaskPage> {
   final _descController = TextEditingController();
   final _customerSearchController = TextEditingController();
   
-  String _selectedPriority = 'Medium';
-  String _dueDate = 'mm/dd/yyyy';
+  ent.TaskPriority _selectedPriority = ent.TaskPriority.MEDIUM;
+  DateTime? _selectedDate;
   bool _isSubmitting = false;
 
-  Future<void> _submitMockBackend() async {
-    setState(() => _isSubmitting = true);
-    
-    // Simulating API integration request
-    /* Code to send to backend:
-       TaskRepository.createTask({
-         'title': _titleController.text,
-         'description': _descController.text,
-         'priority': _selectedPriority.toUpperCase(),
-         'dueDate': _dueDate,
-         'customerId': 'JD-123',
-       });
-    */
-    await Future.delayed(const Duration(seconds: 1));
-    
-    if (mounted) {
+  void _submit() {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Task created successfully!'), backgroundColor: Colors.green),
+        const SnackBar(content: Text('Judul tugas tidak boleh kosong'), backgroundColor: Colors.red),
       );
-      context.pop();
+      return;
     }
+
+    final newTask = ent.Task(
+      id: const Uuid().v4(),
+      salesId: 'CURRENT_USER_ID', // In real app, get from AuthBloc
+      title: title,
+      description: _descController.text.trim(),
+      priority: _selectedPriority,
+      status: ent.TaskStatus.TODO,
+      dueDate: _selectedDate,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    context.read<TaskBloc>().add(CreateTask(newTask));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      appBar: _buildAppBar(context),
-      body: SingleChildScrollView(
+    return BlocListener<TaskBloc, TaskState>(
+      listener: (context, state) {
+        if (state is TaskLoading) {
+           setState(() => _isSubmitting = true);
+        } else if (state is TaskOperationSuccess) {
+           setState(() => _isSubmitting = false);
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+           );
+           context.pop();
+        } else if (state is TaskError) {
+           setState(() => _isSubmitting = false);
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+           );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        appBar: _buildAppBar(context),
+        body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,6 +102,7 @@ class _NewTaskPageState extends State<NewTaskPage> {
         ),
       ),
       bottomNavigationBar: _buildBottomAction(),
+      ),
     );
   }
 
@@ -155,19 +180,19 @@ class _NewTaskPageState extends State<NewTaskPage> {
       padding: const EdgeInsets.all(4),
       child: Row(
         children: [
-          _buildPriorityOption('Low'),
-          _buildPriorityOption('Medium'),
-          _buildPriorityOption('High'),
+          _buildPriorityOption(ent.TaskPriority.LOW),
+          _buildPriorityOption(ent.TaskPriority.MEDIUM),
+          _buildPriorityOption(ent.TaskPriority.HIGH),
         ],
       ),
     );
   }
 
-  Widget _buildPriorityOption(String options) {
-    final isSelected = _selectedPriority == options;
+  Widget _buildPriorityOption(ent.TaskPriority priority) {
+    final isSelected = _selectedPriority == priority;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _selectedPriority = options),
+        onTap: () => setState(() => _selectedPriority = priority),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
@@ -179,7 +204,7 @@ class _NewTaskPageState extends State<NewTaskPage> {
           ),
           alignment: Alignment.center,
           child: Text(
-            options,
+            priority.name,
             style: TextStyle(
               color: isSelected ? _orange : const Color(0xFF4B5563),
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -200,9 +225,9 @@ class _NewTaskPageState extends State<NewTaskPage> {
           firstDate: DateTime.now(),
           lastDate: DateTime(2030),
         );
-        if (picked != null) {
+        if (mounted && picked != null) {
           setState(() {
-            _dueDate = '${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}';
+            _selectedDate = picked;
           });
         }
       },
@@ -217,9 +242,11 @@ class _NewTaskPageState extends State<NewTaskPage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              _dueDate,
+              _selectedDate != null 
+                ? '${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.year}'
+                : 'mm/dd/yyyy',
               style: TextStyle(
-                color: _dueDate == 'mm/dd/yyyy' ? _textPrimary : _textPrimary,
+                color: _selectedDate == null ? _textSecondary : _textPrimary,
                 fontSize: 16,
               ),
             ),
@@ -298,7 +325,7 @@ class _NewTaskPageState extends State<NewTaskPage> {
       ),
       child: SafeArea( // Keep it above device rounded edges/software bars
         child: ElevatedButton(
-          onPressed: _isSubmitting ? null : _submitMockBackend,
+          onPressed: _isSubmitting ? null : _submit,
           style: ElevatedButton.styleFrom(
             backgroundColor: _orange,
             disabledBackgroundColor: _orange.withOpacity(0.5),

@@ -49,4 +49,27 @@ class CustomerRepositoryImpl implements CustomerRepository {
       return const Left(ServerFailure('Gagal membuat data pelanggan'));
     }
   }
+  @override
+  Future<Either<Failure, Customer>> updateCustomer(Customer customer) async {
+    try {
+      final updatedCustomer = await remoteDataSource.updateCustomer(customer);
+      return Right(updatedCustomer);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal memperbarui data pelanggan'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteCustomer(String id) async {
+    try {
+      await remoteDataSource.deleteCustomer(id);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal menghapus data pelanggan'));
+    }
+  }
 }

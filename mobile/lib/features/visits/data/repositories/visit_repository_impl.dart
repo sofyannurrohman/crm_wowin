@@ -6,21 +6,30 @@ import '../../domain/entities/visit_activity.dart';
 import '../../domain/repositories/visit_repository.dart';
 import '../datasources/visit_remote_data_source.dart';
 
+import '../datasources/visit_local_data_source.dart';
+
 class VisitRepositoryImpl implements VisitRepository {
   final VisitRemoteDataSource remoteDataSource;
+  final VisitLocalDataSource localDataSource;
 
-  VisitRepositoryImpl(this.remoteDataSource);
+  VisitRepositoryImpl({
+    required this.remoteDataSource,
+    required this.localDataSource,
+  });
 
   @override
   Future<Either<Failure, void>> checkIn(CheckInRequest request) async {
     try {
       await remoteDataSource.checkIn(request);
       return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(
-          ServerFailure('Terjadi kesalahan yang tidak terduga saat Check-in'));
+      // Fallback to offline cache
+      try {
+        await localDataSource.cacheCheckIn(request, request.overrideReason);
+        return const Right(null);
+      } catch (cacheError) {
+        return Left(ServerFailure('Gagal menyimpan data kunjungan secara offline: ${cacheError.toString()}'));
+      }
     }
   }
 
@@ -29,11 +38,14 @@ class VisitRepositoryImpl implements VisitRepository {
     try {
       await remoteDataSource.checkOut(request);
       return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(
-          ServerFailure('Terjadi kesalahan yang tidak terduga saat Check-out'));
+      // Fallback to offline cache
+      try {
+        await localDataSource.cacheCheckOut(request, request.signaturePath, request.inventoryData);
+        return const Right(null);
+      } catch (cacheError) {
+        return Left(ServerFailure('Gagal menyimpan data check-out secara offline: ${cacheError.toString()}'));
+      }
     }
   }
 

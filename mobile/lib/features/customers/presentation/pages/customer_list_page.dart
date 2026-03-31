@@ -7,6 +7,7 @@ import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
 import '../bloc/customer_state.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../../../core/widgets/app_sidebar.dart';
 import '../../domain/entities/customer.dart';
 
 class CustomerListPage extends StatefulWidget {
@@ -33,10 +34,19 @@ class _CustomerListPageState extends State<CustomerListPage> {
   }
 
   void _fetchCustomers() {
+    String? status;
+    if (_selectedFilter == 'Prospects') {
+      status = 'prospect';
+    } else if (_selectedFilter == 'Active') {
+      status = 'active';
+    } else if (_selectedFilter == 'Inactive') {
+      status = 'inactive';
+    }
+
     context.read<CustomerBloc>().add(
           FetchCustomers(
             query: _searchController.text,
-            status: _selectedFilter == 'All' ? null : _selectedFilter,
+            status: status,
           ),
         );
   }
@@ -45,6 +55,7 @@ class _CustomerListPageState extends State<CustomerListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
+      drawer: const AppSidebar(),
       body: SafeArea(
         child: Column(
           children: [
@@ -83,7 +94,6 @@ class _CustomerListPageState extends State<CustomerListPage> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -93,13 +103,18 @@ class _CustomerListPageState extends State<CustomerListPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _orange.withOpacity(0.1),
-              shape: BoxShape.circle,
+          Builder(
+            builder: (context) => GestureDetector(
+              onTap: () => Scaffold.of(context).openDrawer(),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: _orange.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(LucideIcons.menu, color: _orange, size: 22),
+              ),
             ),
-            child: const Icon(LucideIcons.menu, color: _orange, size: 22),
           ),
           const Text(
             'Customers',
@@ -217,45 +232,6 @@ class _CustomerListPageState extends State<CustomerListPage> {
     );
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(LucideIcons.home, 'Home', false, onTap: () => context.goNamed(kRouteDashboard)),
-          _buildNavItem(LucideIcons.users, 'Customers', true),
-          _buildNavItem(LucideIcons.checkCircle, 'Tasks', false),
-          _buildNavItem(LucideIcons.user, 'Profile', false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: isActive ? _orange : const Color(0xFF9CA3AF), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? _orange : const Color(0xFF9CA3AF),
-              fontSize: 12,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _CustomerCard extends StatelessWidget {

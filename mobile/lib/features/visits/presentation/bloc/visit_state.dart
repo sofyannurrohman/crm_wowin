@@ -14,10 +14,13 @@ class VisitLoading extends VisitState {}
 
 class VisitSuccess extends VisitState {
   final String message;
-  const VisitSuccess(this.message);
+  final String? scheduleId;
+  final String? customerName;
+  final DateTime? checkInTime;
+  const VisitSuccess(this.message, {this.scheduleId, this.customerName, this.checkInTime});
 
   @override
-  List<Object> get props => [message];
+  List<Object?> get props => [message, scheduleId, customerName, checkInTime];
 }
 
 class VisitError extends VisitState {

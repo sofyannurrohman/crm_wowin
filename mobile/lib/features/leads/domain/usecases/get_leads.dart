@@ -8,7 +8,7 @@ class GetLeads {
 
   GetLeads(this.repository);
 
-  Future<Either<Failure, List<Lead>>> call({String? status}) async {
-    return await repository.getLeads(status: status);
+  Future<Either<Failure, List<Lead>>> call({String? query, String? status}) async {
+    return await repository.getLeads(query: query, status: status);
   }
 }

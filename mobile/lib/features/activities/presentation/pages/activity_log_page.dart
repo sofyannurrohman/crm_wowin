@@ -4,10 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../../../core/widgets/app_sidebar.dart';
+import '../../../visits/domain/entities/visit_activity.dart';
+import '../../../visits/presentation/widgets/check_out_sheet.dart';
+import '../../../../l10n/app_localizations.dart';
 import '../../../visits/presentation/bloc/visit_bloc.dart';
 import '../../../visits/presentation/bloc/visit_event.dart';
 import '../../../visits/presentation/bloc/visit_state.dart';
-import '../../../visits/domain/entities/visit_activity.dart';
 
 class ActivityLogPage extends StatefulWidget {
   const ActivityLogPage({super.key});
@@ -40,6 +43,7 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
     return Scaffold(
       backgroundColor: _bg,
       appBar: _buildAppBar(context),
+      drawer: const AppSidebar(),
       body: BlocBuilder<VisitBloc, VisitState>(
         builder: (context, state) {
           if (state is VisitLoading) {
@@ -56,7 +60,6 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
           return const Center(child: Text('Tarik untuk memuat aktivitas'));
         },
       ),
-      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -78,9 +81,11 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
       backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,
-      leading: IconButton(
-        icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF4B5563)),
-        onPressed: () => context.pop(),
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: const Icon(LucideIcons.menu, color: Color(0xFF4B5563)),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
       ),
       centerTitle: true,
       title: const Text(
@@ -136,8 +141,9 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
   Widget _buildActivityList(List<VisitActivity> activities) {
     // Filter by tab
     final filtered = activities.where((a) {
-      if (_selectedTab == 1) return a.type == 'checkin';
-      if (_selectedTab == 2) return a.type == 'checkout';
+      final normalizedType = a.type.toLowerCase().replaceAll('-', ''); // 'checkin' or 'checkout'
+      if (_selectedTab == 1) return normalizedType == 'checkin';
+      if (_selectedTab == 2) return normalizedType == 'checkout';
       return true;
     }).toList();
 
@@ -155,14 +161,19 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
     Color iconColor;
     Color iconBgColor;
 
-    if (item.type == 'checkin') {
+    final type = item.type.toLowerCase().replaceAll('-', '');
+    if (type == 'checkin') {
       icon = LucideIcons.mapPin;
       iconColor = _orange;
       iconBgColor = const Color(0xFFFFF7ED);
-    } else {
+    } else if (type == 'checkout') {
       icon = LucideIcons.checkCircle;
       iconColor = const Color(0xFF10B981);
       iconBgColor = const Color(0xFFF0FDF4);
+    } else {
+      icon = LucideIcons.activity;
+      iconColor = Colors.blue;
+      iconBgColor = const Color(0xFFEFF6FF);
     }
 
     return IntrinsicHeight(
@@ -201,7 +212,11 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          item.type == 'checkin' ? 'Check-in di Lokasi' : 'Check-out & Hasil Kunjungan',
+                          item.type.toLowerCase().contains('check-in') || item.type.toLowerCase() == 'checkin'
+                              ? 'Check-in di Lokasi' 
+                              : item.type.toLowerCase().contains('check-out') || item.type.toLowerCase() == 'checkout'
+                                  ? 'Check-out & Hasil Kunjungan'
+                                  : 'Aktivitas: ${item.type}',
                           style: const TextStyle(
                             color: _textPrimary,
                             fontSize: 16,
@@ -229,6 +244,30 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
                     DateFormat('MMM d, yyyy').format(item.createdAt),
                     style: TextStyle(color: _textSecondary.withOpacity(0.5), fontSize: 11),
                   ),
+                  if (type == 'checkin') ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => CheckOutSheet(
+                            scheduleId: item.scheduleId ?? 'adhoc',
+                            customerName: 'Customer Visit', // In real app, fetch from ID
+                          ),
+                        );
+                      },
+                      icon: const Icon(LucideIcons.clipboardCheck, size: 14),
+                      label: const Text('Complete Outcome', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _orange,
+                        side: const BorderSide(color: _orange, width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -238,44 +277,4 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(LucideIcons.home, 'Home', false, () => context.goNamed(kRouteDashboard)),
-          _buildNavItem(LucideIcons.users, 'Leads', false, () {}),
-          _buildNavItem(LucideIcons.history, 'Activities', true, () {}),
-          _buildNavItem(LucideIcons.checkSquare, 'Tasks', false, () => context.goNamed(kRouteTasks)),
-          _buildNavItem(Icons.more_horiz, 'More', false, () {}),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: isActive ? _orange : const Color(0xFF9CA3AF), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? _orange : const Color(0xFF9CA3AF),
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

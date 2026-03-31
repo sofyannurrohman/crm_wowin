@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'deal_item.dart';
+import '../../../customers/domain/entities/customer.dart';
 
 part 'deal.freezed.dart';
 part 'deal.g.dart';
@@ -18,6 +19,7 @@ abstract class Deal with _$Deal {
     @JsonKey(name: 'expected_close') DateTime? expectedClose,
     String? description,
     List<DealItem>? items,
+    Customer? customer,
   }) = _Deal;
 
   factory Deal.fromJson(Map<String, dynamic> json) => _$DealFromJson(json);

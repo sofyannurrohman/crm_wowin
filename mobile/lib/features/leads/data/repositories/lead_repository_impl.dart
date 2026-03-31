@@ -11,9 +11,13 @@ class LeadRepositoryImpl implements LeadRepository {
   LeadRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<Either<Failure, List<Lead>>> getLeads({String? status}) async {
+  Future<Either<Failure, List<Lead>>> getLeads(
+      {String? query, String? status}) async {
     try {
-      final leads = await remoteDataSource.getLeads(status: status);
+      final leads = await remoteDataSource.getLeads(
+        query: query,
+        status: status,
+      );
       return Right(leads);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -44,6 +48,30 @@ class LeadRepositoryImpl implements LeadRepository {
       return Left(ServerFailure(e.message));
     } catch (e) {
       return const Left(ServerFailure('Gagal membuat lead baru'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Lead>> updateLead(Lead lead) async {
+    try {
+      final result = await remoteDataSource.updateLead(lead);
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal memperbarui lead'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteLead(String id) async {
+    try {
+      await remoteDataSource.deleteLead(id);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal menghapus lead'));
     }
   }
 

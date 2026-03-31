@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import '../../../../core/widgets/app_sidebar.dart';
 
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_state.dart';
@@ -70,6 +72,7 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
     return Scaffold(
       backgroundColor: _bg,
       appBar: _buildAppBar(context),
+      drawer: const AppSidebar(),
       body: BlocBuilder<VisitBloc, VisitState>(
         builder: (context, state) {
           // Wrap in state loading logic once implemented back end side
@@ -103,7 +106,6 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
           );
         },
       ),
-      bottomNavigationBar: _buildBottomNav(context),
     );
   }
 
@@ -112,9 +114,11 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
       backgroundColor: _bg,
       elevation: 0,
       scrolledUnderElevation: 0,
-      leading: IconButton(
-        icon: const Icon(LucideIcons.arrowLeft, color: _orange),
-        onPressed: () => context.pop(),
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: const Icon(LucideIcons.menu, color: _orange),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
       ),
       centerTitle: true,
       title: const Text(
@@ -267,12 +271,18 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: const GoogleMap(
-              initialCameraPosition: CameraPosition(target: LatLng(lat, lng), zoom: 12),
-              zoomControlsEnabled: false,
-              myLocationButtonEnabled: false,
-              mapToolbarEnabled: false,
-              liteModeEnabled: true, // Optimizes performance for static-like maps
+            child: FlutterMap(
+              options: const MapOptions(
+                initialCenter: LatLng(lat, lng),
+                initialZoom: 12.0,
+                interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.wowin.crm',
+                ),
+              ],
             ),
           ),
         ),
@@ -489,41 +499,4 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(LucideIcons.home, 'HOME', false),
-          _buildNavItem(LucideIcons.history, 'HISTORY', true), // History active
-          _buildNavItem(LucideIcons.barChart2, 'REPORTS', false),
-          _buildNavItem(LucideIcons.settings, 'SETTINGS', false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: isActive ? _orange : const Color(0xFF9CA3AF), size: 24),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: isActive ? _orange : const Color(0xFF9CA3AF),
-            fontSize: 11,
-            fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-            letterSpacing: 1.0, 
-          ),
-        ),
-      ],
-    );
-  }
 }

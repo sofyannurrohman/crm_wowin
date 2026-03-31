@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wowin_crm/l10n/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -47,6 +48,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
       body: BlocListener<AuthBloc, AuthState>(
@@ -71,10 +73,10 @@ class _LoginPageState extends State<LoginPage> {
                 _buildHeader(),
 
                 // ── White Card Form ────────────────────────────────────
-                _buildFormCard(),
+                _buildFormCard(context, l10n),
 
                 // ── Bottom Footer ──────────────────────────────────────
-                _buildFooter(),
+                _buildFooter(l10n),
               ],
             ),
           ),
@@ -141,7 +143,7 @@ class _LoginPageState extends State<LoginPage> {
   // ---------------------------------------------------------------------------
   // Form Card: white rounded card with all form fields
   // ---------------------------------------------------------------------------
-  Widget _buildFormCard() {
+  Widget _buildFormCard(BuildContext context, AppLocalizations l10n) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
@@ -163,10 +165,10 @@ class _LoginPageState extends State<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Title
-              const Center(
+              Center(
                 child: Text(
-                  'Selamat Datang',
-                  style: TextStyle(
+                  l10n.welcomeBack,
+                  style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF1A1A1A),
@@ -174,10 +176,10 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const SizedBox(height: 6),
-              const Center(
+              Center(
                 child: Text(
-                  'Masukkan akun anda untuk login',
-                  style: TextStyle(
+                  l10n.loginSubtitle,
+                  style: const TextStyle(
                     fontSize: 14,
                     color: Color(0xFF8E8E93),
                   ),
@@ -186,9 +188,9 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 28),
 
               // Email / Username label
-              const Text(
-                'Email or Username',
-                style: TextStyle(
+              Text(
+                l10n.emailOrUsername,
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF1A1A1A),
@@ -197,12 +199,12 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 8),
               _buildTextField(
                 controller: _emailController,
-                hint: 'Enter your email',
+                hint: l10n.emailHint,
                 prefixIcon: LucideIcons.user,
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Email tidak boleh kosong';
+                    return l10n.emailEmptyError;
                   }
                   return null;
                 },
@@ -213,9 +215,9 @@ class _LoginPageState extends State<LoginPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Password',
-                    style: TextStyle(
+                  Text(
+                    l10n.password,
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Color(0xFF1A1A1A),
@@ -225,9 +227,9 @@ class _LoginPageState extends State<LoginPage> {
                     onTap: () {
                       // TODO: navigate to forgot password
                     },
-                    child: const Text(
-                      'Forgot Password?',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.forgotPassword,
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: _orange,
@@ -237,7 +239,7 @@ class _LoginPageState extends State<LoginPage> {
                 ],
               ),
               const SizedBox(height: 8),
-              _buildPasswordField(),
+              _buildPasswordField(l10n),
               const SizedBox(height: 16),
 
               // Remember me checkbox
@@ -263,9 +265,9 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Text(
-                      'Remember me for 30 days',
-                      style: TextStyle(
+                    Text(
+                      l10n.rememberMe,
+                      style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF3C3C43),
                       ),
@@ -302,9 +304,9 @@ class _LoginPageState extends State<LoginPage> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text(
-                              'Log in',
-                              style: TextStyle(
+                          : Text(
+                              l10n.login,
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -324,9 +326,9 @@ class _LoginPageState extends State<LoginPage> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      "Don't have an account? ",
-                      style: TextStyle(
+                    Text(
+                      "${l10n.dontHaveAccount} ",
+                      style: const TextStyle(
                         fontSize: 14,
                         color: Color(0xFF3C3C43),
                       ),
@@ -335,9 +337,9 @@ class _LoginPageState extends State<LoginPage> {
                       onTap: () {
                         context.goNamed(kRouteRegister);
                       },
-                      child: const Text(
-                        'Create an Account',
-                        style: TextStyle(
+                      child: Text(
+                        l10n.createAccount,
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: _orange,
@@ -400,13 +402,13 @@ class _LoginPageState extends State<LoginPage> {
   // ---------------------------------------------------------------------------
   // Password field with visibility toggle
   // ---------------------------------------------------------------------------
-  Widget _buildPasswordField() {
+  Widget _buildPasswordField(AppLocalizations l10n) {
     return TextFormField(
       controller: _passwordController,
       obscureText: !_isPasswordVisible,
       style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A1A)),
       decoration: InputDecoration(
-        hintText: 'Enter your password',
+        hintText: l10n.passwordHint,
         hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 15),
         prefixIcon:
             const Icon(LucideIcons.lock, size: 20, color: Color(0xFFAAAAAA)),
@@ -443,7 +445,7 @@ class _LoginPageState extends State<LoginPage> {
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
-          return 'Kata sandi tidak boleh kosong';
+          return l10n.passwordEmptyError;
         }
         return null;
       },
@@ -453,14 +455,14 @@ class _LoginPageState extends State<LoginPage> {
   // ---------------------------------------------------------------------------
   // Footer: copyright + policy links
   // ---------------------------------------------------------------------------
-  Widget _buildFooter() {
+  Widget _buildFooter(AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 32, top: 8),
       child: Column(
         children: [
-          const Text(
-            '© 2024 Wowin CRM Enterprise. All rights reserved.',
-            style: TextStyle(
+          Text(
+            l10n.copyright,
+            style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF8E8E93),
             ),
@@ -470,15 +472,15 @@ class _LoginPageState extends State<LoginPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _footerLink('Privacy Policy'),
+              _footerLink(l10n.privacyPolicy),
               const SizedBox(width: 4),
               const Text('·', style: TextStyle(color: Color(0xFF8E8E93))),
               const SizedBox(width: 4),
-              _footerLink('Terms of Service'),
+              _footerLink(l10n.termsOfService),
               const SizedBox(width: 4),
               const Text('·', style: TextStyle(color: Color(0xFF8E8E93))),
               const SizedBox(width: 4),
-              _footerLink('Contact Support'),
+              _footerLink(l10n.contactSupport),
             ],
           ),
         ],

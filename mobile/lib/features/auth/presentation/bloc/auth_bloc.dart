@@ -19,6 +19,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LoginSubmitted>(_onLoginSubmitted);
     on<RegisterSubmitted>(_onRegisterSubmitted);
     on<LogoutRequested>(_onLogoutRequested);
+    on<FetchProfile>(_onFetchProfile);
+  }
+
+  Future<void> _onFetchProfile(
+    FetchProfile event,
+    Emitter<AuthState> emit,
+  ) async {
+    final result = await authRepository.getMe();
+    result.fold(
+      (failure) => null, // Just stay in current state or handle error
+      (user) => emit(Authenticated(user)),
+    );
   }
 
   Future<void> _onCheckAuthStatus(

@@ -1,5 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart' hide MapEvent;
+import 'package:latlong2/latlong.dart';
 import '../../../customers/domain/usecases/get_customers.dart';
 import 'map_event.dart';
 import 'map_state.dart';
@@ -26,12 +28,8 @@ class MapBloc extends Bloc<MapEvent, MapState> {
         final markers = customers
             .where((c) => c.latitude != null && c.longitude != null)
             .map((c) => Marker(
-                  markerId: MarkerId(c.id),
-                  position: LatLng(c.latitude!, c.longitude!),
-                  infoWindow: InfoWindow(
-                    title: c.name,
-                    snippet: c.companyName ?? c.address,
-                  ),
+                  point: LatLng(c.latitude!, c.longitude!),
+                  child: const Icon(Icons.location_on, color: Colors.blue, size: 30),
                 ))
             .toSet();
         emit(MapDataLoaded(customers: customers, markers: markers));

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_state.dart';
@@ -318,20 +319,26 @@ class _VisitDetailPageState extends State<VisitDetailPage> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: GoogleMap(
-          initialCameraPosition: const CameraPosition(
-            target: LatLng(lat, lng),
-            zoom: 12,
+        child: FlutterMap(
+          options: const MapOptions(
+            initialCenter: LatLng(lat, lng),
+            initialZoom: 12.0,
+            interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
           ),
-          markers: {
-            const Marker(
-              markerId: MarkerId('visit_location'),
-              position: LatLng(lat, lng),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.wowin.crm',
             ),
-          },
-          zoomControlsEnabled: false,
-          mapToolbarEnabled: false,
-          myLocationButtonEnabled: false,
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: const LatLng(lat, lng),
+                  child: const Icon(Icons.location_on, color: _orange, size: 30),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

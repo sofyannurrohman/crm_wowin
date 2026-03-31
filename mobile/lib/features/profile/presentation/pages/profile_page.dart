@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/router/route_constants.dart';
-
+import '../../../../core/widgets/app_sidebar.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../auth/domain/entities/user_entity.dart';
+import '../../../../core/api/api_endpoints.dart';
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -16,64 +22,62 @@ class _ProfilePageState extends State<ProfilePage> {
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
 
-  // Mock Backend State
-  bool _isLoading = false;
-  Map<String, dynamic> _userProfile = {};
-
   @override
   void initState() {
     super.initState();
-    _fetchProfile();
-  }
-
-  Future<void> _fetchProfile() async {
-    setState(() => _isLoading = true);
-    
-    // Simulate API call to fetch user profile
-    await Future.delayed(const Duration(milliseconds: 600));
-    
-    setState(() {
-      _isLoading = false;
-      _userProfile = {
-        'name': 'Alex Rivera',
-        'role': 'SENIOR SALES EXECUTIVE',
-        'email': 'alex.rivera@wowin.com',
-        'phone': '+1 (555) 234-5678',
-        'location': 'Austin, TX, USA',
-        'language': 'English',
-        'imageUrl': 'https://randomuser.me/api/portraits/men/32.jpg',
-      };
-    });
+    context.read<AuthBloc>().add(FetchProfile());
   }
 
   Future<void> _handleLogout() async {
-    // Simulate Logout
-    showDialog(
+    final confirmed = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator(color: _orange)),
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Logout'),
+        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      )
     );
-    
-    await Future.delayed(const Duration(seconds: 1));
-    if (!mounted) return;
-    
-    context.pop(); // Remove dialog
-    // Navigate strictly back to login in real scenario. Since there's no auth route explicit here, placeholder.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Logged out successfully')),
-    );
-    // context.goNamed(kRouteLogin);
+
+    if (confirmed == true) {
+      if (!mounted) return;
+      context.read<AuthBloc>().add(LogoutRequested());
+      // AuthGuard or AppRouter usually handles the redirect to Login based on AuthState
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      appBar: _buildAppBar(),
-      body: _isLoading 
-          ? const Center(child: CircularProgressIndicator(color: _orange))
-          : _buildProfileContent(),
-      bottomNavigationBar: _buildBottomNav(context),
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is Unauthenticated) {
+          context.goNamed(kRouteLogin);
+        }
+      },
+      builder: (context, state) {
+        UserEntity? user;
+        bool isLoading = false;
+
+        if (state is Authenticated) {
+          user = state.user;
+        } else if (state is AuthLoading) {
+          isLoading = true;
+        }
+
+        return Scaffold(
+          backgroundColor: _bg,
+          appBar: _buildAppBar(),
+          drawer: const AppSidebar(),
+          body: isLoading 
+              ? const Center(child: CircularProgressIndicator(color: _orange))
+              : (user != null ? _buildProfileContent(user) : const Center(child: Text('Gagal memuat profil'))),
+        );
+      },
     );
   }
 
@@ -82,9 +86,11 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: _bg,
       elevation: 0,
       scrolledUnderElevation: 0,
-      leading: IconButton(
-        icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF4B5563)),
-        onPressed: () => context.pop(),
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: const Icon(LucideIcons.menu, color: Color(0xFF4B5563)),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
       ),
       centerTitle: true,
       title: const Text(
@@ -104,22 +110,20 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildProfileContent() {
-    if (_userProfile.isEmpty) return const SizedBox();
-
+  Widget _buildProfileContent(UserEntity user) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         children: [
-          _buildHeader(),
+          _buildHeader(user),
           const SizedBox(height: 32),
           _buildSectionTitle('PERSONAL INFORMATION'),
           const SizedBox(height: 12),
-          _buildPersonalInfoCard(),
+          _buildPersonalInfoCard(user),
           const SizedBox(height: 32),
           _buildSectionTitle('ACCOUNT SETTINGS'),
           const SizedBox(height: 12),
-          _buildAccountSettingsCard(),
+          _buildAccountSettingsCard(user),
           const SizedBox(height: 32),
           _buildLogoutButton(),
           const SizedBox(height: 48),
@@ -128,7 +132,11 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(UserEntity user) {
+    final avatarUrl = user.avatarPath != null 
+      ? '${ApiEndpoints.uploadsBaseUrl}${user.avatarPath}'
+      : 'https://ui-avatars.com/api/?name=${user.name}&background=EA580C&color=fff';
+
     return Column(
       children: [
         Stack(
@@ -137,11 +145,11 @@ class _ProfilePageState extends State<ProfilePage> {
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFFED7AA), width: 2), // Light orange halo
+                border: Border.all(color: const Color(0xFFFED7AA), width: 2),
               ),
               child: CircleAvatar(
                 radius: 46,
-                backgroundImage: NetworkImage(_userProfile['imageUrl']),
+                backgroundImage: NetworkImage(avatarUrl),
                 backgroundColor: Colors.grey.shade200,
               ),
             ),
@@ -162,7 +170,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         const SizedBox(height: 16),
         Text(
-          _userProfile['name'],
+          user.name,
           style: const TextStyle(
             color: _textPrimary,
             fontSize: 22,
@@ -171,7 +179,7 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         const SizedBox(height: 6),
         Text(
-          _userProfile['role'],
+          user.role.toUpperCase(),
           style: const TextStyle(
             color: _orange,
             fontSize: 12,
@@ -186,7 +194,7 @@ class _ProfilePageState extends State<ProfilePage> {
             Icon(LucideIcons.mail, size: 14, color: _textSecondary.withOpacity(0.8)),
             const SizedBox(width: 6),
             Text(
-              _userProfile['email'],
+              user.email,
               style: TextStyle(
                 color: _textSecondary.withOpacity(0.9),
                 fontSize: 13,
@@ -214,7 +222,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildPersonalInfoCard() {
+  Widget _buildPersonalInfoCard(UserEntity user) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -228,7 +236,7 @@ class _ProfilePageState extends State<ProfilePage> {
             iconColor: _orange,
             iconBg: const Color(0xFFFFF7ED),
             label: 'Full Name',
-            value: _userProfile['name'],
+            value: user.name,
             showDivider: true,
           ),
           _buildInfoItem(
@@ -236,15 +244,15 @@ class _ProfilePageState extends State<ProfilePage> {
             iconColor: _orange,
             iconBg: const Color(0xFFFFF7ED),
             label: 'Phone Number',
-            value: _userProfile['phone'],
+            value: user.phone ?? 'Not set',
             showDivider: true,
           ),
           _buildInfoItem(
-            icon: LucideIcons.mapPin,
+            icon: LucideIcons.hash,
             iconColor: _orange,
             iconBg: const Color(0xFFFFF7ED),
-            label: 'Location',
-            value: _userProfile['location'],
+            label: 'Employee Code',
+            value: user.employeeCode ?? '-',
             showDivider: false,
           ),
         ],
@@ -252,7 +260,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildAccountSettingsCard() {
+  Widget _buildAccountSettingsCard(UserEntity user) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -274,7 +282,7 @@ class _ProfilePageState extends State<ProfilePage> {
           _buildSettingItem(
             icon: LucideIcons.globe,
             title: 'Language',
-            trailingText: _userProfile['language'],
+            trailingText: 'Indonesian',
             showDivider: false,
           ),
         ],
@@ -426,47 +434,4 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(LucideIcons.home, 'Home', false, () => context.goNamed(kRouteDashboard)),
-          _buildNavItem(LucideIcons.users, 'Leads', false, () {}),
-          _buildNavItem(LucideIcons.checkSquare, 'Tasks', false, () => context.goNamed(kRouteTasks)),
-          _buildNavItem(LucideIcons.user, 'Profile', true, () {}),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isActive ? Icons.account_circle : icon, 
-            color: isActive ? _orange : const Color(0xFF9CA3AF), 
-            size: 24
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? _orange : const Color(0xFF9CA3AF),
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

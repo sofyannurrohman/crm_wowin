@@ -82,7 +82,6 @@ class _DealDetailPageState extends State<DealDetailPage> {
             return const Center(child: Text('Deal details unavailable'));
           },
         ),
-        bottomNavigationBar: _buildBottomNav(context),
       ),
     );
   }
@@ -104,9 +103,9 @@ class _DealDetailPageState extends State<DealDetailPage> {
                 const SizedBox(height: 12),
                 _buildCurrentStageCard(deal),
                 const SizedBox(height: 12),
+                _buildVisitSection(context, deal),
+                const SizedBox(height: 12),
                 _buildDealConfidenceCard(deal),
-                const SizedBox(height: 16),
-                _buildUpdateButton(context, deal),
               ],
             ),
           ),
@@ -283,7 +282,128 @@ class _DealDetailPageState extends State<DealDetailPage> {
     );
   }
 
-  Widget _buildCurrentStageCard(dynamic deal) {
+  Widget _buildCurrentStageCard(Deal deal) {
+    return GestureDetector(
+      onTap: () => _showStagePicker(context, deal),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _orange.withOpacity(0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(color: _orange.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Tahapan Penjualan',
+                  style: TextStyle(color: Color(0xFF6B7280), fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: _lightOrangeBg, borderRadius: BorderRadius.circular(8)),
+                  child: Row(
+                    children: [
+                      const Icon(LucideIcons.edit3, color: _orange, size: 12),
+                      const SizedBox(width: 4),
+                      const Text('UBAH', style: TextStyle(color: _orange, fontSize: 10, fontWeight: FontWeight.w900)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              deal.stage.toUpperCase(),
+              style: const TextStyle(color: _orange, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+            ),
+            const SizedBox(height: 16),
+            _buildStageProgress(deal.stage),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStageProgress(String currentStage) {
+    final stages = ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won'];
+    final currentIndex = stages.indexOf(currentStage.toLowerCase());
+    
+    return Row(
+      children: List.generate(stages.length, (index) {
+        final isActive = index <= currentIndex;
+        final isLast = index == stages.length - 1;
+        return Expanded(
+          child: Row(
+            children: [
+              Container(
+                height: 6,
+                decoration: BoxDecoration(
+                  color: isActive ? _orange : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              if (!isLast) const SizedBox(width: 4),
+            ],
+          ),
+        );
+      }),
+    );
+  }
+
+  void _showStagePicker(BuildContext context, Deal deal) {
+    final stages = [
+      {'id': 'prospecting', 'label': 'Prospecting', 'desc': 'Identifikasi awal peluang'},
+      {'id': 'qualification', 'label': 'Qualification', 'desc': 'Validasi kebutuhan & budget'},
+      {'id': 'proposal', 'label': 'Proposal', 'desc': 'Pengiriman penawaran resmi'},
+      {'id': 'negotiation', 'label': 'Negotiation', 'desc': 'Diskusi harga & kontrak'},
+      {'id': 'closed_won', 'label': 'Closed Won', 'desc': 'Deal berhasil ditutup'},
+      {'id': 'closed_lost', 'label': 'Closed Lost', 'desc': 'Deal gagal/dibatalkan'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Pilih Tahapan Penjualan', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 20),
+            ...stages.map((s) {
+              final isCurrent = s['id'] == deal.stage;
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                title: Text(s['label']!, style: TextStyle(fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w600, color: isCurrent ? _orange : _textPrimary)),
+                subtitle: Text(s['desc']!),
+                trailing: isCurrent ? const Icon(LucideIcons.checkCircle2, color: _orange) : null,
+                onTap: () {
+                  context.read<DealBloc>().add(UpdateDealStageSubmitted(id: deal.id, stage: s['id']!));
+                  context.pop();
+                },
+              );
+            }).toList(),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVisitSection(BuildContext context, Deal deal) {
     return Container(
       padding: const EdgeInsets.all(20),
       width: double.infinity,
@@ -295,33 +415,83 @@ class _DealDetailPageState extends State<DealDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Tahapan Saat Ini',
-            style: TextStyle(
-              color: Color(0xFF6B7280),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Kunjungan Lapangan',
+                style: TextStyle(color: _textPrimary, fontSize: 15, fontWeight: FontWeight.w800),
+              ),
+              IconButton(
+                icon: const Icon(LucideIcons.calendarPlus, color: _orange, size: 20),
+                onPressed: () => _handleVisitAction(context, deal),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
-            deal.stage[0].toUpperCase() + deal.stage.substring(1),
-            style: const TextStyle(
-              color: _orange,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
+            'Verifikasi progres deal melalui kunjungan fisik atau meeting di lokasi pelanggan.',
+            style: TextStyle(color: _textSecondary.withOpacity(0.8), fontSize: 13, height: 1.4),
           ),
-          const SizedBox(height: 4),
-          Text(
-            deal.expectedClose != null ? 'Perkiraan tutup: \${deal.expectedClose.toLocal().toString().split(\' \')[0]}' : 'Tidak ada perkiraan waktu',
-            style: TextStyle(
-              color: _textSecondary.withOpacity(0.6),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: () => _handleVisitAction(context, deal),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: _orange),
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
+            child: const Text('Buat Jadwal / Check-in', style: TextStyle(color: _orange, fontWeight: FontWeight.bold)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _handleVisitAction(BuildContext context, Deal deal) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(LucideIcons.calendar, color: _orange),
+              title: const Text('Jadwalkan Kunjungan', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Atur waktu untuk meeting berikutnya'),
+              onTap: () {
+                context.pop();
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(LucideIcons.mapPin, color: _orange),
+              title: const Text('Check-in Sekarang', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Mulai kunjungan ad-hoc saat ini juga'),
+              onTap: () {
+                context.pop();
+                context.pushNamed(
+                  'visit_check_in', 
+                  extra: {
+                    'scheduleId': 'adhoc',
+                    'customerId': deal.customerId,
+                    'customerName': deal.customer?.name ?? deal.title,
+                    'customerAddress': deal.customer?.address ?? 'Alamat tidak tersedia',
+                    'targetLat': (deal.customer?.latitude ?? 0.0).toDouble(),
+                    'targetLng': (deal.customer?.longitude ?? 0.0).toDouble(),
+                    'targetRadiusMeters': (deal.customer?.checkinRadius ?? 500).toDouble(),
+                    'dealId': deal.id,
+                  }
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -386,52 +556,6 @@ class _DealDetailPageState extends State<DealDetailPage> {
     );
   }
 
-  Widget _buildUpdateButton(BuildContext context, dynamic deal) {
-    return BlocBuilder<DealBloc, DealState>(
-      builder: (context, state) {
-        final isLoading = state is DealLoading;
-
-        return ElevatedButton(
-          onPressed: isLoading
-              ? null
-              : () {
-                  // Trigger stage update to next logical stage
-                  final stages = ['lead', 'contacted', 'proposal', 'negotiation', 'won', 'lost'];
-                  final currentIndex = stages.indexOf(deal.stage);
-                  final nextStage = currentIndex != -1 && currentIndex < stages.length - 1 ? stages[currentIndex + 1] : deal.stage;
-                  context.read<DealBloc>().add(UpdateDealStageSubmitted(id: widget.dealId, stage: nextStage));
-                },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _orange,
-            disabledBackgroundColor: _orange.withOpacity(0.5),
-            minimumSize: const Size(double.infinity, 54),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            elevation: 2,
-            shadowColor: _orange.withOpacity(0.4),
-          ),
-          child: isLoading
-              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(LucideIcons.upload, color: Colors.white, size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      'Perbarui Tahapan',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-        );
-      },
-    );
-  }
 
   Widget _buildActivityTimeline(dynamic deal) {
     return Padding(
@@ -708,43 +832,6 @@ class _DealDetailPageState extends State<DealDetailPage> {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.only(bottom: 24, top: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(LucideIcons.briefcase, 'Penjualan', true),
-          _buildNavItem(LucideIcons.users, 'Kontak', false),
-          _buildNavItem(LucideIcons.checkSquare, 'Tugas', false),
-          _buildNavItem(LucideIcons.barChart2, 'Aktivitas', false),
-          _buildNavItem(LucideIcons.settings, 'Pengaturan', false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: isActive ? _orange : const Color(0xFF9CA3AF), size: 24),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: isActive ? _orange : const Color(0xFF9CA3AF),
-            fontSize: 11,
-            fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _AddProductSheet extends StatefulWidget {

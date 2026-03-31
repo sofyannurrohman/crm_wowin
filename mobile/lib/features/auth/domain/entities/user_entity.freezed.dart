@@ -16,11 +16,14 @@ T _$identity<T>(T value) => value;
 mixin _$UserEntity {
   String get id;
   String get email;
+  String get name;
   String get role;
-  @JsonKey(name: 'first_name')
-  String get firstName;
-  @JsonKey(name: 'last_name')
-  String get lastName;
+  String? get phone;
+  String? get status;
+  @JsonKey(name: 'avatar_path')
+  String? get avatarPath;
+  @JsonKey(name: 'employee_code')
+  String? get employeeCode;
 
   /// Create a copy of UserEntity
   /// with the given fields replaced by the non-null parameter values.
@@ -39,21 +42,24 @@ mixin _$UserEntity {
             other is UserEntity &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.email, email) || other.email == email) &&
+            (identical(other.name, name) || other.name == name) &&
             (identical(other.role, role) || other.role == role) &&
-            (identical(other.firstName, firstName) ||
-                other.firstName == firstName) &&
-            (identical(other.lastName, lastName) ||
-                other.lastName == lastName));
+            (identical(other.phone, phone) || other.phone == phone) &&
+            (identical(other.status, status) || other.status == status) &&
+            (identical(other.avatarPath, avatarPath) ||
+                other.avatarPath == avatarPath) &&
+            (identical(other.employeeCode, employeeCode) ||
+                other.employeeCode == employeeCode));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, email, role, firstName, lastName);
+  int get hashCode => Object.hash(runtimeType, id, email, name, role, phone,
+      status, avatarPath, employeeCode);
 
   @override
   String toString() {
-    return 'UserEntity(id: $id, email: $email, role: $role, firstName: $firstName, lastName: $lastName)';
+    return 'UserEntity(id: $id, email: $email, name: $name, role: $role, phone: $phone, status: $status, avatarPath: $avatarPath, employeeCode: $employeeCode)';
   }
 }
 
@@ -66,9 +72,12 @@ abstract mixin class $UserEntityCopyWith<$Res> {
   $Res call(
       {String id,
       String email,
+      String name,
       String role,
-      @JsonKey(name: 'first_name') String firstName,
-      @JsonKey(name: 'last_name') String lastName});
+      String? phone,
+      String? status,
+      @JsonKey(name: 'avatar_path') String? avatarPath,
+      @JsonKey(name: 'employee_code') String? employeeCode});
 }
 
 /// @nodoc
@@ -85,9 +94,12 @@ class _$UserEntityCopyWithImpl<$Res> implements $UserEntityCopyWith<$Res> {
   $Res call({
     Object? id = null,
     Object? email = null,
+    Object? name = null,
     Object? role = null,
-    Object? firstName = null,
-    Object? lastName = null,
+    Object? phone = freezed,
+    Object? status = freezed,
+    Object? avatarPath = freezed,
+    Object? employeeCode = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -98,18 +110,30 @@ class _$UserEntityCopyWithImpl<$Res> implements $UserEntityCopyWith<$Res> {
           ? _self.email
           : email // ignore: cast_nullable_to_non_nullable
               as String,
+      name: null == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
       role: null == role
           ? _self.role
           : role // ignore: cast_nullable_to_non_nullable
               as String,
-      firstName: null == firstName
-          ? _self.firstName
-          : firstName // ignore: cast_nullable_to_non_nullable
-              as String,
-      lastName: null == lastName
-          ? _self.lastName
-          : lastName // ignore: cast_nullable_to_non_nullable
-              as String,
+      phone: freezed == phone
+          ? _self.phone
+          : phone // ignore: cast_nullable_to_non_nullable
+              as String?,
+      status: freezed == status
+          ? _self.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String?,
+      avatarPath: freezed == avatarPath
+          ? _self.avatarPath
+          : avatarPath // ignore: cast_nullable_to_non_nullable
+              as String?,
+      employeeCode: freezed == employeeCode
+          ? _self.employeeCode
+          : employeeCode // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -210,17 +234,20 @@ extension UserEntityPatterns on UserEntity {
     TResult Function(
             String id,
             String email,
+            String name,
             String role,
-            @JsonKey(name: 'first_name') String firstName,
-            @JsonKey(name: 'last_name') String lastName)?
+            String? phone,
+            String? status,
+            @JsonKey(name: 'avatar_path') String? avatarPath,
+            @JsonKey(name: 'employee_code') String? employeeCode)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _UserEntity() when $default != null:
-        return $default(
-            _that.id, _that.email, _that.role, _that.firstName, _that.lastName);
+        return $default(_that.id, _that.email, _that.name, _that.role,
+            _that.phone, _that.status, _that.avatarPath, _that.employeeCode);
       case _:
         return orElse();
     }
@@ -244,16 +271,19 @@ extension UserEntityPatterns on UserEntity {
     TResult Function(
             String id,
             String email,
+            String name,
             String role,
-            @JsonKey(name: 'first_name') String firstName,
-            @JsonKey(name: 'last_name') String lastName)
+            String? phone,
+            String? status,
+            @JsonKey(name: 'avatar_path') String? avatarPath,
+            @JsonKey(name: 'employee_code') String? employeeCode)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _UserEntity():
-        return $default(
-            _that.id, _that.email, _that.role, _that.firstName, _that.lastName);
+        return $default(_that.id, _that.email, _that.name, _that.role,
+            _that.phone, _that.status, _that.avatarPath, _that.employeeCode);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -276,16 +306,19 @@ extension UserEntityPatterns on UserEntity {
     TResult? Function(
             String id,
             String email,
+            String name,
             String role,
-            @JsonKey(name: 'first_name') String firstName,
-            @JsonKey(name: 'last_name') String lastName)?
+            String? phone,
+            String? status,
+            @JsonKey(name: 'avatar_path') String? avatarPath,
+            @JsonKey(name: 'employee_code') String? employeeCode)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _UserEntity() when $default != null:
-        return $default(
-            _that.id, _that.email, _that.role, _that.firstName, _that.lastName);
+        return $default(_that.id, _that.email, _that.name, _that.role,
+            _that.phone, _that.status, _that.avatarPath, _that.employeeCode);
       case _:
         return null;
     }
@@ -298,9 +331,12 @@ class _UserEntity implements UserEntity {
   const _UserEntity(
       {required this.id,
       required this.email,
+      required this.name,
       required this.role,
-      @JsonKey(name: 'first_name') required this.firstName,
-      @JsonKey(name: 'last_name') required this.lastName});
+      this.phone,
+      this.status,
+      @JsonKey(name: 'avatar_path') this.avatarPath,
+      @JsonKey(name: 'employee_code') this.employeeCode});
   factory _UserEntity.fromJson(Map<String, dynamic> json) =>
       _$UserEntityFromJson(json);
 
@@ -309,13 +345,19 @@ class _UserEntity implements UserEntity {
   @override
   final String email;
   @override
+  final String name;
+  @override
   final String role;
   @override
-  @JsonKey(name: 'first_name')
-  final String firstName;
+  final String? phone;
   @override
-  @JsonKey(name: 'last_name')
-  final String lastName;
+  final String? status;
+  @override
+  @JsonKey(name: 'avatar_path')
+  final String? avatarPath;
+  @override
+  @JsonKey(name: 'employee_code')
+  final String? employeeCode;
 
   /// Create a copy of UserEntity
   /// with the given fields replaced by the non-null parameter values.
@@ -339,21 +381,24 @@ class _UserEntity implements UserEntity {
             other is _UserEntity &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.email, email) || other.email == email) &&
+            (identical(other.name, name) || other.name == name) &&
             (identical(other.role, role) || other.role == role) &&
-            (identical(other.firstName, firstName) ||
-                other.firstName == firstName) &&
-            (identical(other.lastName, lastName) ||
-                other.lastName == lastName));
+            (identical(other.phone, phone) || other.phone == phone) &&
+            (identical(other.status, status) || other.status == status) &&
+            (identical(other.avatarPath, avatarPath) ||
+                other.avatarPath == avatarPath) &&
+            (identical(other.employeeCode, employeeCode) ||
+                other.employeeCode == employeeCode));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode =>
-      Object.hash(runtimeType, id, email, role, firstName, lastName);
+  int get hashCode => Object.hash(runtimeType, id, email, name, role, phone,
+      status, avatarPath, employeeCode);
 
   @override
   String toString() {
-    return 'UserEntity(id: $id, email: $email, role: $role, firstName: $firstName, lastName: $lastName)';
+    return 'UserEntity(id: $id, email: $email, name: $name, role: $role, phone: $phone, status: $status, avatarPath: $avatarPath, employeeCode: $employeeCode)';
   }
 }
 
@@ -368,9 +413,12 @@ abstract mixin class _$UserEntityCopyWith<$Res>
   $Res call(
       {String id,
       String email,
+      String name,
       String role,
-      @JsonKey(name: 'first_name') String firstName,
-      @JsonKey(name: 'last_name') String lastName});
+      String? phone,
+      String? status,
+      @JsonKey(name: 'avatar_path') String? avatarPath,
+      @JsonKey(name: 'employee_code') String? employeeCode});
 }
 
 /// @nodoc
@@ -387,9 +435,12 @@ class __$UserEntityCopyWithImpl<$Res> implements _$UserEntityCopyWith<$Res> {
   $Res call({
     Object? id = null,
     Object? email = null,
+    Object? name = null,
     Object? role = null,
-    Object? firstName = null,
-    Object? lastName = null,
+    Object? phone = freezed,
+    Object? status = freezed,
+    Object? avatarPath = freezed,
+    Object? employeeCode = freezed,
   }) {
     return _then(_UserEntity(
       id: null == id
@@ -400,18 +451,30 @@ class __$UserEntityCopyWithImpl<$Res> implements _$UserEntityCopyWith<$Res> {
           ? _self.email
           : email // ignore: cast_nullable_to_non_nullable
               as String,
+      name: null == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
       role: null == role
           ? _self.role
           : role // ignore: cast_nullable_to_non_nullable
               as String,
-      firstName: null == firstName
-          ? _self.firstName
-          : firstName // ignore: cast_nullable_to_non_nullable
-              as String,
-      lastName: null == lastName
-          ? _self.lastName
-          : lastName // ignore: cast_nullable_to_non_nullable
-              as String,
+      phone: freezed == phone
+          ? _self.phone
+          : phone // ignore: cast_nullable_to_non_nullable
+              as String?,
+      status: freezed == status
+          ? _self.status
+          : status // ignore: cast_nullable_to_non_nullable
+              as String?,
+      avatarPath: freezed == avatarPath
+          ? _self.avatarPath
+          : avatarPath // ignore: cast_nullable_to_non_nullable
+              as String?,
+      employeeCode: freezed == employeeCode
+          ? _self.employeeCode
+          : employeeCode // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }

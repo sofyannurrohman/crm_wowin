@@ -22,6 +22,9 @@ _Deal _$DealFromJson(Map<String, dynamic> json) => _Deal(
       items: (json['items'] as List<dynamic>?)
           ?.map((e) => DealItem.fromJson(e as Map<String, dynamic>))
           .toList(),
+      customer: json['customer'] == null
+          ? null
+          : Customer.fromJson(json['customer'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$DealToJson(_Deal instance) => <String, dynamic>{
@@ -36,4 +39,5 @@ Map<String, dynamic> _$DealToJson(_Deal instance) => <String, dynamic>{
       'expected_close': instance.expectedClose?.toIso8601String(),
       'description': instance.description,
       'items': instance.items,
+      'customer': instance.customer,
     };

@@ -13,19 +13,28 @@ class CheckInSubmitted extends VisitEvent {
   final double latitude;
   final double longitude;
   final File photoFile;
+  final File? selfiePhotoFile;
   final String notes;
+  final String? dealId;
+  final String? overrideReason;
+  final String? customerName;
 
   const CheckInSubmitted({
     required this.scheduleId,
     required this.latitude,
     required this.longitude,
     required this.photoFile,
+    this.selfiePhotoFile,
     required this.notes,
+    this.dealId,
+    this.overrideReason,
+    this.customerName,
   });
 
   @override
-  List<Object> get props => [scheduleId, latitude, longitude, photoFile, notes];
+  List<Object?> get props => [scheduleId, latitude, longitude, photoFile, selfiePhotoFile, notes, dealId, overrideReason, customerName];
 }
+
 
 class CheckOutSubmitted extends VisitEvent {
   final String scheduleId;
@@ -34,6 +43,8 @@ class CheckOutSubmitted extends VisitEvent {
   final String visitResult;
   final String nextAction;
   final String nextVisitDate;
+  final String? signaturePath;
+  final String? inventoryData;
 
   const CheckOutSubmitted({
     required this.scheduleId,
@@ -42,11 +53,13 @@ class CheckOutSubmitted extends VisitEvent {
     required this.visitResult,
     required this.nextAction,
     this.nextVisitDate = '',
+    this.signaturePath,
+    this.inventoryData,
   });
 
   @override
-  List<Object> get props =>
-      [scheduleId, latitude, longitude, visitResult, nextAction, nextVisitDate];
+  List<Object?> get props =>
+      [scheduleId, latitude, longitude, visitResult, nextAction, nextVisitDate, signaturePath, inventoryData];
 }
 
 class FetchActivities extends VisitEvent {

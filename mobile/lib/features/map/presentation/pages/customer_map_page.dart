@@ -4,7 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../bloc/map_bloc.dart';
 import '../bloc/map_event.dart';
 import '../bloc/map_state.dart';
@@ -18,9 +19,8 @@ class CustomerMapPage extends StatefulWidget {
 }
 
 class _CustomerMapPageState extends State<CustomerMapPage> {
-  GoogleMapController? _controller;
-  static const LatLng _initialPosition =
-      LatLng(-6.200000, 106.816666); // Jakarta
+  final MapController _mapController = MapController();
+  static const LatLng _initialPosition = LatLng(-6.200000, 106.816666); // Jakarta
 
   @override
   void initState() {
@@ -47,16 +47,24 @@ class _CustomerMapPageState extends State<CustomerMapPage> {
           if (state is MapLoading) {
             return const Center(child: CircularProgressIndicator());
           } else if (state is MapDataLoaded) {
-            return GoogleMap(
-              initialCameraPosition: const CameraPosition(
-                target: _initialPosition,
-                zoom: 12,
+            return FlutterMap(
+              mapController: _mapController,
+              options: const MapOptions(
+                initialCenter: _initialPosition,
+                initialZoom: 12.0,
               ),
-              onMapCreated: (controller) => _controller = controller,
-              markers: state.markers,
-              polylines: state.polylines,
-              myLocationEnabled: true,
-              myLocationButtonEnabled: true,
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.wowin.crm',
+                ),
+                PolylineLayer(
+                  polylines: state.polylines.toList(),
+                ),
+                MarkerLayer(
+                  markers: state.markers.toList(),
+                ),
+              ],
             );
           } else if (state is MapError) {
             return Center(child: Text(state.message));

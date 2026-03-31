@@ -1,0 +1,16 @@
+void _submitCheckIn() {
+    if (_storefrontPhoto == null || _selfiePhoto == null || _currentPosition == null || _selectedCustomer == null) return;
+
+    context.read<VisitBloc>().add(
+      CheckInSubmitted(
+        scheduleId: widget.scheduleId,
+        latitude: _currentPosition?.latitude ?? 0.0,
+        longitude: _currentPosition?.longitude ?? 0.0,
+        photoFile: File(_storefrontPhoto!.path),
+        selfiePhotoFile: File(_selfiePhoto!.path),
+        notes: _notesController.text,
+        dealId: widget.dealId,
+        overrideReason: _overrideReason,
+      ),
+    );
+  }

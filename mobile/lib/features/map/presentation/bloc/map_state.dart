@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../../../customers/domain/entities/customer.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
 
 abstract class MapState extends Equatable {
   const MapState();

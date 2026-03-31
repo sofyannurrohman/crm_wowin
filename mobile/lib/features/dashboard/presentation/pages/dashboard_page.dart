@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:wowin_crm/l10n/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../../core/router/route_constants.dart';
+import '../../../../core/widgets/app_sidebar.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/dashboard_bloc.dart';
 import '../bloc/dashboard_event.dart';
 import '../bloc/dashboard_state.dart';
+import '../../../visits/presentation/bloc/visit_bloc.dart';
+import '../../../visits/presentation/bloc/visit_state.dart';
+import '../../domain/entities/visit_recommendation.dart';
+import '../widgets/active_visit_card.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -32,14 +38,15 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: _bg,
-      drawer: _buildDrawer(context),
+      drawer: const AppSidebar(),
       body: SafeArea(
         child: Column(
           children: [
             // Orange header
-            _buildHeader(context),
+            _buildHeader(context, l10n),
             // Scrollable body
             Expanded(
               child: RefreshIndicator(
@@ -60,9 +67,9 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         );
                       } else if (state is DashboardLoaded) {
-                        return _buildBody(state);
+                        return _buildBody(state, l10n);
                       } else if (state is DashboardError) {
-                        return _buildError(state.message);
+                        return _buildError(state.message, l10n);
                       }
                       return const SizedBox();
                     },
@@ -74,21 +81,19 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ),
       // Floating Check-in Button
-      floatingActionButton: _buildCheckInFab(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      // Bottom nav
-      bottomNavigationBar: _buildBottomNav(),
+      floatingActionButton: _buildCheckInFab(l10n),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
   // ---------------------------------------------------------------------------
   // Orange header with avatar, name, notification bell
   // ---------------------------------------------------------------------------
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
         final userName = authState is Authenticated
-            ? '${authState.user.firstName} ${authState.user.lastName}'.trim()
+            ? authState.user.name
             : 'Sales';
         return Container(
           color: _orange,
@@ -123,9 +128,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Welcome back,',
-                      style: TextStyle(
+                    Text(
+                      l10n.welcomeBackGeneral,
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
@@ -175,17 +180,31 @@ class _DashboardPageState extends State<DashboardPage> {
   // ---------------------------------------------------------------------------
   // Main body: KPI cards + target + schedule
   // ---------------------------------------------------------------------------
-  Widget _buildBody(DashboardLoaded state) {
+  Widget _buildBody(DashboardLoaded state, AppLocalizations l10n) {
     final d = state.dashboard;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Active Visit Card Integration
+        BlocBuilder<VisitBloc, VisitState>(
+          builder: (context, visitState) {
+            if (visitState is VisitSuccess && visitState.scheduleId != null) {
+              return ActiveVisitCard(
+                scheduleId: visitState.scheduleId!,
+                customerName: visitState.customerName ?? 'Pelanggan',
+                startTime: visitState.checkInTime ?? DateTime.now(),
+              );
+            }
+            return const SizedBox();
+          },
+        ),
+
         // KPI row: visits + leads
         Row(
           children: [
             Expanded(
               child: _buildKpiCard(
-                label: "TODAY'S VISITS",
+                label: l10n.todaysVisits,
                 icon: LucideIcons.calendarCheck,
                 value: '${d.visitsToday}',
                 badge: '+2 today',
@@ -195,7 +214,7 @@ class _DashboardPageState extends State<DashboardPage> {
             const SizedBox(width: 12),
             Expanded(
               child: _buildKpiCard(
-                label: 'NEW LEADS',
+                label: l10n.newLeads,
                 icon: LucideIcons.userPlus,
                 value: '${d.newLeads}',
                 badge: '+5 growth',
@@ -207,8 +226,13 @@ class _DashboardPageState extends State<DashboardPage> {
         const SizedBox(height: 12),
 
         // Monthly target progress
-        _buildMonthlyTargetCard(d.monthlyRevenue, d.monthlyTarget,
-            d.targetMetPercentage, d.daysLeft),
+        _buildMonthlyTargetCard(
+          d.monthlyRevenue,
+          d.monthlyTarget,
+          d.targetMetPercentage,
+          d.daysLeft,
+          l10n,
+        ),
 
         const SizedBox(height: 20),
 
@@ -216,9 +240,9 @@ class _DashboardPageState extends State<DashboardPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              "Today's Schedule",
-              style: TextStyle(
+            Text(
+              'Prioritas Kunjungan Hari Ini',
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF1A1A1A),
@@ -226,9 +250,9 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             GestureDetector(
               onTap: () {},
-              child: const Text(
-                'View Calendar',
-                style: TextStyle(
+              child: Text(
+                l10n.viewCalendar,
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: _navy,
@@ -239,8 +263,8 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         const SizedBox(height: 16),
 
-        // Schedule list
-        _buildScheduleList(state.schedules),
+        // Recommendations list
+        _buildRecommendationList(state.recommendations, l10n),
 
         const SizedBox(height: 100), // padding for FAB
       ],
@@ -321,11 +345,11 @@ class _DashboardPageState extends State<DashboardPage> {
   // ---------------------------------------------------------------------------
   // Monthly target progress card
   // ---------------------------------------------------------------------------
-  Widget _buildMonthlyTargetCard(
-      double revenue, double target, double percentage, int daysLeft) {
+  Widget _buildMonthlyTargetCard(double revenue, double target,
+      double percentage, int daysLeft, AppLocalizations l10n) {
     final pct = (percentage / 100).clamp(0.0, 1.0);
-    final revenueStr = _formatCurrency(revenue);
-    final targetStr = _formatCurrency(target);
+    final revenueStr = _formatCurrency(revenue, l10n.currencySymbol);
+    final targetStr = _formatCurrency(target, l10n.currencySymbol);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -346,9 +370,9 @@ class _DashboardPageState extends State<DashboardPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Monthly Target Progress',
-                style: TextStyle(
+              Text(
+                l10n.monthlyTargetProgress,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF1A1A1A),
@@ -356,7 +380,8 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               RichText(
                 text: TextSpan(
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  style:
+                      const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   children: [
                     TextSpan(
                       text: revenueStr,
@@ -390,14 +415,14 @@ class _DashboardPageState extends State<DashboardPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${percentage.toStringAsFixed(0)}% of revenue goal achieved',
+                '${percentage.toStringAsFixed(0)}% ${l10n.revenueGoalAchieved}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF8E8E93),
                 ),
               ),
               Text(
-                '$daysLeft days left',
+                '$daysLeft ${l10n.daysLeft}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: Color(0xFF8E8E93),
@@ -411,210 +436,223 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   // ---------------------------------------------------------------------------
-  // Today's schedule list
+  // Priority recommendations list
   // ---------------------------------------------------------------------------
-  Widget _buildScheduleList(List<Map<String, dynamic>> schedules) {
-    if (schedules.isEmpty) {
-      return _buildEmptySchedule();
+  Widget _buildRecommendationList(
+      List<VisitRecommendation> recommendations, AppLocalizations l10n) {
+    if (recommendations.isEmpty) {
+      return _buildEmptyRecommendations(l10n);
     }
 
-    // Show up to 3 items for today
-    final todaySchedules = schedules.take(3).toList();
-
     return Column(
-      children: todaySchedules.asMap().entries.map((entry) {
-        final idx = entry.key;
-        final item = entry.value;
-        final isNextUp = idx == 1; // second item is "NEXT UP"
-        return _buildScheduleItem(item, isNextUp: isNextUp);
+      children: recommendations.map((item) {
+        return _buildRecommendationItem(item, l10n);
       }).toList(),
     );
   }
 
-  Widget _buildEmptySchedule() {
-    // Fallback with sample data when backend is empty
-    final samples = [
-      {
-        'time': '09:30',
-        'customer_name': 'TechNova Solutions',
-        'location': 'Financial District, North Wing',
-        'type': 'QUARTERLY REVIEW',
-        'type_color': const Color(0xFFDBEAFE),
-        'type_text_color': const Color(0xFF1D4ED8),
-      },
-      {
-        'time': '11:00',
-        'customer_name': 'GreenLeaf Organics',
-        'location': 'Eastside Industrial Park',
-        'type': 'CONTRACT RENEWAL',
-        'type_color': const Color(0xFFFEF3C7),
-        'type_text_color': const Color(0xFFD97706),
-        'next_up': true,
-      },
-      {
-        'time': '14:15',
-        'customer_name': 'Summit Retail Group',
-        'location': 'Downtown Plaza, Suite 402',
-        'type': 'PRODUCT DEMO',
-        'type_color': const Color(0xFFD1FAE5),
-        'type_text_color': const Color(0xFF065F46),
-      },
-    ];
-
-    return Column(
-      children: samples.asMap().entries.map((e) {
-        return _buildScheduleItemFromMap(e.value, isNextUp: e.value['next_up'] == true);
-      }).toList(),
-    );
-  }
-
-  Widget _buildScheduleItem(Map<String, dynamic> item,
-      {bool isNextUp = false}) {
-    final time = _extractTime(item['scheduled_at'] as String? ?? '');
-    final customerName = item['customer_name'] as String? ??
-        item['title'] as String? ??
-        'Visit';
-    final location = item['location'] as String? ?? '';
-    final type = (item['type'] as String? ?? 'VISIT').toUpperCase();
-
-    return _buildScheduleItemFromMap({
-      'time': time,
-      'customer_name': customerName,
-      'location': location,
-      'type': type,
-      'type_color': const Color(0xFFDBEAFE),
-      'type_text_color': const Color(0xFF1D4ED8),
-    }, isNextUp: isNextUp);
-  }
-
-  Widget _buildScheduleItemFromMap(Map<String, dynamic> item,
-      {bool isNextUp = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildEmptyRecommendations(AppLocalizations l10n) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black.withOpacity(0.05)),
+      ),
+      child: Column(
         children: [
-          // Time column
-          SizedBox(
-            width: 48,
-            child: Text(
-              item['time'] as String? ?? '',
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF8E8E93),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+          Icon(LucideIcons.sparkles, size: 48, color: _orange.withOpacity(0.2)),
+          const SizedBox(height: 12),
+          const Text(
+            'Semua Terkendali!',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
-          const SizedBox(width: 8),
-          // Left accent bar
-          Container(
-            width: 3,
-            height: 90,
-            decoration: BoxDecoration(
-              color: isNextUp ? _orange : const Color(0xFFE5E7EB),
-              borderRadius: BorderRadius.circular(4),
-            ),
+          const SizedBox(height: 4),
+          const Text(
+            'Tidak ada rekomendasi kunjungan mendesak saat ini.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey, fontSize: 13),
           ),
-          const SizedBox(width: 10),
-          // Card
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isNextUp ? const Color(0xFFFFF8F5) : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isNextUp
-                      ? _orange.withOpacity(0.3)
-                      : const Color(0xFFE5E7EB),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationItem(VisitRecommendation item, AppLocalizations l10n) {
+    final bool isHigh = item.priority == 'high';
+    final Color priorityColor = isHigh ? Colors.red : (item.priority == 'medium' ? Colors.orange : _navy);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                color: priorityColor,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          item['customer_name'] as String? ?? '',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1A1A),
-                          ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildPriorityBadge(item),
+                          if (item.type == 'lead')
+                            const Icon(LucideIcons.userPlus, size: 14, color: Colors.grey),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        item.name,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A1A1A),
                         ),
                       ),
-                      if (isNextUp)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _navy,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'NEXT UP',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.reason,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: priorityColor.withOpacity(0.8),
+                          fontWeight: FontWeight.w600,
                         ),
-                    ],
-                  ),
-                  if ((item['location'] as String? ?? '').isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(LucideIcons.mapPin,
-                            size: 12, color: Color(0xFF8E8E93)),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            item['location'] as String? ?? '',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF8E8E93),
+                      ),
+                      if (item.address.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(LucideIcons.mapPin, size: 12, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                item.address,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ],
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: item['type_color'] as Color? ??
-                          const Color(0xFFDBEAFE),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      item['type'] as String? ?? '',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: item['type_text_color'] as Color? ??
-                            const Color(0xFF1D4ED8),
-                        letterSpacing: 0.4,
+                      const Divider(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                // Navigate to customer/lead detail
+                                if (item.type == 'customer') {
+                                  context.pushNamed(kRouteCustomers, extra: {'id': item.id});
+                                } else {
+                                  context.pushNamed(kRouteLeads, extra: {'id': item.id});
+                                }
+                              },
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: const Text('Detail', style: TextStyle(color: Color(0xFF1A1A1A))),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                context.pushNamed(
+                                  kRouteCheckIn,
+                                  extra: {
+                                    'customerId': item.id,
+                                    'customerName': item.name,
+                                    'customerAddress': item.address,
+                                    'targetLat': item.latitude,
+                                    'targetLng': item.longitude,
+                                    'targetRadiusMeters': 200.0,
+                                  },
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: priorityColor,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: const Text('Mulai Kunjungan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPriorityBadge(VisitRecommendation item) {
+    String label = '';
+    Color color = Colors.grey;
+    IconData icon = LucideIcons.info;
+
+    switch (item.status) {
+      case 'new':
+        label = item.type == 'lead' ? 'Leads Baru' : 'Pelanggan Baru';
+        color = Colors.red;
+        icon = LucideIcons.flame;
+        break;
+      case 'stale':
+        label = 'Butuh Perhatian';
+        color = Colors.orange;
+        icon = LucideIcons.alertTriangle;
+        break;
+      case 'scheduled':
+        label = 'Terjadwal';
+        color = _navy;
+        icon = LucideIcons.calendar;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
             ),
           ),
         ],
@@ -625,222 +663,33 @@ class _DashboardPageState extends State<DashboardPage> {
   // ---------------------------------------------------------------------------
   // Check-in FAB
   // ---------------------------------------------------------------------------
-  Widget _buildCheckInFab() {
-    return BlocBuilder<DashboardBloc, DashboardState>(
-      builder: (context, state) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: FloatingActionButton.extended(
-            onPressed: () {
-              if (state is DashboardLoaded && state.schedules.isNotEmpty) {
-                final nextVisit = state.schedules.first;
-                context.pushNamed(
-                  kRouteCheckIn,
-                  extra: {
-                    'scheduleId': nextVisit['id'] ?? '',
-                    'customerName': nextVisit['customer_name'] ?? 'Visit',
-                    'customerAddress': nextVisit['location'] ?? '',
-                    'targetLat': (nextVisit['latitude'] as num?)?.toDouble() ?? 0.0,
-                    'targetLng': (nextVisit['longitude'] as num?)?.toDouble() ?? 0.0,
-                    'targetRadiusMeters': 100.0, // Multi-phase default
-                  },
-                );
-              }
-            },
-            backgroundColor: _navy,
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-            icon: const Icon(LucideIcons.userCheck, color: Colors.white, size: 20),
-            label: const Text(
-              'Check-in Now',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        );
+  Widget _buildCheckInFab(AppLocalizations l10n) {
+    return FloatingActionButton.extended(
+      onPressed: () {
+        context.pushNamed(kRouteCheckIn);
       },
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Drawer
-  // ---------------------------------------------------------------------------
-  Widget _buildDrawer(BuildContext context) {
-    return Drawer(
-      backgroundColor: Colors.white,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          Container(
-            padding: const EdgeInsets.only(top: 60, bottom: 20, left: 24, right: 24),
-            decoration: const BoxDecoration(
-              color: _orange,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Icon(LucideIcons.command, color: Colors.white, size: 40),
-                const SizedBox(height: 16),
-                const Text(
-                  'Wowin CR Mobile',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Central Routing Menu',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildDrawerItem(context, LucideIcons.layoutDashboard, 'Dashboard', () {
-            context.pop();
-          }),
-          _buildDrawerItem(context, Icons.fingerprint, 'Attendance', () {
-            context.pop();
-            context.pushNamed(kRouteAttendanceHome);
-          }),
-          _buildDrawerItem(context, LucideIcons.checkSquare, 'Tasks', () {
-            context.pop();
-            context.pushNamed(kRouteTasks);
-          }),
-          _buildDrawerItem(context, LucideIcons.users, 'Leads & Customers', () {
-            context.pop();
-            context.pushNamed(kRouteCustomers); // Or kRouteLeads
-          }),
-          _buildDrawerItem(context, LucideIcons.package, 'Product Catalog', () {
-            context.pop();
-            context.pushNamed(kRouteProducts);
-          }),
-          _buildDrawerItem(context, LucideIcons.briefcase, 'Deals Pipeline', () {
-            context.pop();
-            context.pushNamed(kRouteDeals);
-          }),
-          // Navigation Divider
-          const Divider(height: 32, color: Color(0xFFF3F4F6)),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Text(
-              'HISTORY & LOGS',
-              style: TextStyle(
-                color: Color(0xFF9CA3AF),
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ),
-          _buildDrawerItem(context, LucideIcons.map, 'Route History', () {
-            context.pop();
-            context.pushNamed(kRouteRouteHistory);
-          }),
-          _buildDrawerItem(context, LucideIcons.list, 'Activity Log', () {
-            context.pop();
-            context.pushNamed(kRouteActivityLog);
-          }),
-          // Preferences Divider
-          const Divider(height: 32, color: Color(0xFFF3F4F6)),
-          _buildDrawerItem(context, LucideIcons.user, 'Profile', () {
-            context.pop();
-            context.pushNamed(kRouteProfile);
-          }),
-          _buildDrawerItem(context, LucideIcons.settings, 'Settings', () {
-            context.pop();
-            context.pushNamed(kRouteSettings);
-          }),
-        ],
+      backgroundColor: _navy,
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(30),
       ),
-    );
-  }
-
-  Widget _buildDrawerItem(BuildContext context, IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFF4B5563), size: 22),
-      title: Text(
-        title,
+      icon: const Icon(LucideIcons.userCheck, color: Colors.white, size: 20),
+      label: Text(
+        l10n.checkInNow,
         style: const TextStyle(
-          color: Color(0xFF111827),
+          color: Colors.white,
           fontSize: 15,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-      onTap: onTap,
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Bottom Nav Bar
-  // ---------------------------------------------------------------------------
-  Widget _buildBottomNav() {
-    return BottomAppBar(
-      color: Colors.white,
-      elevation: 8,
-      child: SizedBox(
-        height: 60,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(0, LucideIcons.home, 'Home'),
-            _buildNavItem(1, LucideIcons.users, 'Customers', route: kRouteCustomers),
-            const SizedBox(width: 56), // FAB gap
-            _buildNavItem(2, LucideIcons.checkSquare, 'Tasks', route: kRouteTasks),
-            _buildNavItem(3, LucideIcons.user, 'Profile', route: kRouteProfile),
-          ],
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label,
-      {String? route}) {
-    final isActive = _currentNavIndex == index;
-    return GestureDetector(
-      onTap: () {
-        setState(() => _currentNavIndex = index);
-        if (route != null) {
-          context.pushNamed(route);
-        } else if (index == 0) {
-          // Stay on home/dashboard
-        }
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon,
-              size: 22,
-              color: isActive ? _orange : const Color(0xFF8E8E93)),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: isActive ? _orange : const Color(0xFF8E8E93),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ---------------------------------------------------------------------------
   // Error state
   // ---------------------------------------------------------------------------
-  Widget _buildError(String message) {
+  Widget _buildError(String message, AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -855,7 +704,7 @@ class _DashboardPageState extends State<DashboardPage> {
             onPressed: () =>
                 context.read<DashboardBloc>().add(FetchDashboardKpis()),
             style: ElevatedButton.styleFrom(backgroundColor: _orange),
-            child: const Text('Retry'),
+            child: Text(l10n.retry),
           ),
         ],
       ),
@@ -865,11 +714,11 @@ class _DashboardPageState extends State<DashboardPage> {
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
-  String _formatCurrency(double value) {
+  String _formatCurrency(double value, String symbol) {
     if (value >= 1000) {
-      return '\$${(value / 1000).toStringAsFixed(1)}K';
+      return '$symbol${(value / 1000).toStringAsFixed(1)}K';
     }
-    return '\$${value.toStringAsFixed(0)}';
+    return '$symbol${value.toStringAsFixed(0)}';
   }
 
   String _extractTime(String dateStr) {

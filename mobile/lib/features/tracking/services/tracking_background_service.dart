@@ -7,6 +7,10 @@ import 'package:workmanager/workmanager.dart';
 import '../../../../core/api/dio_client.dart';
 import '../../../../core/auth/token_storage.dart';
 import '../../../../core/db/database_helper.dart';
+import '../../../../core/database/local_db_helper.dart';
+import '../../visits/data/datasources/visit_local_data_source.dart';
+import '../../visits/data/datasources/visit_remote_data_source.dart';
+import '../../visits/data/sync/offline_sync_manager.dart';
 
 import '../data/datasources/tracking_local_data_source.dart';
 import '../data/datasources/tracking_remote_data_source.dart';
@@ -15,6 +19,7 @@ import '../domain/entities/location_point.dart';
 
 /// Nama unik untuk task WorkManager
 const fetchBackgroundLocationTask = "fetchBackgroundLocationTask";
+const syncPendingVisitsTask = "syncPendingVisitsTask";
 
 @pragma('vm:entry-point') // Mandated for background execution on Flutter
 void callbackDispatcher() {
@@ -60,7 +65,22 @@ void callbackDispatcher() {
       );
     } catch (e) {
       log("Background Task Error: ${e.toString()}");
-      return Future.value(false); // Task butuh retry oleh OS Native
+      return Future.value(false);
+    }
+
+    if (taskName == syncPendingVisitsTask) {
+      try {
+        final localDataSource = VisitLocalDataSourceImpl(LocalDbHelper());
+        final remoteDataSource = VisitRemoteDataSourceImpl(DioClient().dio);
+        final syncManager = OfflineSyncManager(
+          localDataSource: localDataSource,
+          remoteDataSource: remoteDataSource,
+        );
+        await syncManager.syncPendingActivities();
+        log("Sync Background: Pending visits processed.");
+      } catch (e) {
+        log("Sync Background Error: ${e.toString()}");
+      }
     }
 
     return Future.value(true);
@@ -90,12 +110,21 @@ class TrackingBackgroundService {
     }
 
     await Workmanager().registerPeriodicTask(
-      "1", // Unique Name
+      "1", // Unique Name for location
       fetchBackgroundLocationTask,
-      frequency:
-          const Duration(minutes: 15), // OS Constraints limits min 15 minutes
+      frequency: const Duration(minutes: 15),
+      constraints: Constraints(networkType: NetworkType.connected),
+    );
+  }
+
+  static Future<void> startSyncJob() async {
+    if (kIsWeb) return;
+    await Workmanager().registerPeriodicTask(
+      "2", // Unique Name for sync
+      syncPendingVisitsTask,
+      frequency: const Duration(minutes: 15),
       constraints: Constraints(
-        networkType: NetworkType.connected,
+        networkType: NetworkType.connected, // Only sync when online
       ),
     );
   }

@@ -6,13 +6,19 @@ class CheckInRequest {
   final double longitude;
   final File photoFile;
   final String checkInNotes;
+  final String? dealId;
+  final File? selfiePhotoFile;
+  final String? overrideReason;
 
   CheckInRequest({
     required this.scheduleId,
     required this.latitude,
     required this.longitude,
     required this.photoFile,
+    this.selfiePhotoFile,
     this.checkInNotes = '',
+    this.dealId,
+    this.overrideReason,
   });
 }
 
@@ -24,6 +30,9 @@ class CheckOutRequest {
   final String nextAction;
   final String nextVisitDate; // ISO 8601 string or format expected by API
 
+  final String? signaturePath;
+  final String? inventoryData; // JSON formatted string for stock check
+
   CheckOutRequest({
     required this.scheduleId,
     required this.latitude,
@@ -31,5 +40,7 @@ class CheckOutRequest {
     required this.visitResult,
     required this.nextAction,
     this.nextVisitDate = '',
+    this.signaturePath,
+    this.inventoryData,
   });
 }

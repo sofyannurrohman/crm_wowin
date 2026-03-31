@@ -8,6 +8,7 @@ import '../bloc/lead_bloc.dart';
 import '../bloc/lead_event.dart';
 import '../bloc/lead_state.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../../../core/widgets/app_sidebar.dart';
 
 class LeadListPage extends StatefulWidget {
   const LeadListPage({super.key});
@@ -49,7 +50,12 @@ class _LeadListPageState extends State<LeadListPage> {
         status = 'qualified';
         break;
     }
-    context.read<LeadBloc>().add(FetchLeads(status: status));
+    context.read<LeadBloc>().add(
+          FetchLeads(
+            query: _searchController.text,
+            status: status,
+          ),
+        );
   }
 
   @override
@@ -57,6 +63,7 @@ class _LeadListPageState extends State<LeadListPage> {
     return Scaffold(
       backgroundColor: _bg,
       appBar: _buildAppBar(),
+      drawer: const AppSidebar(),
       body: Column(
         children: [
           _buildSearchBar(),
@@ -64,7 +71,6 @@ class _LeadListPageState extends State<LeadListPage> {
           Expanded(child: _buildLeadsList()),
         ],
       ),
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -155,8 +161,9 @@ class _LeadListPageState extends State<LeadListPage> {
             border: InputBorder.none,
             contentPadding: EdgeInsets.symmetric(vertical: 14),
           ),
+          onSubmitted: (_) => _fetchLeads(),
           onChanged: (val) {
-            // Search logic here
+            if (val.isEmpty) _fetchLeads();
           },
         ),
       ),
@@ -460,51 +467,5 @@ class _LeadListPageState extends State<LeadListPage> {
     return const Color(0xFF4B5563); // For EP
   }
 
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(LucideIcons.users, 'Prospek', true), // Leads is active
-          _buildNavItem(LucideIcons.briefcase, 'Penjualan', false),
-          _buildNavItem(LucideIcons.checkSquare, 'Tugas', false),
-          _buildNavItem(LucideIcons.barChart2, 'Laporan', false),
-          _buildNavItem(Icons.more_horiz, 'Menu', false),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive) {
-    return GestureDetector(
-      onTap: () {
-        if (label == 'Kontak' || label == 'Menu') {
-           context.goNamed(kRouteCustomers); // Ex: fallback customer menu
-        } else if (label == 'Penjualan') {
-           context.goNamed(kRouteDashboard); // generic
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: isActive ? _orange : const Color(0xFF9CA3AF), size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? _orange : const Color(0xFF9CA3AF),
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 

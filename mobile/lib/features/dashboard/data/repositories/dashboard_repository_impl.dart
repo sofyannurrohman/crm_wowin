@@ -15,10 +15,18 @@ class DashboardRepositoryImpl implements DashboardRepository {
     try {
       final dashboard = await remoteDataSource.getKpiSummary();
       return Right(dashboard);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
+    } catch (_) {
       return const Left(ServerFailure('Gagal mengambil ringkasan KPI'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getVisitRecommendations() async {
+    try {
+      final recommendations = await remoteDataSource.getVisitRecommendations();
+      return Right(recommendations);
+    } catch (_) {
+      return const Left(ServerFailure('Gagal mengambil rekomendasi kunjungan'));
     }
   }
 }

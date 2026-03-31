@@ -8,9 +8,12 @@ abstract class UserEntity with _$UserEntity {
   const factory UserEntity({
     required String id,
     required String email,
+    required String name,
     required String role,
-    @JsonKey(name: 'first_name') required String firstName,
-    @JsonKey(name: 'last_name') required String lastName,
+    String? phone,
+    String? status,
+    @JsonKey(name: 'avatar_path') String? avatarPath,
+    @JsonKey(name: 'employee_code') String? employeeCode,
   }) = _UserEntity;
 
   factory UserEntity.fromJson(Map<String, dynamic> json) =>

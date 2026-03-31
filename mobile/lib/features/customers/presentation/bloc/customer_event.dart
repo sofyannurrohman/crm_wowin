@@ -32,3 +32,19 @@ class CreateCustomerSubmitted extends CustomerEvent {
   @override
   List<Object> get props => [customer];
 }
+
+class UpdateCustomerSubmitted extends CustomerEvent {
+  final Customer customer;
+  const UpdateCustomerSubmitted(this.customer);
+
+  @override
+  List<Object> get props => [customer];
+}
+
+class DeleteCustomerSubmitted extends CustomerEvent {
+  final String id;
+  const DeleteCustomerSubmitted(this.id);
+
+  @override
+  List<Object> get props => [id];
+}

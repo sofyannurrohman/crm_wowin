@@ -139,7 +139,6 @@ class PhotoPreviewPage extends StatelessWidget {
             ),
           ),
         ),
-        bottomNavigationBar: _buildBottomNav(context),
       ),
     );
   }
@@ -356,72 +355,4 @@ class PhotoPreviewPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.2))),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(LucideIcons.home, 'HOME', false),
-              _buildNavItem(LucideIcons.compass, 'VISITS', true), // Visits is active
-              const SizedBox(width: 40), // Center space for FAB
-              _buildNavItem(LucideIcons.barChart2, 'REPORTS', false),
-              _buildNavItem(LucideIcons.user, 'PROFILE', false),
-            ],
-          ),
-        ),
-        Positioned(
-          bottom: 16,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
-                ],
-              ),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: const BoxDecoration(
-                  color: _orange,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(LucideIcons.camera, color: Colors.white, size: 24),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isActive) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: isActive ? _orange : const Color(0xFF9CA3AF), size: 24),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            color: isActive ? _orange : const Color(0xFF9CA3AF),
-            fontSize: 10,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
-    );
-  }
 }

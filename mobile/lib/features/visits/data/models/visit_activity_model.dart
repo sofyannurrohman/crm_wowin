@@ -20,20 +20,22 @@ class VisitActivityModel extends VisitActivity {
 
   factory VisitActivityModel.fromJson(Map<String, dynamic> json) {
     return VisitActivityModel(
-      id: json['id'],
+      id: json['id'] ?? '',
       scheduleId: json['schedule_id'],
-      salesId: json['sales_id'],
-      customerId: json['customer_id'],
-      type: json['type'], // 'checkin' or 'checkout'
-      latitude: (json['lat'] ?? 0.0).toDouble(),
-      longitude: (json['lon'] ?? 0.0).toDouble(),
+      salesId: json['sales_id'] ?? '',
+      customerId: json['customer_id'] ?? '',
+      type: json['type'] ?? 'unknown',
+      latitude: (json['latitude'] ?? json['lat'] ?? 0.0).toDouble(),
+      longitude: (json['longitude'] ?? json['lon'] ?? 0.0).toDouble(),
       photoPath: json['photo_path'],
       selfiePhotoPath: json['selfie_photo_path'],
       placePhotoPath: json['place_photo_path'],
       distance: (json['distance'] != null) ? (json['distance'] as num).toDouble() : null,
       isOffline: json['is_offline'] ?? false,
       notes: json['notes'],
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at']).toLocal() 
+          : DateTime.now(),
     );
   }
 }

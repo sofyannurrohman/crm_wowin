@@ -80,18 +80,25 @@ class AuthRepositoryImpl implements AuthRepository {
       if (token == null) {
         return const Right(null); // Unauthenticated
       }
-      // Note: We'd typically decrypt the JWT manually or call a '/me' API.
-      // Assuming token exists is sufficient for immediate UI gating. Interceptor handles truth.
-      // But we will return a minimal dummy entity since we lack `/me` endpoint payload right now.
-      return const Right(UserEntity(
-        id: 'cached',
-        email: 'user@wowin.id',
-        role: 'sales',
-        firstName: 'Sales',
-        lastName: 'Wowin',
-      ));
+      
+      final profile = await remoteDataSource.getMe();
+      return Right(profile);
     } catch (e) {
-      return const Left(StorageFailure('Gagal mengecek status sesi'));
+      // If profile fetch fails, assume session expired
+      await tokenStorage.clearTokens();
+      return const Right(null);
+    }
+  }
+
+  @override
+  Future<Either<Failure, UserEntity>> getMe() async {
+    try {
+      final user = await remoteDataSource.getMe();
+      return Right(user);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal mengambil data profil'));
     }
   }
 }

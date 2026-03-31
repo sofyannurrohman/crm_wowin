@@ -4,4 +4,5 @@ import '../entities/kpi_dashboard.dart';
 
 abstract class DashboardRepository {
   Future<Either<Failure, KpiDashboard>> getKpiSummary();
+  Future<Either<Failure, List<Map<String, dynamic>>>> getVisitRecommendations();
 }
