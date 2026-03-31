@@ -158,6 +158,7 @@ func main() {
 	notificationRepo := postgres.NewNotificationRepository(dbpool)
 	targetRepo := postgres.NewTargetRepository(dbpool)
 	taskRepo := postgres.NewTaskRepository(dbpool)
+	settingsRepo := postgres.NewSettingsRepository(dbpool)
 	
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -182,6 +183,7 @@ func main() {
 	notificationUC := usecase.NewNotificationUseCase(notificationRepo)
 	targetUC := usecase.NewTargetUseCase(targetRepo)
 	taskUC := usecase.NewTaskUseCase(taskRepo)
+	settingsUC := usecase.NewSettingsUseCase(settingsRepo)
 	
 	authHandler := handlers.NewAuthHandler(userUC)
 	customerHandler := handlers.NewCustomerHandler(customerUC)
@@ -196,9 +198,10 @@ func main() {
 	notificationHandler := handlers.NewNotificationHandler(notificationUC)
 	targetHandler := handlers.NewTargetHandler(targetUC)
 	taskHandler := handlers.NewTaskHandler(taskUC)
+	settingsHandler := handlers.NewSettingsHandler(settingsUC)
 
 	// Setup Routes
-	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler, targetHandler, taskHandler)
+	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler, targetHandler, taskHandler, settingsHandler)
 
 	// Additionally inject basic health check underneath v1
 	router.GET("/api/v1/health", func(c *gin.Context) {

@@ -10,4 +10,5 @@ type ReportRepository interface {
 	GetRevenueTrend(ctx context.Context, months int) ([]models.ChartData, error)
 	GetPipelineFunnel(ctx context.Context) ([]models.ChartData, error)
 	GetTopPerformers(ctx context.Context, limit int) ([]models.SalesPerformance, error)
+	GetVisitRecommendations(ctx context.Context, salesID string) ([]models.VisitRecommendation, error)
 }

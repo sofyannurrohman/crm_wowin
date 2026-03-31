@@ -9,6 +9,7 @@ import (
 type ReportUseCase interface {
 	GetDashboardSummary(ctx context.Context) (*models.KpiSummary, error)
 	GetAnalytics(ctx context.Context, months int) (map[string]interface{}, error)
+	GetVisitRecommendations(ctx context.Context, salesID string) ([]models.VisitRecommendation, error)
 }
 
 type reportUseCaseImpl struct {
@@ -62,4 +63,8 @@ func (u *reportUseCaseImpl) GetAnalytics(ctx context.Context, months int) (map[s
 		"pipeline_funnel": funnel,
 		"top_performers": top,
 	}, nil
+}
+
+func (u *reportUseCaseImpl) GetVisitRecommendations(ctx context.Context, salesID string) ([]models.VisitRecommendation, error) {
+	return u.repo.GetVisitRecommendations(ctx, salesID)
 }

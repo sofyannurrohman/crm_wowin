@@ -37,3 +37,18 @@ func (h *ReportHandler) GetAnalytics(c *gin.Context) {
 	}
 	response.OK(c, data)
 }
+
+func (h *ReportHandler) GetVisitRecommendations(c *gin.Context) {
+	salesID := c.GetString("user_id")
+	if salesID == "" {
+		response.Fail(c, http.StatusUnauthorized, "missing user session")
+		return
+	}
+
+	data, err := h.uc.GetVisitRecommendations(c.Request.Context(), salesID)
+	if err != nil {
+		response.Fail(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+	response.OK(c, data)
+}

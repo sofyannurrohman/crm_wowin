@@ -36,3 +36,17 @@ type SalesPerformance struct {
 	ValidCheckins     int     `json:"valid_checkins"`
 	Revenue          float64 `json:"revenue"`
 }
+
+type VisitRecommendation struct {
+	ID              string  `json:"id"`
+	Name            string  `json:"name"`
+	Type            string  `json:"type"`             // "lead" or "customer"
+	Status          string  `json:"status"`           // "new", "stale", "scheduled"
+	Priority        string  `json:"priority"`         // "high", "medium", "low"
+	Reason          string  `json:"reason"`           // Human-friendly explanation
+	LastVisitAt     *string `json:"last_visit_at"`    // ISO date string
+	DaysSinceLast   int     `json:"days_since_last"`
+	Address         string  `json:"address"`
+	Latitude        float64 `json:"latitude"`
+	Longitude       float64 `json:"longitude"`
+}

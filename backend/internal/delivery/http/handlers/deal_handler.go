@@ -193,15 +193,16 @@ func (h *DealHandler) GetDeal(c *gin.Context) {
 		return
 	}
 
-	deal, history, err := h.uc.GetDealDetails(c.Request.Context(), id)
+	deal, history, customer, err := h.uc.GetDealDetails(c.Request.Context(), id)
 	if err != nil {
 		response.MapDBError(c, err)
 		return
 	}
 
 	response.OK(c, gin.H{
-		"deal":    deal,
-		"history": history,
+		"deal":     deal,
+		"history":  history,
+		"customer": customer,
 	})
 }
 

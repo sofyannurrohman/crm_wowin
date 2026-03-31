@@ -215,6 +215,12 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 		}
 	}
 
+	if dID := c.Request.FormValue("deal_id"); dID != "" {
+		if u, err := uuid.Parse(dID); err == nil {
+			activity.DealID = &u
+		}
+	}
+
 	// 4. Register logical algorithm mapping
 	respAct, err := h.uc.LogActivity(c.Request.Context(), &activity)
 	if err != nil {

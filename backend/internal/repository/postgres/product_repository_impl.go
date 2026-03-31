@@ -22,16 +22,16 @@ func NewProductRepository(db *pgxpool.Pool) repository.ProductRepository {
 }
 
 func (r *productRepoImpl) CreateCategory(ctx context.Context, c *models.ProductCategory) error {
-	query := `INSERT INTO product_categories (name, description, is_active)
-			  VALUES ($1, $2, $3) RETURNING id, created_at, updated_at`
-	err := r.db.QueryRow(ctx, query, c.Name, c.Description, c.IsActive).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt)
+	query := `INSERT INTO product_categories (name, parent_id)
+			  VALUES ($1, $2) RETURNING id, created_at`
+	err := r.db.QueryRow(ctx, query, c.Name, c.ParentID).Scan(&c.ID, &c.CreatedAt)
 	return err
 }
 
 func (r *productRepoImpl) GetCategoryByID(ctx context.Context, id uuid.UUID) (*models.ProductCategory, error) {
-	query := `SELECT id, name, description, is_active, created_at, updated_at FROM product_categories WHERE id=$1`
+	query := `SELECT id, name, parent_id, created_at FROM product_categories WHERE id=$1`
 	var c models.ProductCategory
-	err := r.db.QueryRow(ctx, query, id).Scan(&c.ID, &c.Name, &c.Description, &c.IsActive, &c.CreatedAt, &c.UpdatedAt)
+	err := r.db.QueryRow(ctx, query, id).Scan(&c.ID, &c.Name, &c.ParentID, &c.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, dberrors.ErrNotFound
 	}
@@ -39,7 +39,7 @@ func (r *productRepoImpl) GetCategoryByID(ctx context.Context, id uuid.UUID) (*m
 }
 
 func (r *productRepoImpl) ListCategories(ctx context.Context) ([]*models.ProductCategory, error) {
-	query := `SELECT id, name, description, is_active, created_at, updated_at FROM product_categories ORDER BY name ASC`
+	query := `SELECT id, name, parent_id, created_at FROM product_categories ORDER BY name ASC`
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (r *productRepoImpl) ListCategories(ctx context.Context) ([]*models.Product
 	var results []*models.ProductCategory
 	for rows.Next() {
 		var c models.ProductCategory
-		err := rows.Scan(&c.ID, &c.Name, &c.Description, &c.IsActive, &c.CreatedAt, &c.UpdatedAt)
+		err := rows.Scan(&c.ID, &c.Name, &c.ParentID, &c.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -59,8 +59,8 @@ func (r *productRepoImpl) ListCategories(ctx context.Context) ([]*models.Product
 }
 
 func (r *productRepoImpl) UpdateCategory(ctx context.Context, c *models.ProductCategory) error {
-	query := `UPDATE product_categories SET name=$1, description=$2, is_active=$3, updated_at=NOW() WHERE id=$4 RETURNING updated_at`
-	err := r.db.QueryRow(ctx, query, c.Name, c.Description, c.IsActive, c.ID).Scan(&c.UpdatedAt)
+	query := `UPDATE product_categories SET name=$1, parent_id=$2 WHERE id=$3`
+	_, err := r.db.Exec(ctx, query, c.Name, c.ParentID, c.ID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dberrors.ErrNotFound
 	}
@@ -70,19 +70,19 @@ func (r *productRepoImpl) UpdateCategory(ctx context.Context, c *models.ProductC
 // === Products ===
 
 func (r *productRepoImpl) Create(ctx context.Context, p *models.Product) error {
-	query := `INSERT INTO products (category_id, sku, name, description, price, is_active)
-			  VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at, updated_at`
-	err := r.db.QueryRow(ctx, query, p.CategoryID, p.SKU, p.Name, p.Description, p.Price, p.IsActive).
+	query := `INSERT INTO products (category_id, code, name, description, unit, base_price, is_active)
+			  VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, created_at, updated_at`
+	err := r.db.QueryRow(ctx, query, p.CategoryID, p.SKU, p.Name, p.Description, p.Unit, p.Price, p.IsActive).
 		Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt)
 	return err
 }
 
 func (r *productRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Product, error) {
-	query := `SELECT id, category_id, sku, name, description, price, is_active, created_at, updated_at 
-			  FROM products WHERE id=$1 AND deleted_at IS NULL`
+	query := `SELECT id, category_id, code, name, description, unit, base_price, is_active, created_at, updated_at 
+			  FROM products WHERE id=$1`
 	var p models.Product
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&p.ID, &p.CategoryID, &p.SKU, &p.Name, &p.Description, &p.Price, &p.IsActive, &p.CreatedAt, &p.UpdatedAt,
+		&p.ID, &p.CategoryID, &p.SKU, &p.Name, &p.Description, &p.Unit, &p.Price, &p.IsActive, &p.CreatedAt, &p.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, dberrors.ErrNotFound
@@ -91,7 +91,7 @@ func (r *productRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Pr
 }
 
 func (r *productRepoImpl) List(ctx context.Context, filter repository.ProductFilter) ([]*models.Product, error) {
-	baseQuery := `SELECT id, category_id, sku, name, description, price, is_active, created_at FROM products WHERE deleted_at IS NULL `
+	baseQuery := `SELECT id, category_id, code, name, description, unit, base_price, is_active, created_at FROM products WHERE 1=1 `
 	args := []interface{}{}
 	argCount := 1
 
@@ -101,7 +101,7 @@ func (r *productRepoImpl) List(ctx context.Context, filter repository.ProductFil
 		argCount++
 	}
 	if filter.Search != "" {
-		baseQuery += fmt.Sprintf(" AND (name ILIKE $%d OR sku ILIKE $%d)", argCount, argCount+1)
+		baseQuery += fmt.Sprintf(" AND (name ILIKE $%d OR code ILIKE $%d)", argCount, argCount+1)
 		args = append(args, "%"+filter.Search+"%", "%"+filter.Search+"%")
 		argCount += 2
 	}
@@ -121,7 +121,7 @@ func (r *productRepoImpl) List(ctx context.Context, filter repository.ProductFil
 	var results []*models.Product
 	for rows.Next() {
 		var p models.Product
-		err := rows.Scan(&p.ID, &p.CategoryID, &p.SKU, &p.Name, &p.Description, &p.Price, &p.IsActive, &p.CreatedAt)
+		err := rows.Scan(&p.ID, &p.CategoryID, &p.SKU, &p.Name, &p.Description, &p.Unit, &p.Price, &p.IsActive, &p.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -131,9 +131,9 @@ func (r *productRepoImpl) List(ctx context.Context, filter repository.ProductFil
 }
 
 func (r *productRepoImpl) Update(ctx context.Context, p *models.Product) error {
-	query := `UPDATE products SET category_id=$1, sku=$2, name=$3, description=$4, price=$5, is_active=$6, updated_at=NOW() 
-			  WHERE id=$7 AND deleted_at IS NULL RETURNING updated_at`
-	err := r.db.QueryRow(ctx, query, p.CategoryID, p.SKU, p.Name, p.Description, p.Price, p.IsActive, p.ID).Scan(&p.UpdatedAt)
+	query := `UPDATE products SET category_id=$1, code=$2, name=$3, description=$4, unit=$5, base_price=$6, is_active=$7, updated_at=NOW() 
+			  WHERE id=$8 RETURNING updated_at`
+	err := r.db.QueryRow(ctx, query, p.CategoryID, p.SKU, p.Name, p.Description, p.Unit, p.Price, p.IsActive, p.ID).Scan(&p.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dberrors.ErrNotFound
 	}
@@ -141,7 +141,7 @@ func (r *productRepoImpl) Update(ctx context.Context, p *models.Product) error {
 }
 
 func (r *productRepoImpl) Delete(ctx context.Context, id uuid.UUID) error {
-	res, err := r.db.Exec(ctx, "UPDATE products SET deleted_at=NOW() WHERE id=$1 AND deleted_at IS NULL", id)
+	res, err := r.db.Exec(ctx, "DELETE FROM products WHERE id=$1", id)
 	if err != nil {
 		return err
 	}

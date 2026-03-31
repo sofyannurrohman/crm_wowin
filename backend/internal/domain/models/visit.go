@@ -20,6 +20,7 @@ type VisitSchedule struct {
 	ID          uuid.UUID      `json:"id"`
 	SalesID     uuid.UUID      `json:"sales_id"` // User ID
 	CustomerID  uuid.UUID      `json:"customer_id"`
+	DealID      *uuid.UUID     `json:"deal_id,omitempty"` // Optional linkage to sales pipeline
 	Date        time.Time      `json:"date"` // Just the YYYY-MM-DD conceptual representation mapped as Date type in DB
 	Title       string         `json:"title"`
 	Objective   *string        `json:"objective,omitempty"`
@@ -42,6 +43,7 @@ type VisitActivity struct {
 	ScheduleID  *uuid.UUID `json:"schedule_id,omitempty"` // Nullable if an ad-hoc visit
 	SalesID     uuid.UUID  `json:"sales_id"`
 	CustomerID  uuid.UUID  `json:"customer_id"`
+	DealID      *uuid.UUID `json:"deal_id,omitempty"` // Optional linkage to sales pipeline
 	Type        VisitType  `json:"type"`
 	Latitude    float64    `json:"latitude"`
 	Longitude   float64    `json:"longitude"`

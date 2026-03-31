@@ -91,7 +91,7 @@ func seedProducts(ctx context.Context, db *pgxpool.Pool) {
 	}
 
 	for _, cat := range categories {
-		query := `INSERT INTO product_categories (id, name, is_active) VALUES ($1, $2, true) ON CONFLICT DO NOTHING`
+		query := `INSERT INTO product_categories (id, name) VALUES ($1, $2) ON CONFLICT DO NOTHING`
 		db.Exec(ctx, query, cat.id, cat.name)
 
 		// Seed some products for each category
@@ -105,7 +105,7 @@ func seedProducts(ctx context.Context, db *pgxpool.Pool) {
 		}
 
 		for _, p := range products {
-			pQuery := `INSERT INTO products (category_id, name, sku, price, is_active) VALUES ($1, $2, $3, $4, true) ON CONFLICT DO NOTHING`
+			pQuery := `INSERT INTO products (category_id, name, code, base_price, is_active) VALUES ($1, $2, $3, $4, true) ON CONFLICT DO NOTHING`
 			db.Exec(ctx, pQuery, cat.id, p.name, p.sku, p.price)
 		}
 	}

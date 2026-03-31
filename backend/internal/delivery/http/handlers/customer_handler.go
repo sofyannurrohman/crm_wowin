@@ -128,6 +128,23 @@ func (h *CustomerHandler) UpdateCustomer(c *gin.Context) {
 	response.OK(c, customer, "customer updated successfully")
 }
 
+// DeleteCustomer handles DELETE /customers/:id
+func (h *CustomerHandler) DeleteCustomer(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		response.Fail(c, http.StatusBadRequest, "invalid customer id format")
+		return
+	}
+
+	if err := h.uc.DeleteCustomer(c.Request.Context(), id); err != nil {
+		response.MapDBError(c, err)
+		return
+	}
+
+	response.OK(c, nil, "customer deleted successfully")
+}
+
 // AddContact handles POST /customers/:id/contacts
 func (h *CustomerHandler) AddContact(c *gin.Context) {
 	idParam := c.Param("id")

@@ -23,6 +23,7 @@ func SetupRouter(
 	notificationHandler *handlers.NotificationHandler,
 	targetHandler *handlers.TargetHandler,
 	taskHandler *handlers.TaskHandler,
+	settingsHandler *handlers.SettingsHandler,
 ) {
 
 	v1 := r.Group("/api/v1")
@@ -54,6 +55,7 @@ func SetupRouter(
 		customerGroup.GET("", customerHandler.ListCustomers)
 		customerGroup.GET("/:id", customerHandler.GetCustomer)
 		customerGroup.PUT("/:id", customerHandler.UpdateCustomer)
+		customerGroup.DELETE("/:id", customerHandler.DeleteCustomer)
 		customerGroup.POST("/:id/contacts", customerHandler.AddContact)
 		
 		// Lead Domain
@@ -123,6 +125,7 @@ func SetupRouter(
 		reportGroup := protected.Group("/reports")
 		reportGroup.GET("/kpi-summary", reportHandler.GetKpiSummary)
 		reportGroup.GET("/analytics", reportHandler.GetAnalytics)
+		reportGroup.GET("/recommendations", reportHandler.GetVisitRecommendations)
 		
 		// Attendance
 		attendanceGroup := protected.Group("/attendance")
@@ -149,6 +152,11 @@ func SetupRouter(
 		taskGroup.PUT("/:id", taskHandler.Update)
 		taskGroup.PATCH("/:id/complete", taskHandler.Complete)
 		taskGroup.DELETE("/:id", taskHandler.Delete)
+
+		// App Settings
+		settingsGroup := protected.Group("/settings")
+		settingsGroup.GET("", settingsHandler.GetSettings)
+		settingsGroup.PATCH("/:key", settingsHandler.UpdateSetting)
 		
 		// Example of RBAC implementation
 		// managerOnly := protected.Group("/admin")

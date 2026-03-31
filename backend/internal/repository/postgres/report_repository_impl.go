@@ -133,3 +133,95 @@ func (r *reportRepositoryImpl) GetTopPerformers(ctx context.Context, limit int) 
 	}
 	return result, nil
 }
+
+func (r *reportRepositoryImpl) GetVisitRecommendations(ctx context.Context, salesID string) ([]models.VisitRecommendation, error) {
+	query := `
+		WITH last_visits AS (
+			SELECT 
+				customer_id, 
+				MAX(created_at) as last_visit_at
+			FROM visit_activities
+			WHERE type = 'check-in'
+			GROUP BY customer_id
+		)
+		(
+			SELECT 
+				l.id::text, 
+				l.title as name, 
+				'lead' as type,
+				CASE 
+					WHEN lv.last_visit_at IS NULL THEN 'new'
+					ELSE 'stale'
+				END as status,
+				CASE 
+					WHEN lv.last_visit_at IS NULL THEN 'high'
+					WHEN lv.last_visit_at < NOW() - INTERVAL '21 days' THEN 'medium'
+					ELSE 'low'
+				END as priority,
+				CASE 
+					WHEN lv.last_visit_at IS NULL THEN 'Lead baru butuh kunjungan pertama'
+					ELSE 'Sudah ' || EXTRACT(DAY FROM NOW() - lv.last_visit_at)::int || ' hari tanpa kontak'
+				END as reason,
+				TO_CHAR(lv.last_visit_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_visit_at,
+				COALESCE(EXTRACT(DAY FROM NOW() - lv.last_visit_at)::int, 0) as days_since_last,
+				COALESCE(c.address, '') as address,
+				COALESCE(ST_Y(c.location::geometry), 0) as latitude,
+				COALESCE(ST_X(c.location::geometry), 0) as longitude
+			FROM leads l
+			LEFT JOIN customers c ON l.customer_id = c.id
+			LEFT JOIN last_visits lv ON l.customer_id = lv.customer_id
+			WHERE l.assigned_to = $1 AND l.status != 'converted'
+			
+			UNION ALL
+			
+			SELECT 
+				c.id::text, 
+				c.name, 
+				'customer' as type,
+				CASE 
+					WHEN lv.last_visit_at IS NULL THEN 'new'
+					ELSE 'stale'
+				END as status,
+				CASE 
+					WHEN lv.last_visit_at IS NULL THEN 'high'
+					WHEN lv.last_visit_at < NOW() - INTERVAL '21 days' THEN 'medium'
+					ELSE 'low'
+				END as priority,
+				CASE 
+					WHEN lv.last_visit_at IS NULL THEN 'Pelanggan baru belum pernah dikunjungi'
+					ELSE 'Akun stagnan: ' || EXTRACT(DAY FROM NOW() - lv.last_visit_at)::int || ' hari tanpa kontak'
+				END as reason,
+				TO_CHAR(lv.last_visit_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as last_visit_at,
+				COALESCE(EXTRACT(DAY FROM NOW() - lv.last_visit_at)::int, 0) as days_since_last,
+				COALESCE(c.address, '') as address,
+				COALESCE(ST_Y(c.location::geometry), 0) as latitude,
+				COALESCE(ST_X(c.location::geometry), 0) as longitude
+			FROM customers c
+			LEFT JOIN last_visits lv ON c.id = lv.customer_id
+			WHERE c.assigned_to = $1 AND c.id NOT IN (SELECT customer_id FROM leads WHERE customer_id IS NOT NULL)
+		)
+		ORDER BY 
+			CASE WHEN priority = 'high' THEN 1 WHEN priority = 'medium' THEN 2 ELSE 3 END ASC,
+			days_since_last DESC NULLS FIRST
+		LIMIT 5
+	`
+	rows, err := r.db.Query(ctx, query, salesID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []models.VisitRecommendation
+	for rows.Next() {
+		var v models.VisitRecommendation
+		err := rows.Scan(
+			&v.ID, &v.Name, &v.Type, &v.Status, &v.Priority, &v.Reason,
+			&v.LastVisitAt, &v.DaysSinceLast, &v.Address, &v.Latitude, &v.Longitude,
+		)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, v)
+	}
+	return result, nil
+}

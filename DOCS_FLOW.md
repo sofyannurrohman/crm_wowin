@@ -13,11 +13,13 @@ Aplikasi mobile dirancang untuk mendukung produktivitas sales di lapangan secara
 *   **Detail Produk:** Informasi deskripsi, harga unit, dan SKU produk untuk mempermudah presentasi ke pelanggan.
 *   **Pencarian Cepat:** Fitur search di katalog untuk menemukan produk dalam hitungan detik.
 
-### 2. Lead Management & Acquisition
+### 2. Lead Management & Visit Wizard
 *   **Tambah Lead:** Saat menemukan potensi bisnis baru, sales menambahkan data ke menu **"Leads"**.
-*   **Check-In Kunjungan:** Sales melakukan kunjungan survei awal menggunakan fitur **Visit**.
-    *   **Selfie & Tempat:** Wajib mengambil foto wajah dan foto lokasi toko/tempat.
-    *   **Geofencing:** Check-in hanya bisa dilakukan jika sales berada dalam radius 100 meter dari lokasi koordinat pelanggan.
+*   **Multi-Step Visit Wizard:** Sales melakukan kunjungan melalui alur terpandu 4-langkah:
+    1.  **Selection:** Memilih pelanggan/lead (otomatis terisi jika dari halaman Detail Deal).
+    2.  **Verification (Geofencing):** Verifikasi jarak real-time. Check-in hanya dapat dilakukan dalam radius 200 meter.
+    3.  **Live Snapshot:** Mengambil foto lokasi secara langsung melalui viewport kamera terintegrasi.
+    4.  **Summary & Sync:** Penambahan catatan dan sinkronisasi otomatis ke server.
 
 ### 3. Konversi ke Deal & Penawaran Produk
 *   **Konversi Lead:** Jika prospek berminat, sales mengubah status **Lead** menjadi **Customer**.

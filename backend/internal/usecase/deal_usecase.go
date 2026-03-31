@@ -13,7 +13,7 @@ import (
 // DealUseCase handles Pipeline processes
 type DealUseCase interface {
 	CreateDeal(ctx context.Context, d *models.Deal, creatorID uuid.UUID) (*models.Deal, error)
-	GetDealDetails(ctx context.Context, id uuid.UUID) (*models.Deal, []*models.DealStageHistory, error)
+	GetDealDetails(ctx context.Context, id uuid.UUID) (*models.Deal, []*models.DealStageHistory, *models.Customer, error)
 	ListDeals(ctx context.Context, filter repository.DealFilter) ([]*models.Deal, error)
 	UpdateDeal(ctx context.Context, d *models.Deal) (*models.Deal, error)
 	ChangeDealStage(ctx context.Context, dealID uuid.UUID, newStage models.DealStage, changedBy uuid.UUID, notes *string) error
@@ -51,19 +51,20 @@ func (u *dealUseCaseImpl) CreateDeal(ctx context.Context, d *models.Deal, creato
 	return d, nil
 }
 
-func (u *dealUseCaseImpl) GetDealDetails(ctx context.Context, id uuid.UUID) (*models.Deal, []*models.DealStageHistory, error) {
+func (u *dealUseCaseImpl) GetDealDetails(ctx context.Context, id uuid.UUID) (*models.Deal, []*models.DealStageHistory, *models.Customer, error) {
 	deal, err := u.dealRepo.GetByID(ctx, id)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	history, err := u.dealRepo.GetStageHistory(ctx, deal.ID)
 	if err != nil {
-		// Log omission, non-blocking
 		history = make([]*models.DealStageHistory, 0)
 	}
 
-	return deal, history, nil
+	customer, _ := u.custRepo.GetByID(ctx, deal.CustomerID)
+
+	return deal, history, customer, nil
 }
 
 func (u *dealUseCaseImpl) ListDeals(ctx context.Context, filter repository.DealFilter) ([]*models.Deal, error) {
@@ -90,8 +91,26 @@ func (u *dealUseCaseImpl) UpdateDeal(ctx context.Context, d *models.Deal) (*mode
 }
 
 func (u *dealUseCaseImpl) ChangeDealStage(ctx context.Context, dealID uuid.UUID, newStage models.DealStage, changedBy uuid.UUID, notes *string) error {
-	// Optional validation logic: 
-	// Make sure deal isn't already Closed? We omit that strictness for flexibility here.
+	existing, err := u.dealRepo.GetByID(ctx, dealID)
+	if err != nil {
+		return err
+	}
+
+	// Terminal stage detection for "Sales Performance" (Status updates)
+	if newStage == models.DealStageClosedWon || newStage == models.DealStageClosedLost {
+		existing.Stage = newStage
+		if newStage == models.DealStageClosedWon {
+			existing.Status = models.DealStatusWon
+		} else {
+			existing.Status = models.DealStatusLost
+		}
+		now := time.Now()
+		existing.ClosedAt = &now
+		
+		// Update the whole record to capture Status and ClosedAt
+		return u.dealRepo.Update(ctx, existing)
+	}
+
 	return u.dealRepo.UpdateStage(ctx, dealID, newStage, &changedBy, notes)
 }
 

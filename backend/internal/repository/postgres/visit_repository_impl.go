@@ -24,19 +24,19 @@ func NewVisitRepository(db *pgxpool.Pool) repository.VisitRepository {
 // === SCHEDULES ===
 
 func (r *visitRepoImpl) CreateSchedule(ctx context.Context, s *models.VisitSchedule) error {
-	query := `INSERT INTO visit_schedules (sales_id, customer_id, scheduled_date, notes)
-			  VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at`
-	err := r.db.QueryRow(ctx, query, s.SalesID, s.CustomerID, s.Date, s.Notes).
+	query := `INSERT INTO visit_schedules (sales_id, customer_id, deal_id, scheduled_date, notes)
+			  VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at, updated_at`
+	err := r.db.QueryRow(ctx, query, s.SalesID, s.CustomerID, s.DealID, s.Date, s.Notes).
 		Scan(&s.ID, &s.CreatedAt, &s.UpdatedAt)
 	return err
 }
 
 func (r *visitRepoImpl) GetScheduleByID(ctx context.Context, id uuid.UUID) (*models.VisitSchedule, error) {
-	query := `SELECT id, sales_id, customer_id, scheduled_date, notes, created_at, updated_at
+	query := `SELECT id, sales_id, customer_id, deal_id, scheduled_date, notes, created_at, updated_at
 			  FROM visit_schedules WHERE id=$1`
 	var s models.VisitSchedule
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&s.ID, &s.SalesID, &s.CustomerID, &s.Date, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
+		&s.ID, &s.SalesID, &s.CustomerID, &s.DealID, &s.Date, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, dberrors.ErrNotFound
@@ -45,7 +45,7 @@ func (r *visitRepoImpl) GetScheduleByID(ctx context.Context, id uuid.UUID) (*mod
 }
 
 func (r *visitRepoImpl) ListSchedules(ctx context.Context, filter repository.ScheduleFilter) ([]*models.VisitSchedule, error) {
-	baseQuery := `SELECT id, sales_id, customer_id, scheduled_date, notes, created_at, updated_at 
+	baseQuery := `SELECT id, sales_id, customer_id, deal_id, scheduled_date, notes, created_at, updated_at 
 				  FROM visit_schedules WHERE 1=1`
 
 	args := []interface{}{}
@@ -84,7 +84,7 @@ func (r *visitRepoImpl) ListSchedules(ctx context.Context, filter repository.Sch
 	var results []*models.VisitSchedule
 	for rows.Next() {
 		var s models.VisitSchedule
-		err := rows.Scan(&s.ID, &s.SalesID, &s.CustomerID, &s.Date, &s.Notes, &s.CreatedAt, &s.UpdatedAt)
+		err := rows.Scan(&s.ID, &s.SalesID, &s.CustomerID, &s.DealID, &s.Date, &s.Notes, &s.CreatedAt, &s.UpdatedAt)
 		if err != nil {
 			fmt.Printf("❌ Database scan error (ListSchedules): %v\n", err)
 			return nil, err
@@ -97,9 +97,9 @@ func (r *visitRepoImpl) ListSchedules(ctx context.Context, filter repository.Sch
 
 func (r *visitRepoImpl) UpdateSchedule(ctx context.Context, s *models.VisitSchedule) error {
 	query := `UPDATE visit_schedules SET 
-				sales_id=$1, customer_id=$2, scheduled_date=$3, notes=$4, updated_at=NOW()
-			  WHERE id=$5 RETURNING updated_at`
-	err := r.db.QueryRow(ctx, query, s.SalesID, s.CustomerID, s.Date, s.Notes, s.ID).Scan(&s.UpdatedAt)
+				sales_id=$1, customer_id=$2, deal_id=$3, scheduled_date=$4, notes=$5, updated_at=NOW()
+			  WHERE id=$6 RETURNING updated_at`
+	err := r.db.QueryRow(ctx, query, s.SalesID, s.CustomerID, s.DealID, s.Date, s.Notes, s.ID).Scan(&s.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dberrors.ErrNotFound
 	}
@@ -120,31 +120,44 @@ func (r *visitRepoImpl) DeleteSchedule(ctx context.Context, id uuid.UUID) error 
 // === EXECUTION FOOTPRINTS (Activities) ===
 
 func (r *visitRepoImpl) LogActivity(ctx context.Context, a *models.VisitActivity) error {
-	query := `INSERT INTO visit_activities (
-				schedule_id, sales_id, customer_id, type, 
-				location, photo_path, selfie_photo_path, place_photo_path,
-				distance, is_offline, notes
-			  ) VALUES (
-				$1, $2, $3, $4, 
-				ST_SetSRID(ST_MakePoint($5, $6), 4326), $7, $8, $9, $10, $11, $12
-			  ) RETURNING id, created_at`
-	
-	err := r.db.QueryRow(ctx, query, 
-		a.ScheduleID, a.SalesID, a.CustomerID, a.Type,
-		a.Longitude, a.Latitude, a.PhotoPath, a.SelfiePhotoPath, a.PlacePhotoPath,
-		a.Distance, a.IsOffline, a.Notes,
-	).Scan(&a.ID, &a.CreatedAt)
-
-	return err
+	// Map VisitActivity logic to 'visits' table
+	// If it's a check-in, we INSERT. If check-out, we UPDATE.
+	if a.Type == models.VisitTypeCheckIn {
+		query := `INSERT INTO visits (
+					schedule_id, sales_id, customer_id, deal_id, 
+					checkin_at, checkin_location, checkin_distance, result_notes
+				  ) VALUES (
+					$1, $2, $3, $4, NOW(),
+					ST_SetSRID(ST_MakePoint($5, $6), 4326), $7, $8
+				  ) RETURNING id, created_at`
+		
+		err := r.db.QueryRow(ctx, query, 
+			a.ScheduleID, a.SalesID, a.CustomerID, a.DealID,
+			a.Longitude, a.Latitude, a.Distance, a.Notes,
+		).Scan(&a.ID, &a.CreatedAt)
+		return err
+	} else {
+		// Check-out logic
+		query := `UPDATE visits SET 
+					checkout_at = NOW(),
+					checkout_location = ST_SetSRID(ST_MakePoint($1, $2), 4326),
+					status = 'completed',
+					result_notes = COALESCE(result_notes || '\n' || $3, $3)
+				  WHERE (schedule_id = $4 OR (customer_id = $5 AND sales_id = $6)) 
+				  AND checkout_at IS NULL
+				  RETURNING id, created_at`
+		err := r.db.QueryRow(ctx, query, a.Longitude, a.Latitude, a.Notes, a.ScheduleID, a.CustomerID, a.SalesID).
+			Scan(&a.ID, &a.CreatedAt)
+		return err
+	}
 }
 
 func (r *visitRepoImpl) GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error) {
 	query := `
-		SELECT 	id, schedule_id, sales_id, customer_id, type, 
-				ST_Y(location::geometry) as lat, ST_X(location::geometry) as lon, 
-				photo_path, selfie_photo_path, place_photo_path,
-				distance, is_offline, notes, created_at
-		FROM visit_activities WHERE schedule_id=$1 ORDER BY created_at ASC
+		SELECT 	id, schedule_id, sales_id, customer_id, deal_id, 
+				ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
+				checkin_distance as distance, result_notes as notes, created_at
+		FROM visits WHERE schedule_id=$1 ORDER BY created_at ASC
 	`
 	rows, err := r.db.Query(ctx, query, scheduleID)
 	if err != nil {
@@ -156,11 +169,10 @@ func (r *visitRepoImpl) GetActivitiesBySchedule(ctx context.Context, scheduleID 
 
 func (r *visitRepoImpl) GetActivitiesByCustomer(ctx context.Context, customerID uuid.UUID) ([]*models.VisitActivity, error) {
 	query := `
-		SELECT 	id, schedule_id, sales_id, customer_id, type, 
-				ST_Y(location::geometry) as lat, ST_X(location::geometry) as lon, 
-				photo_path, selfie_photo_path, place_photo_path,
-				distance, is_offline, notes, created_at
-		FROM visit_activities WHERE customer_id=$1 ORDER BY created_at DESC
+		SELECT 	id, schedule_id, sales_id, customer_id, deal_id, 
+				ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
+				checkin_distance as distance, result_notes as notes, created_at
+		FROM visits WHERE customer_id=$1 ORDER BY created_at DESC
 	`
 	rows, err := r.db.Query(ctx, query, customerID)
 	if err != nil {
@@ -175,9 +187,9 @@ func scanActivities(rows pgx.Rows) ([]*models.VisitActivity, error) {
 	for rows.Next() {
 		var a models.VisitActivity
 		err := rows.Scan(
-			&a.ID, &a.ScheduleID, &a.SalesID, &a.CustomerID, &a.Type,
-			&a.Latitude, &a.Longitude, &a.PhotoPath, &a.SelfiePhotoPath, &a.PlacePhotoPath,
-			&a.Distance, &a.IsOffline, &a.Notes, &a.CreatedAt,
+			&a.ID, &a.ScheduleID, &a.SalesID, &a.CustomerID, &a.DealID,
+			&a.Latitude, &a.Longitude, 
+			&a.Distance, &a.Notes, &a.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -189,11 +201,10 @@ func scanActivities(rows pgx.Rows) ([]*models.VisitActivity, error) {
 
 func (r *visitRepoImpl) ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error) {
 	baseQuery := `
-		SELECT 	id, schedule_id, sales_id, customer_id, type, 
-				ST_Y(location::geometry) as lat, ST_X(location::geometry) as lon, 
-				photo_path, selfie_photo_path, place_photo_path,
-				distance, is_offline, notes, created_at
-		FROM visit_activities WHERE 1=1
+		SELECT 	id, schedule_id, sales_id, customer_id, deal_id, 
+				ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
+				checkin_distance as distance, result_notes as notes, created_at
+		FROM visits WHERE 1=1
 	`
 	args := []interface{}{}
 	argCount := 1
