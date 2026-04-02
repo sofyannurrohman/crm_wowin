@@ -36,6 +36,42 @@ class DealRepositoryImpl implements DealRepository {
   }
 
   @override
+  Future<Either<Failure, Deal>> createDeal(Deal deal) async {
+    try {
+      final result = await remoteDataSource.createDeal(deal);
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal membuat deal baru'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Deal>> updateDeal(Deal deal) async {
+    try {
+      final result = await remoteDataSource.updateDeal(deal);
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal memperbarui deal'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteDeal(String id) async {
+    try {
+      await remoteDataSource.deleteDeal(id);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal menghapus deal'));
+    }
+  }
+
+  @override
   Future<Either<Failure, Deal>> updateDealStage(String id, String stage) async {
     try {
       final deal = await remoteDataSource.updateDealStage(id, stage);

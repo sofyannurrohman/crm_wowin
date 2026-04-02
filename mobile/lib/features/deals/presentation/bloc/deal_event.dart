@@ -64,3 +64,26 @@ class RemoveDealItemSubmitted extends DealEvent {
   @override
   List<Object> get props => [itemId, dealId];
 }
+class CreateDealSubmitted extends DealEvent {
+  final Deal deal;
+  const CreateDealSubmitted(this.deal);
+
+  @override
+  List<Object> get props => [deal];
+}
+
+class UpdateDealSubmitted extends DealEvent {
+  final Deal deal;
+  const UpdateDealSubmitted(this.deal);
+
+  @override
+  List<Object> get props => [deal];
+}
+
+class DeleteDealSubmitted extends DealEvent {
+  final String id;
+  const DeleteDealSubmitted(this.id);
+
+  @override
+  List<Object> get props => [id];
+}

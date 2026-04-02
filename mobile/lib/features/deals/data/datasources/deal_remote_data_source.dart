@@ -5,6 +5,9 @@ import '../../domain/entities/deal_item.dart';
 abstract class DealRemoteDataSource {
   Future<List<Deal>> getDeals();
   Future<Deal> getDeal(String id);
+  Future<Deal> createDeal(Deal deal);
+  Future<Deal> updateDeal(Deal deal);
+  Future<void> deleteDeal(String id);
   Future<Deal> updateDealStage(String id, String stage);
   Future<List<DealItem>> getDealItems(String dealId);
   Future<DealItem> addDealItem(Map<String, dynamic> data);
@@ -32,6 +35,23 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
       dealPart['customer'] = data['customer'];
     }
     return Deal.fromJson(dealPart);
+  }
+
+  @override
+  Future<Deal> createDeal(Deal deal) async {
+    final response = await _dio.post('/deals', data: deal.toJson());
+    return Deal.fromJson(response.data['data']);
+  }
+
+  @override
+  Future<Deal> updateDeal(Deal deal) async {
+    final response = await _dio.put('/deals/${deal.id}', data: deal.toJson());
+    return Deal.fromJson(response.data['data']);
+  }
+
+  @override
+  Future<void> deleteDeal(String id) async {
+    await _dio.delete('/deals/$id');
   }
 
   @override

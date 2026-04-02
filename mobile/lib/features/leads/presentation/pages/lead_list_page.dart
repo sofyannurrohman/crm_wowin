@@ -64,12 +64,26 @@ class _LeadListPageState extends State<LeadListPage> {
       backgroundColor: _bg,
       appBar: _buildAppBar(),
       drawer: const AppSidebar(),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          _buildFilterTabs(),
-          Expanded(child: _buildLeadsList()),
-        ],
+      body: BlocListener<LeadBloc, LeadState>(
+        listener: (context, state) {
+          if (state is LeadOperationSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+            );
+            _fetchLeads(); // Refresh list on success
+          } else if (state is LeadError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+            );
+          }
+        },
+        child: Column(
+          children: [
+            _buildSearchBar(),
+            _buildFilterTabs(),
+            Expanded(child: _buildLeadsList()),
+          ],
+        ),
       ),
     );
   }
@@ -445,7 +459,40 @@ class _LeadListPageState extends State<LeadListPage> {
                         letterSpacing: 0.5,
                       ),
                     ),
-                    const Icon(Icons.more_vert, size: 20, color: Color(0xFF9CA3AF)),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, size: 20, color: Color(0xFF9CA3AF)),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          context.pushNamed(kRouteAddLead, extra: lead);
+                        } else if (value == 'delete') {
+                          _showDeleteConfirmation(context, lead);
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(LucideIcons.edit2, size: 16, color: Color(0xFF1A1A1A)),
+                              SizedBox(width: 8),
+                              Text('Ubah Data'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(LucideIcons.trash2, size: 16, color: Colors.red),
+                              SizedBox(width: 8),
+                              Text('Hapus', style: TextStyle(color: Colors.red)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ],
@@ -455,6 +502,34 @@ class _LeadListPageState extends State<LeadListPage> {
       ),
       ),
     );
+  }
+
+  void _showDeleteConfirmation(BuildContext context, dynamic lead) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Prospek?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Apakah Anda yakin ingin menghapus "${lead.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _handleDelete(context, lead.id);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleDelete(BuildContext context, String id) {
+    context.read<LeadBloc>().add(DeleteLeadSubmitted(id));
   }
 
   Color _getInitialsColor(String initials) {

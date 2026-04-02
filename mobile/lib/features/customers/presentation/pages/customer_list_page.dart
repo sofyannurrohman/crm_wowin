@@ -9,6 +9,7 @@ import '../bloc/customer_state.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
 import '../../domain/entities/customer.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
 
 class CustomerListPage extends StatefulWidget {
   const CustomerListPage({super.key});
@@ -71,7 +72,19 @@ class _CustomerListPageState extends State<CustomerListPage> {
                     );
                   } else if (state is CustomersLoaded) {
                     if (state.customers.isEmpty) {
-                      return _buildEmptyState();
+                      return EmptyStateWidget(
+                        title: 'Pelanggan Tidak Ditemukan',
+                        message: 'Coba ubah kata kunci pencarian atau filter status Anda.',
+                        icon: LucideIcons.users,
+                        onRetry: () {
+                          _searchController.clear();
+                          setState(() {
+                            _selectedFilter = 'All';
+                          });
+                          _fetchCustomers();
+                        },
+                        retryLabel: 'Bersihkan Filter',
+                      );
                     }
                     return RefreshIndicator(
                       color: _orange,
@@ -85,7 +98,12 @@ class _CustomerListPageState extends State<CustomerListPage> {
                       ),
                     );
                   } else if (state is CustomerError) {
-                    return Center(child: Text(state.message));
+                    return EmptyStateWidget(
+                      title: 'Gagal Memuat Pelanggan',
+                      message: state.message,
+                      icon: LucideIcons.alertCircle,
+                      onRetry: () => _fetchCustomers(),
+                    );
                   }
                   return const SizedBox();
                 },
@@ -205,32 +223,6 @@ class _CustomerListPageState extends State<CustomerListPage> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(LucideIcons.users, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text(
-            'No customers found',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: () {
-              _searchController.clear();
-              setState(() {
-                _selectedFilter = 'All';
-              });
-              _fetchCustomers();
-            },
-            child: const Text('Clear Filters', style: TextStyle(color: _orange)),
-          ),
-        ],
-      ),
-    );
-  }
 
 }
 

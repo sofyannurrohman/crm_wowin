@@ -6,6 +6,9 @@ import '../entities/deal_item.dart';
 abstract class DealRepository {
   Future<Either<Failure, List<Deal>>> getDeals();
   Future<Either<Failure, Deal>> getDealDetail(String id);
+  Future<Either<Failure, Deal>> createDeal(Deal deal);
+  Future<Either<Failure, Deal>> updateDeal(Deal deal);
+  Future<Either<Failure, void>> deleteDeal(String id);
   Future<Either<Failure, Deal>> updateDealStage(String id, String stage);
   Future<Either<Failure, List<DealItem>>> getDealItems(String dealId);
   Future<Either<Failure, DealItem>> addDealItem({

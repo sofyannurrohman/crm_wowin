@@ -14,7 +14,12 @@ import '../bloc/dashboard_state.dart';
 import '../../../visits/presentation/bloc/visit_bloc.dart';
 import '../../../visits/presentation/bloc/visit_state.dart';
 import '../../domain/entities/visit_recommendation.dart';
+import '../../domain/entities/kpi_dashboard.dart';
+import '../../../deals/domain/entities/deal.dart';
+import '../../../visits/domain/entities/visit_activity.dart';
 import '../widgets/active_visit_card.dart';
+import 'package:intl/intl.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -233,8 +238,11 @@ class _DashboardPageState extends State<DashboardPage> {
           d.daysLeft,
           l10n,
         ),
-
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
+        _buildHotDeals(d.hotDeals),
+        const SizedBox(height: 24),
+        _buildRecentActivitySection(d.recentActivities),
+        const SizedBox(height: 24),
 
         // Today's Schedule section
         Row(
@@ -441,7 +449,11 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _buildRecommendationList(
       List<VisitRecommendation> recommendations, AppLocalizations l10n) {
     if (recommendations.isEmpty) {
-      return _buildEmptyRecommendations(l10n);
+      return const EmptyStateWidget(
+        title: 'Semua Terkendali!',
+        message: 'Tidak ada rekomendasi kunjungan mendesak saat ini.',
+        icon: LucideIcons.sparkles,
+      );
     }
 
     return Column(
@@ -451,33 +463,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildEmptyRecommendations(AppLocalizations l10n) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withOpacity(0.05)),
-      ),
-      child: Column(
-        children: [
-          Icon(LucideIcons.sparkles, size: 48, color: _orange.withOpacity(0.2)),
-          const SizedBox(height: 12),
-          const Text(
-            'Semua Terkendali!',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Tidak ada rekomendasi kunjungan mendesak saat ini.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey, fontSize: 13),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildRecommendationItem(VisitRecommendation item, AppLocalizations l10n) {
     final bool isHigh = item.priority == 'high';
@@ -660,9 +646,99 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Check-in FAB
-  // ---------------------------------------------------------------------------
+  Widget _buildHotDeals(List<Deal> deals) {
+    if (deals.isEmpty) return const SizedBox();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Hot Deals (Prioritas)',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 160,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: deals.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            itemBuilder: (context, index) => _buildHotDealCard(deals[index]),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHotDealCard(Deal deal) {
+    return Container(
+      width: 200,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _navy,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: _navy.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(8)),
+                child: Text('${deal.probability}%', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
+              const Icon(LucideIcons.trendingUp, color: Colors.greenAccent, size: 16),
+            ],
+          ),
+          const Spacer(),
+          Text(deal.title, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 4),
+          Text(
+            NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(deal.amount),
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivitySection(List<VisitActivity> activities) {
+    if (activities.isEmpty) return const SizedBox();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Aktivitas Terbaru',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+          child: Column(
+            children: activities.take(5).map((a) => _buildRecentActivityItem(a)).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentActivityItem(VisitActivity activity) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), shape: BoxShape.circle),
+        child: Icon(activity.type == 'check_in' ? LucideIcons.mapPin : LucideIcons.checkSquare, size: 16, color: _navy),
+      ),
+      title: Text(activity.type == 'check_in' ? 'Check-in di Lapangan' : 'Check-out Selesai', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+      subtitle: Text(activity.notes ?? '-', style: const TextStyle(fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: Text(DateFormat('HH:mm').format(activity.createdAt), style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+    );
+  }
+
+
   Widget _buildCheckInFab(AppLocalizations l10n) {
     return FloatingActionButton.extended(
       onPressed: () {
@@ -685,29 +761,13 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-
-  // ---------------------------------------------------------------------------
-  // Error state
-  // ---------------------------------------------------------------------------
   Widget _buildError(String message, AppLocalizations l10n) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const SizedBox(height: 60),
-          const Icon(LucideIcons.alertCircle,
-              size: 48, color: Color(0xFFEF4444)),
-          const SizedBox(height: 16),
-          Text(message, textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () =>
-                context.read<DashboardBloc>().add(FetchDashboardKpis()),
-            style: ElevatedButton.styleFrom(backgroundColor: _orange),
-            child: Text(l10n.retry),
-          ),
-        ],
-      ),
+    return EmptyStateWidget(
+      title: 'Gagal Memuat Dashboard',
+      message: message,
+      icon: LucideIcons.alertCircle,
+      onRetry: () => context.read<DashboardBloc>().add(FetchDashboardKpis()),
+      retryLabel: l10n.retry,
     );
   }
 

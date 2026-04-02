@@ -1,4 +1,6 @@
 import 'kpi_summary.dart';
+import '../../../deals/domain/entities/deal.dart';
+import '../../../visits/domain/entities/visit_activity.dart';
 
 /// Wrapper that extends KpiSummary with extra dashboard fields
 /// parsed from the backend response that aren't in the freezed entity.
@@ -8,11 +10,16 @@ class KpiDashboard {
   final double monthlyTarget;
   final int daysLeft;
 
+  final List<Deal> hotDeals;
+  final List<VisitActivity> recentActivities;
+
   const KpiDashboard({
     required this.summary,
     required this.monthlyRevenue,
     required this.monthlyTarget,
     required this.daysLeft,
+    this.hotDeals = const [],
+    this.recentActivities = const [],
   });
 
   // Convenience getters

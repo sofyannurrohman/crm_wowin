@@ -19,7 +19,7 @@ CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended');
 CREATE TYPE customer_type AS ENUM ('individual', 'company');
 CREATE TYPE customer_status AS ENUM ('prospect', 'active', 'inactive', 'churned');
 
-CREATE TYPE lead_status AS ENUM ('new', 'contacted', 'qualified', 'unqualified');
+CREATE TYPE lead_status AS ENUM ('new', 'contacted', 'qualified', 'unqualified', 'converted');
 CREATE TYPE lead_source AS ENUM ('referral', 'cold_call', 'social_media', 'website', 'event', 'other');
 
 CREATE TYPE deal_stage AS ENUM ('prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won', 'closed_lost');

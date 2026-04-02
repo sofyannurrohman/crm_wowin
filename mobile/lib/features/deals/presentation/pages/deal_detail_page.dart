@@ -6,6 +6,11 @@ import 'package:intl/intl.dart';
 
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_item.dart';
+import '../../../customers/domain/entities/customer.dart';
+import '../../../visits/presentation/bloc/visit_bloc.dart';
+import '../../../visits/presentation/bloc/visit_event.dart';
+import '../../../visits/presentation/bloc/visit_state.dart';
+import '../../../visits/domain/entities/visit_activity.dart';
 import '../../../products/domain/entities/product.dart';
 import '../bloc/deal_bloc.dart';
 import '../bloc/deal_event.dart';
@@ -21,18 +26,19 @@ class DealDetailPage extends StatefulWidget {
   State<DealDetailPage> createState() => _DealDetailPageState();
 }
 
-class _DealDetailPageState extends State<DealDetailPage> {
-  static const Color _orange = Color(0xFFEA580C);
-  static const Color _bg = Color(0xFFF9FAFB);
-  static const Color _textPrimary = Color(0xFF111827);
-  static const Color _textSecondary = Color(0xFF6B7280);
-  static const Color _lightOrangeBg = Color(0xFFFFF7ED);
-  static const Color _green = Color(0xFF16A34A);
+const Color _orange = Color(0xFFEA580C);
+const Color _bg = Color(0xFFF9FAFB);
+const Color _textPrimary = Color(0xFF111827);
+const Color _textSecondary = Color(0xFF6B7280);
+const Color _lightOrangeBg = Color(0xFFFFF7ED);
+const Color _green = Color(0xFF16A34A);
 
+class _DealDetailPageState extends State<DealDetailPage> {
   @override
   void initState() {
     super.initState();
     context.read<DealBloc>().add(FetchDealDetail(widget.dealId));
+    context.read<VisitBloc>().add(const FetchActivities()); // We'll filter in UI or add a specific event if needed
   }
 
   @override
@@ -46,6 +52,9 @@ class _DealDetailPageState extends State<DealDetailPage> {
               backgroundColor: _green,
             ),
           );
+          if (state.message.contains('menghapus')) {
+            context.pop(); // Go back to Kanban after deletion
+          }
         } else if (state is DealError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -136,70 +145,114 @@ class _DealDetailPageState extends State<DealDetailPage> {
         ),
       ),
       actions: [
-        IconButton(
-          icon: const Icon(LucideIcons.edit2, color: _textPrimary, size: 20),
-          onPressed: () {},
-        ),
-        IconButton(
-          icon: const Icon(Icons.more_vert, color: _textPrimary, size: 20),
-          onPressed: () {},
+        BlocBuilder<DealBloc, DealState>(
+          builder: (context, state) {
+            if (state is DealDetailLoaded) {
+              final deal = state.deal;
+              return Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(LucideIcons.edit2, color: _textPrimary, size: 20),
+                    onPressed: () async {
+                      final result = await context.pushNamed(
+                        kRouteAddDeal,
+                        extra: deal,
+                      );
+                      if (result == true) {
+                        if (mounted) {
+                          context.read<DealBloc>().add(FetchDealDetail(widget.dealId));
+                        }
+                      }
+                    },
+                  ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: _textPrimary, size: 20),
+                    onSelected: (value) {
+                      if (value == 'delete') {
+                        _showDeleteConfirmation(context, deal);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(LucideIcons.trash2, color: Colors.red, size: 18),
+                            SizedBox(width: 8),
+                            Text('Hapus Deal', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            }
+            return const SizedBox();
+          },
         ),
       ],
     );
   }
 
-  Widget _buildHeader(dynamic deal) {
+  Widget _buildHeader(Deal deal) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       color: Colors.white,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _lightOrangeBg,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(LucideIcons.briefcase, color: _orange, size: 32),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  deal.title,
-                  style: const TextStyle(
-                    color: _textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _lightOrangeBg,
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                const SizedBox(height: 6),
-                Row(
+                child: const Icon(LucideIcons.briefcase, color: _orange, size: 32),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(LucideIcons.building2, size: 14, color: _orange),
-                    const SizedBox(width: 4),
                     Text(
-                      'Pelanggan: ${deal.customerId}',
-                      style: TextStyle(color: _orange.withOpacity(0.9), fontSize: 13, fontWeight: FontWeight.w600),
+                      deal.title,
+                      style: const TextStyle(
+                        color: _textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(LucideIcons.building2, size: 14, color: _orange),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Pelanggan: ${deal.customerId}',
+                          style: TextStyle(color: _orange.withOpacity(0.9), fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _buildBadge(deal.status.toUpperCase(), const Color(0xFFDC2626), const Color(0xFFFEE2E2)), // Red
+                        const SizedBox(width: 8),
+                        _buildBadge('SOFTWARE', const Color(0xFF4B5563), const Color(0xFFF3F4F6)), // Gray
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _buildBadge(deal.status.toUpperCase(), const Color(0xFFDC2626), const Color(0xFFFEE2E2)), // Red
-                    const SizedBox(width: 8),
-                    _buildBadge('SOFTWARE', const Color(0xFF4B5563), const Color(0xFFF3F4F6)), // Gray
-                  ],
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
+          const SizedBox(height: 24),
+          _buildQuickActions(context, deal),
         ],
       ),
     );
@@ -403,6 +456,34 @@ class _DealDetailPageState extends State<DealDetailPage> {
     );
   }
 
+  void _showDeleteConfirmation(BuildContext context, Deal deal) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Deal?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Apakah Anda yakin ingin menghapus "${deal.title}"? Tindakan ini tidak dapat dibatalkan.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _handleDelete(context, deal.id);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Hapus Sekarang'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleDelete(BuildContext context, String id) {
+    context.read<DealBloc>().add(DeleteDealSubmitted(id));
+  }
+
   Widget _buildVisitSection(BuildContext context, Deal deal) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -556,33 +637,55 @@ class _DealDetailPageState extends State<DealDetailPage> {
     );
   }
 
+  Widget _buildActivityTimeline(Deal deal) {
+    return BlocBuilder<VisitBloc, VisitState>(
+      builder: (context, state) {
+        List<VisitActivity> activities = [];
+        if (state is ActivitiesLoaded) {
+          // Filter by customerId as proxy since dealId is not in VisitActivity entity
+          activities = state.activities.where((a) => a.customerId == deal.customerId).toList();
+        }
 
-  Widget _buildActivityTimeline(dynamic deal) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Riwayat Aktivitas',
-            style: TextStyle(
-              color: _textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Riwayat Aktivitas',
+                style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 24),
+              if (activities.isEmpty)
+                _buildTimelineItem(
+                  icon: LucideIcons.fileText,
+                  iconBg: const Color(0xFFFFF7ED),
+                  iconColor: _orange,
+                  title: 'Penjualan Dibuat',
+                  time: 'Hari Ini',
+                  desc: 'Peluang baru "${deal.title}" telah didaftarkan ke sistem.',
+                  isLast: true,
+                )
+              else
+                ...activities.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final activity = entry.value;
+                  final isLast = index == activities.length - 1;
+                  
+                  return _buildTimelineItem(
+                    icon: activity.type == 'checkin' ? LucideIcons.mapPin : LucideIcons.checkSquare,
+                    iconBg: activity.type == 'checkin' ? const Color(0xFFE0F2FE) : const Color(0xFFDCFCE7),
+                    iconColor: activity.type == 'checkin' ? Colors.blue : Colors.green,
+                    title: activity.type == 'checkin' ? 'Check-in Lapangan' : 'Check-out / Selesai',
+                    time: DateFormat('HH:mm').format(activity.createdAt),
+                    desc: activity.notes ?? 'Melakukan kunjungan ke lokasi pelanggan.',
+                    isLast: isLast,
+                  );
+                }),
+            ],
           ),
-          const SizedBox(height: 24),
-          _buildTimelineItem(
-            icon: LucideIcons.fileText,
-            iconBg: const Color(0xFFFFF7ED),
-            iconColor: _orange,
-            title: 'Penjualan Dibuat',
-            time: 'N/A',
-            desc: deal.title,
-            isLast: true,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -819,11 +922,6 @@ class _DealDetailPageState extends State<DealDetailPage> {
   }
 
   void _showAddProductDialog(BuildContext context, Deal deal) {
-    // We'll navigate to product catalog and wait for result
-    // But for a faster demo, I'll just show a "mock" add or simple selection
-    // In real app: context.pushNamed(kRouteProducts, extra: {'isSelection': true})
-    
-    // Let's implement a simple dialog for now to show the feature works
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -832,6 +930,69 @@ class _DealDetailPageState extends State<DealDetailPage> {
     );
   }
 
+  void _handleCall(String? phone) {
+    if (phone == null || phone.isEmpty) return;
+    // Launch url: tel:$phone
+  }
+
+  void _handleMap(Deal deal) {
+    // Launch google maps with lat/lng or address
+  }
+
+  Widget _buildQuickActions(BuildContext context, Deal deal) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildActionButton(
+            icon: LucideIcons.phone,
+            label: 'Telepon',
+            color: Colors.blue,
+            onTap: () => _handleCall(deal.customer?.phone),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildActionButton(
+            icon: LucideIcons.map,
+            label: 'Navigasi',
+            color: Colors.green,
+            onTap: () => _handleMap(deal),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _AddProductSheet extends StatefulWidget {
@@ -847,6 +1008,15 @@ class _AddProductSheetState extends State<_AddProductSheet> {
   int _quantity = 1;
   double _price = 0;
   String _productName = '';
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
+
+  @override
+  void dispose() {
+    _priceController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -889,6 +1059,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                   _selectedProductId = product.id;
                   _productName = product.name;
                   _price = product.price;
+                  _priceController.text = _price.toStringAsFixed(0);
                 });
               }
             },
@@ -922,11 +1093,47 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Harga Unit', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Harga Negosiasi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 8),
-                    Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_price)),
+                    TextField(
+                      controller: _priceController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        prefixText: 'Rp ',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _price = double.tryParse(value) ?? 0;
+                        });
+                      },
+                    ),
                   ],
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('Catatan Item', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _notesController,
+            maxLines: 2,
+            decoration: InputDecoration(
+              hintText: 'Contoh: Garansi 2 tahun, Include biaya pasang...',
+              hintStyle: TextStyle(color: Colors.grey[400], fontSize: 12),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Subtotal Estimasi', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+              Text(
+                NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_price * _quantity),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFFEA580C)),
               ),
             ],
           ),

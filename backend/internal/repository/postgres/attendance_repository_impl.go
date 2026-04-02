@@ -73,7 +73,7 @@ func (r *attendanceRepositoryImpl) ListByUser(ctx context.Context, userID uuid.U
 
 func (r *attendanceRepositoryImpl) GetDailySummary(ctx context.Context, userID uuid.UUID, startDate, endDate time.Time) ([]models.DailyAttendance, error) {
 	query := `
-		SELECT user_id, work_date, clock_in, clock_out, work_hours
+		SELECT user_id, work_date, clock_in, clock_out, COALESCE(work_hours, 0)
 		FROM daily_attendance
 		WHERE user_id = $1 AND work_date BETWEEN $2 AND $3
 		ORDER BY work_date DESC

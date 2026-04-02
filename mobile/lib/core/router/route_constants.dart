@@ -28,4 +28,5 @@ const String kRouteProducts = 'products';
 const String kRouteProductDetail = 'product_detail';
 const String kRouteAddLead = 'add_lead';
 const String kRouteConvertLead = 'convert_lead';
+const String kRouteAddDeal = 'add_deal';
 

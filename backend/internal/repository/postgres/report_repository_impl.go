@@ -25,7 +25,7 @@ func (r *reportRepositoryImpl) GetKpiSummary(ctx context.Context) (*models.KpiSu
 			(SELECT COALESCE(
 				(COUNT(*) FILTER (WHERE status = 'won'))::float / NULLIF(COUNT(*), 0) * 100, 0
 			 ) FROM deals WHERE status IN ('won', 'lost')) as win_rate,
-			(SELECT COUNT(*) FROM visit_activities WHERE type = 'check-in' AND DATE(created_at) = CURRENT_DATE) as visits_today,
+			(SELECT COUNT(*) FROM visits WHERE DATE(checkin_at) = CURRENT_DATE) as visits_today,
 			(SELECT COUNT(*) FROM leads WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)) as new_leads,
 			(SELECT COALESCE(SUM(amount), 0) FROM deals WHERE status = 'won' AND DATE_TRUNC('month', closed_at) = DATE_TRUNC('month', CURRENT_DATE)) as monthly_revenue,
 			(EXTRACT(DAY FROM (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month') - CURRENT_DATE))::int as days_left
@@ -64,7 +64,7 @@ func (r *reportRepositoryImpl) GetRevenueTrend(ctx context.Context, months int) 
 	}
 	defer rows.Close()
 
-	var result []models.ChartData
+	result := []models.ChartData{}
 	for rows.Next() {
 		var d models.ChartData
 		if err := rows.Scan(&d.Label, &d.Value); err != nil {
@@ -89,7 +89,7 @@ func (r *reportRepositoryImpl) GetPipelineFunnel(ctx context.Context) ([]models.
 	}
 	defer rows.Close()
 
-	var result []models.ChartData
+	result := []models.ChartData{}
 	for rows.Next() {
 		var d models.ChartData
 		if err := rows.Scan(&d.Label, &d.Value); err != nil {
@@ -107,10 +107,10 @@ func (r *reportRepositoryImpl) GetTopPerformers(ctx context.Context, limit int) 
 			u.id::text, u.name, 
 			COUNT(v.id) as total_visits,
 			COUNT(v.id) as completed,
-			COUNT(v.id) FILTER (WHERE v.distance <= 100) as valid,
+			COUNT(v.id) FILTER (WHERE v.checkin_distance <= 100) as valid,
 			COALESCE(SUM(d.amount) FILTER (WHERE d.status = 'won'), 0) as revenue
 		FROM users u
-		LEFT JOIN visit_activities v ON v.sales_id = u.id AND v.type = 'check-in' AND v.created_at >= DATE_TRUNC('month', CURRENT_DATE)
+		LEFT JOIN visits v ON v.sales_id = u.id AND v.checkin_at >= DATE_TRUNC('month', CURRENT_DATE)
 		LEFT JOIN deals d ON d.assigned_to = u.id AND d.status = 'won' AND d.closed_at >= DATE_TRUNC('month', CURRENT_DATE)
 		WHERE u.role = 'sales'
 		GROUP BY u.id, u.name
@@ -123,7 +123,7 @@ func (r *reportRepositoryImpl) GetTopPerformers(ctx context.Context, limit int) 
 	}
 	defer rows.Close()
 
-	var result []models.SalesPerformance
+	result := []models.SalesPerformance{}
 	for rows.Next() {
 		var s models.SalesPerformance
 		if err := rows.Scan(&s.SalesID, &s.SalesName, &s.TotalVisits, &s.CompletedVisits, &s.ValidCheckins, &s.Revenue); err != nil {
@@ -139,12 +139,11 @@ func (r *reportRepositoryImpl) GetVisitRecommendations(ctx context.Context, sale
 		WITH last_visits AS (
 			SELECT 
 				customer_id, 
-				MAX(created_at) as last_visit_at
-			FROM visit_activities
-			WHERE type = 'check-in'
+				MAX(checkin_at) as last_visit_at
+			FROM visits
 			GROUP BY customer_id
 		)
-		(
+		SELECT * FROM (
 			SELECT 
 				l.id::text, 
 				l.title as name, 
@@ -199,7 +198,7 @@ func (r *reportRepositoryImpl) GetVisitRecommendations(ctx context.Context, sale
 			FROM customers c
 			LEFT JOIN last_visits lv ON c.id = lv.customer_id
 			WHERE c.assigned_to = $1 AND c.id NOT IN (SELECT customer_id FROM leads WHERE customer_id IS NOT NULL)
-		)
+		) as sub
 		ORDER BY 
 			CASE WHEN priority = 'high' THEN 1 WHEN priority = 'medium' THEN 2 ELSE 3 END ASC,
 			days_since_last DESC NULLS FIRST
@@ -211,7 +210,7 @@ func (r *reportRepositoryImpl) GetVisitRecommendations(ctx context.Context, sale
 	}
 	defer rows.Close()
 
-	var result []models.VisitRecommendation
+	result := []models.VisitRecommendation{}
 	for rows.Next() {
 		var v models.VisitRecommendation
 		err := rows.Scan(

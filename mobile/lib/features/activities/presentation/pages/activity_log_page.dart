@@ -141,9 +141,9 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
   Widget _buildActivityList(List<VisitActivity> activities) {
     // Filter by tab
     final filtered = activities.where((a) {
-      final normalizedType = a.type.toLowerCase().replaceAll('-', ''); // 'checkin' or 'checkout'
-      if (_selectedTab == 1) return normalizedType == 'checkin';
-      if (_selectedTab == 2) return normalizedType == 'checkout';
+      final normalizedType = a.type.toLowerCase().replaceAll('-', '').replaceAll('_', ''); 
+      if (_selectedTab == 1) return normalizedType == 'checkin' || normalizedType == 'clockin';
+      if (_selectedTab == 2) return normalizedType == 'checkout' || normalizedType == 'clockout';
       return true;
     }).toList();
 
@@ -161,15 +161,15 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
     Color iconColor;
     Color iconBgColor;
 
-    final type = item.type.toLowerCase().replaceAll('-', '');
-    if (type == 'checkin') {
-      icon = LucideIcons.mapPin;
-      iconColor = _orange;
-      iconBgColor = const Color(0xFFFFF7ED);
-    } else if (type == 'checkout') {
-      icon = LucideIcons.checkCircle;
-      iconColor = const Color(0xFF10B981);
-      iconBgColor = const Color(0xFFF0FDF4);
+    final type = item.type.toLowerCase().replaceAll('-', '').replaceAll('_', '');
+    if (type == 'checkin' || type == 'clockin') {
+      icon = type == 'clockin' ? LucideIcons.logIn : LucideIcons.mapPin;
+      iconColor = type == 'clockin' ? Colors.blue : _orange;
+      iconBgColor = type == 'clockin' ? const Color(0xFFEFF6FF) : const Color(0xFFFFF7ED);
+    } else if (type == 'checkout' || type == 'clockout') {
+      icon = type == 'clockout' ? LucideIcons.logOut : LucideIcons.checkCircle;
+      iconColor = type == 'clockout' ? Colors.red : const Color(0xFF10B981);
+      iconBgColor = type == 'clockout' ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4);
     } else {
       icon = LucideIcons.activity;
       iconColor = Colors.blue;
@@ -216,7 +216,11 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
                               ? 'Check-in di Lokasi' 
                               : item.type.toLowerCase().contains('check-out') || item.type.toLowerCase() == 'checkout'
                                   ? 'Check-out & Hasil Kunjungan'
-                                  : 'Aktivitas: ${item.type}',
+                                  : item.type.toLowerCase().contains('clock_in') || item.type.toLowerCase() == 'clockin'
+                                      ? 'Absen Masuk (Attendance)'
+                                      : item.type.toLowerCase().contains('clock_out') || item.type.toLowerCase() == 'clockout'
+                                          ? 'Absen Pulang (Attendance)'
+                                          : 'Aktivitas: ${item.type}',
                           style: const TextStyle(
                             color: _textPrimary,
                             fontSize: 16,

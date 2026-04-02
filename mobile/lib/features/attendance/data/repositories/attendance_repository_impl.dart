@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:camera/camera.dart';
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/attendance_record.dart';
@@ -30,8 +30,12 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
     String? notes,
   }) async {
     try {
+      final xFile = XFile(photoPath);
+      final bytes = await xFile.readAsBytes();
+      
       final result = await remoteDataSource.clockIn(
-        photo: File(photoPath),
+        photoBytes: bytes,
+        photoName: xFile.name.isEmpty ? 'selfie.jpg' : xFile.name,
         latitude: lat,
         longitude: lng,
         address: address,
@@ -52,8 +56,12 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
     String? notes,
   }) async {
     try {
+      final xFile = XFile(photoPath);
+      final bytes = await xFile.readAsBytes();
+
       final result = await remoteDataSource.clockOut(
-        photo: File(photoPath),
+        photoBytes: bytes,
+        photoName: xFile.name.isEmpty ? 'selfie.jpg' : xFile.name,
         latitude: lat,
         longitude: lng,
         address: address,

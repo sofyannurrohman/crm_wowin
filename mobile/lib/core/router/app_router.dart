@@ -32,6 +32,8 @@ import '../../features/products/presentation/pages/product_detail_page.dart';
 import '../../features/leads/presentation/pages/add_lead_page.dart';
 import '../../features/leads/presentation/pages/convert_lead_page.dart';
 import '../../features/leads/domain/entities/lead.dart';
+import '../../features/deals/domain/entities/deal.dart';
+import '../../features/deals/presentation/pages/add_deal_page.dart';
 import '../../features/visits/presentation/pages/visit_summary_result_page.dart';
 
 
@@ -100,6 +102,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const NotificationPage(),
     ),
     GoRoute(
+      name: kRouteAddCustomer,
+      path: '/customers/add',
+      builder: (context, state) {
+        final customer = state.extra as Customer?;
+        return AddCustomerPage(initialCustomer: customer);
+      },
+    ),
+    GoRoute(
       name: kRouteCustomers,
       path: '/customers',
       builder: (context, state) => const CustomerListPage(),
@@ -110,14 +120,6 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => CustomerDetailPage(
         id: state.pathParameters['id']!,
       ),
-    ),
-    GoRoute(
-      name: kRouteAddCustomer,
-      path: '/customers/add',
-      builder: (context, state) {
-        final customer = state.extra as Customer?;
-        return AddCustomerPage(initialCustomer: customer);
-      },
     ),
     GoRoute(
       name: kRouteLeads,
@@ -223,7 +225,18 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       name: kRouteAddLead,
       path: '/leads/add',
-      builder: (context, state) => const AddLeadPage(),
+      builder: (context, state) {
+        final lead = state.extra as Lead?;
+        return AddLeadPage(initialLead: lead);
+      },
+    ),
+    GoRoute(
+      name: kRouteAddDeal,
+      path: '/deals/add',
+      builder: (context, state) {
+        final deal = state.extra as Deal?;
+        return AddDealPage(initialDeal: deal);
+      },
     ),
     GoRoute(
       name: kRouteConvertLead,

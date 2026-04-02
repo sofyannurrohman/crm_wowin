@@ -189,7 +189,7 @@ func scanActivities(rows pgx.Rows) ([]*models.VisitActivity, error) {
 		err := rows.Scan(
 			&a.ID, &a.ScheduleID, &a.SalesID, &a.CustomerID, &a.DealID,
 			&a.Latitude, &a.Longitude, 
-			&a.Distance, &a.Notes, &a.CreatedAt,
+			&a.Distance, &a.Notes, &a.CreatedAt, &a.Type,
 		)
 		if err != nil {
 			return nil, err
@@ -200,11 +200,21 @@ func scanActivities(rows pgx.Rows) ([]*models.VisitActivity, error) {
 }
 
 func (r *visitRepoImpl) ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error) {
+	// Unified query for both Visits and Attendances
 	baseQuery := `
 		SELECT 	id, schedule_id, sales_id, customer_id, deal_id, 
-				ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
-				checkin_distance as distance, result_notes as notes, created_at
-		FROM visits WHERE 1=1
+				lat, lon, distance, notes, created_at, type
+		FROM (
+			-- Visit Activities
+			SELECT 	id, schedule_id, sales_id, customer_id, deal_id, 
+					ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
+					checkin_distance as distance, result_notes as notes, created_at, 
+					CASE 
+						WHEN checkout_at IS NULL THEN 'check-in' 
+						ELSE 'check-out' 
+					END as type
+			FROM visits
+			WHERE 1=1
 	`
 	args := []interface{}{}
 	argCount := 1
@@ -230,7 +240,35 @@ func (r *visitRepoImpl) ListActivities(ctx context.Context, filter repository.Ac
 		argCount++
 	}
 
-	baseQuery += " ORDER BY created_at DESC"
+	// Add Attendance Union (only if CustomerID filter is not specified, as attendances aren't linked to customers)
+	if filter.CustomerID == nil {
+		baseQuery += `
+			UNION ALL
+			SELECT 	id, NULL as schedule_id, user_id as sales_id, '00000000-0000-0000-0000-000000000000'::uuid as customer_id, NULL as deal_id, 
+					ST_Y(location::geometry) as lat, ST_X(location::geometry) as lon, 
+					0.0 as distance, notes, timestamp_at as created_at, type
+			FROM attendances
+			WHERE 1=1
+		`
+		// Append same filters for user/date to the second part of union
+		if filter.SalesID != nil {
+			baseQuery += fmt.Sprintf(" AND user_id = $%d", 1) // Re-use SalesID arg
+		}
+		if filter.StartDate != nil {
+			// Find arg index for StartDate
+			idx := 1
+			if filter.SalesID != nil { idx++ }
+			baseQuery += fmt.Sprintf(" AND timestamp_at >= $%d", idx)
+		}
+		if filter.EndDate != nil {
+			idx := 1
+			if filter.SalesID != nil { idx++ }
+			if filter.StartDate != nil { idx++ }
+			baseQuery += fmt.Sprintf(" AND timestamp_at <= $%d", idx)
+		}
+	}
+
+	baseQuery += ") AS unified_activities ORDER BY created_at DESC"
 
 	rows, err := r.db.Query(ctx, baseQuery, args...)
 	if err != nil {

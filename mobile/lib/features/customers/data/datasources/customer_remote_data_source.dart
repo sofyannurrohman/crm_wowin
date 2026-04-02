@@ -27,8 +27,9 @@ class CustomerRemoteDataSourceImpl implements CustomerRemoteDataSource {
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
-    final List data = response.data['data'];
-    return data.map((e) => Customer.fromJson(e)).toList();
+    final List? data = response.data['data'];
+    if (data == null) return [];
+    return data.map((e) => Customer.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   @override

@@ -35,6 +35,25 @@ class VisitActivity extends Equatable {
     required this.createdAt,
   });
 
+  factory VisitActivity.fromJson(Map<String, dynamic> json) {
+    return VisitActivity(
+      id: json['id'],
+      scheduleId: json['schedule_id'],
+      salesId: json['sales_id'],
+      customerId: json['customer_id'],
+      type: json['type'],
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      photoPath: json['photo_path'],
+      selfiePhotoPath: json['selfie_photo_path'],
+      placePhotoPath: json['place_photo_path'],
+      distance: (json['distance'] as num?)?.toDouble(),
+      isOffline: json['is_offline'] ?? false,
+      notes: json['notes'],
+      createdAt: DateTime.parse(json['created_at']),
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,

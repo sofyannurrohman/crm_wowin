@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:wowin_crm/l10n/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -10,9 +11,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:camera/camera.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../domain/entities/attendance_record.dart';
 import '../bloc/attendance_bloc.dart';
 import '../bloc/attendance_event.dart';
 import '../bloc/attendance_state.dart';
+import '../../../visits/presentation/bloc/visit_bloc.dart';
+import '../../../visits/presentation/bloc/visit_event.dart';
 import '../../../../core/widgets/app_sidebar.dart';
 
 class AttendanceHomePage extends StatefulWidget {
@@ -32,6 +36,7 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
   Timer? _timer;
   DateTime _currentTime = DateTime.now();
   File? _imageFile;
+  String? _imagePath;
   Position? _currentPosition;
   String? _address;
   
@@ -53,16 +58,26 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
     });
     _determinePosition();
     _initCamera();
+    _fetchHistory();
+  }
+
+  void _fetchHistory() {
+    context.read<AttendanceBloc>().add(FetchAttendanceHistory(
+          month: DateTime.now().month,
+          year: DateTime.now().year,
+        ));
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+    if (_cameraController == null) {
       return;
     }
-
+    
     if (state == AppLifecycleState.inactive) {
+      _isCameraInitialized = false;
       _cameraController?.dispose();
+      _cameraController = null;
     } else if (state == AppLifecycleState.resumed) {
       _initCamera();
     }
@@ -120,13 +135,22 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
 
   Future<void> _takePhoto() async {
     if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      debugPrint('Take photo error: Camera not initialized');
+      return;
+    }
+
+    if (_cameraController!.value.isTakingPicture) {
+      debugPrint('Take photo error: Camera is already taking picture');
       return;
     }
 
     try {
       final image = await _cameraController!.takePicture();
       setState(() {
-        _imageFile = File(image.path);
+        _imagePath = image.path;
+        if (!kIsWeb) {
+          _imageFile = File(image.path);
+        }
       });
     } catch (e) {
       debugPrint('Error taking photo: $e');
@@ -137,12 +161,14 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
+    _isCameraInitialized = false;
     _cameraController?.dispose();
+    _cameraController = null;
     super.dispose();
   }
 
   void _handleClockAction(bool isClockIn) {
-    if (_imageFile == null) {
+    if (_imagePath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context)!.takeSelfieError)),
       );
@@ -160,14 +186,14 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
       context.read<AttendanceBloc>().add(ClockInSubmitted(
         lat: _currentPosition!.latitude,
         lng: _currentPosition!.longitude,
-        photoPath: _imageFile!.path,
+        photoPath: _imagePath!,
         address: _address,
       ));
     } else {
       context.read<AttendanceBloc>().add(ClockOutSubmitted(
         lat: _currentPosition!.latitude,
         lng: _currentPosition!.longitude,
-        photoPath: _imageFile!.path,
+        photoPath: _imagePath!,
         address: _address,
       ));
     }
@@ -184,7 +210,8 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
                 content: Text(state.message), backgroundColor: Colors.green),
           );
           // Refresh or Go Back
-          context.pop();
+          // Refresh is now handled by Bloc auto-adding Fetch event
+          context.read<VisitBloc>().add(const FetchActivities());
         } else if (state is AttendanceError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message), backgroundColor: Colors.red),
@@ -193,16 +220,16 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
       },
       child: Scaffold(
         backgroundColor: _bg,
+        drawer: const AppSidebar(),
         appBar: _buildAppBar(context, l10n),
-        drawer: AppSidebar(),
         body: SingleChildScrollView(
           child: Column(
             children: [
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               _buildCameraPreview(l10n),
-              const SizedBox(height: 24),
+              const SizedBox(height: 48),
               _buildClockSection(l10n),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               _buildClockButtons(l10n),
               const SizedBox(height: 32),
               _buildRecentActivity(l10n),
@@ -270,9 +297,31 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (_imageFile != null)
-                    Image.file(_imageFile!, fit: BoxFit.cover)
-                  else if (_isCameraInitialized && _cameraController != null)
+                  if (_imagePath != null)
+                    kIsWeb 
+                    ? Image.network(
+                        _imagePath!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('Web Image build error: $error');
+                          return const Center(
+                            child: Icon(LucideIcons.imageOff,
+                                color: Colors.white70, size: 48),
+                          );
+                        },
+                      )
+                    : Image.file(
+                        _imageFile!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          debugPrint('Image build error: $error');
+                          return const Center(
+                            child: Icon(LucideIcons.imageOff,
+                                color: Colors.white70, size: 48),
+                          );
+                        },
+                      )
+                  else if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
                     CameraPreview(_cameraController!)
                   else
                     const Center(
@@ -312,16 +361,19 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
                       ),
                     ),
                   ),
-                  if (_imageFile != null)
+                  if (_imagePath != null)
                     Positioned(
                       top: 10,
                       right: 10,
                       child: IconButton(
                         icon: const Icon(LucideIcons.refreshCw, color: Colors.white),
-                        onPressed: () => setState(() => _imageFile = null),
+                        onPressed: () => setState(() {
+                          _imageFile = null;
+                          _imagePath = null;
+                        }),
                       ),
                     ),
-                  if (_imageFile == null)
+                  if (_imagePath == null)
                     const Center(
                       child: Icon(LucideIcons.camera, color: Colors.white70, size: 48),
                     ),
@@ -483,51 +535,75 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
   }
 
   Widget _buildRecentActivity(AppLocalizations l10n) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return BlocBuilder<AttendanceBloc, AttendanceState>(
+      builder: (context, state) {
+        List<AttendanceRecord> history = [];
+        if (state is AttendanceHistoryLoaded) {
+          history = state.history;
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
             children: [
-              Text(
-                l10n.recentActivity,
-                style: const TextStyle(
-                  color: _textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    l10n.recentActivity,
+                    style: const TextStyle(
+                      color: _textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.pushNamed(kRouteAttendanceHistory),
+                    child: Text(
+                      l10n.viewAll,
+                      style: TextStyle(
+                        color: _orange.withOpacity(0.9),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                l10n.viewAll,
-                style: TextStyle(
-                  color: _orange.withOpacity(0.9),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+              const SizedBox(height: 16),
+              if (history.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Text(
+                      'Belum ada aktivitas hari ini',
+                      style: TextStyle(color: _textSecondary.withOpacity(0.5)),
+                    ),
+                  ),
+                )
+              else
+                ...history.take(5).map((record) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _buildActivityCard(
+                        isClockIn: record.type.toLowerCase().contains('in'),
+                        title: record.type.toLowerCase().contains('in')
+                            ? l10n.clockIn
+                            : l10n.clockOut,
+                        timeStr: DateFormat('MMM d, yyyy • HH:mm')
+                            .format(record.timestampAt),
+                        status: l10n.normal,
+                        statusColor: record.type.toLowerCase().contains('in')
+                            ? const Color(0xFF16A34A)
+                            : const Color(0xFF6B7280),
+                        statusBgColor: record.type.toLowerCase().contains('in')
+                            ? const Color(0xFFDCFCE7)
+                            : const Color(0xFFF3F4F6),
+                      ),
+                    )),
             ],
           ),
-          const SizedBox(height: 16),
-          _buildActivityCard(
-            isClockIn: true,
-            title: l10n.clockIn,
-            timeStr: 'Oct 22, 2023 • 08:55 AM',
-            status: l10n.onTime,
-            statusColor: const Color(0xFF16A34A),
-            statusBgColor: const Color(0xFFDCFCE7),
-          ),
-          const SizedBox(height: 12),
-          _buildActivityCard(
-            isClockIn: false,
-            title: l10n.clockOut,
-            timeStr: 'Oct 21, 2023 • 05:12 PM',
-            status: l10n.normal,
-            statusColor: const Color(0xFF6B7280),
-            statusBgColor: const Color(0xFFF3F4F6),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

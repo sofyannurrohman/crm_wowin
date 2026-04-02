@@ -40,7 +40,13 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
 
     result.fold(
       (failure) => emit(AttendanceError(failure.message)),
-      (record) => emit(AttendanceSuccess(record, 'Berhasil Clock In!')),
+      (record) {
+        emit(AttendanceSuccess(record, 'Berhasil Clock In!'));
+        add(FetchAttendanceHistory(
+          month: DateTime.now().month,
+          year: DateTime.now().year,
+        ));
+      },
     );
   }
 
@@ -59,7 +65,13 @@ class AttendanceBloc extends Bloc<AttendanceEvent, AttendanceState> {
 
     result.fold(
       (failure) => emit(AttendanceError(failure.message)),
-      (record) => emit(AttendanceSuccess(record, 'Berhasil Clock Out!')),
+      (record) {
+        emit(AttendanceSuccess(record, 'Berhasil Clock Out!'));
+        add(FetchAttendanceHistory(
+          month: DateTime.now().month,
+          year: DateTime.now().year,
+        ));
+      },
     );
   }
 }

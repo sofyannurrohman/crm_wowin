@@ -9,7 +9,8 @@ import '../bloc/lead_event.dart';
 import '../bloc/lead_state.dart';
 
 class AddLeadPage extends StatefulWidget {
-  const AddLeadPage({super.key});
+  final Lead? initialLead;
+  const AddLeadPage({super.key, this.initialLead});
 
   @override
   State<AddLeadPage> createState() => _AddLeadPageState();
@@ -25,6 +26,22 @@ class _AddLeadPageState extends State<AddLeadPage> {
   final _valueController = TextEditingController();
   final _notesController = TextEditingController();
   String _selectedSource = 'Survey';
+
+  @override
+  void initState() {
+    super.initState();
+    final lead = widget.initialLead;
+    if (lead != null) {
+      _titleController.text = lead.title;
+      _nameController.text = lead.name;
+      _companyController.text = lead.company ?? '';
+      _emailController.text = lead.email ?? '';
+      _phoneController.text = lead.phone ?? '';
+      _valueController.text = lead.estimatedValue?.toString() ?? '';
+      _notesController.text = lead.notes ?? '';
+      _selectedSource = lead.source;
+    }
+  }
 
   final List<String> _sources = ['Survey', 'Referral', 'Website', 'Event', 'Other'];
 
@@ -43,18 +60,23 @@ class _AddLeadPageState extends State<AddLeadPage> {
   void _submit() {
     if (_formKey.currentState!.validate()) {
       final lead = Lead(
-        id: const Uuid().v4(),
+        id: widget.initialLead?.id ?? const Uuid().v4(),
         title: _titleController.text,
         name: _nameController.text,
         company: _companyController.text,
         email: _emailController.text,
         phone: _phoneController.text,
         source: _selectedSource,
-        status: 'NEW',
+        status: widget.initialLead?.status ?? 'NEW',
         estimatedValue: double.tryParse(_valueController.text) ?? 0.0,
         notes: _notesController.text,
       );
-      context.read<LeadBloc>().add(CreateLeadSubmitted(lead));
+      
+      if (widget.initialLead == null) {
+        context.read<LeadBloc>().add(CreateLeadSubmitted(lead));
+      } else {
+        context.read<LeadBloc>().add(UpdateLeadSubmitted(lead));
+      }
     }
   }
 
@@ -63,7 +85,8 @@ class _AddLeadPageState extends State<AddLeadPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Add New Lead', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text(widget.initialLead == null ? 'Add New Lead' : 'Edit Lead Data', 
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFFE8622A),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -189,9 +212,9 @@ class _AddLeadPageState extends State<AddLeadPage> {
                         ),
                         child: state is LeadLoading
                             ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'Save Lead Data',
-                                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            : Text(
+                                widget.initialLead == null ? 'Save Lead Data' : 'Update Lead Data',
+                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                       );
                     },

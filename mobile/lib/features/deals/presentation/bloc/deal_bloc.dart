@@ -5,6 +5,9 @@ import '../../domain/usecases/update_deal_stage.dart';
 import '../../domain/usecases/get_deal_items.dart';
 import '../../domain/usecases/add_deal_item.dart';
 import '../../domain/usecases/remove_deal_item.dart';
+import '../../domain/usecases/create_deal.dart';
+import '../../domain/usecases/update_deal.dart';
+import '../../domain/usecases/delete_deal.dart';
 import 'deal_event.dart';
 import 'deal_state.dart';
 
@@ -15,6 +18,9 @@ class DealBloc extends Bloc<DealEvent, DealState> {
   final GetDealItems getDealItems;
   final AddDealItem addDealItem;
   final RemoveDealItem removeDealItem;
+  final CreateDeal createDeal;
+  final UpdateDeal updateDeal;
+  final DeleteDeal deleteDeal;
 
   DealBloc({
     required this.getDeals,
@@ -23,6 +29,9 @@ class DealBloc extends Bloc<DealEvent, DealState> {
     required this.getDealItems,
     required this.addDealItem,
     required this.removeDealItem,
+    required this.createDeal,
+    required this.updateDeal,
+    required this.deleteDeal,
   }) : super(DealInitial()) {
     on<FetchDeals>(_onFetchDeals);
     on<FetchDealDetail>(_onFetchDealDetail);
@@ -30,6 +39,9 @@ class DealBloc extends Bloc<DealEvent, DealState> {
     on<FetchDealItems>(_onFetchDealItems);
     on<AddDealItemSubmitted>(_onAddDealItemSubmitted);
     on<RemoveDealItemSubmitted>(_onRemoveDealItemSubmitted);
+    on<CreateDealSubmitted>(_onCreateDealSubmitted);
+    on<UpdateDealSubmitted>(_onUpdateDealSubmitted);
+    on<DeleteDealSubmitted>(_onDeleteDealSubmitted);
   }
 
   Future<void> _onFetchDeals(
@@ -125,6 +137,42 @@ class DealBloc extends Bloc<DealEvent, DealState> {
         emit(const DealOperationSuccess('Item dihapus'));
         add(FetchDealItems(event.dealId)); // Refresh
       },
+    );
+  }
+
+  Future<void> _onCreateDealSubmitted(
+    CreateDealSubmitted event,
+    Emitter<DealState> emit,
+  ) async {
+    emit(DealLoading());
+    final result = await createDeal(event.deal);
+    result.fold(
+      (failure) => emit(DealError(failure.message)),
+      (deal) => emit(const DealOperationSuccess('Berhasil membuat deal baru')),
+    );
+  }
+
+  Future<void> _onUpdateDealSubmitted(
+    UpdateDealSubmitted event,
+    Emitter<DealState> emit,
+  ) async {
+    emit(DealLoading());
+    final result = await updateDeal(event.deal);
+    result.fold(
+      (failure) => emit(DealError(failure.message)),
+      (deal) => emit(const DealOperationSuccess('Berhasil memperbarui data deal')),
+    );
+  }
+
+  Future<void> _onDeleteDealSubmitted(
+    DeleteDealSubmitted event,
+    Emitter<DealState> emit,
+  ) async {
+    emit(DealLoading());
+    final result = await deleteDeal(event.id);
+    result.fold(
+      (failure) => emit(DealError(failure.message)),
+      (_) => emit(const DealOperationSuccess('Berhasil menghapus data deal')),
     );
   }
 }

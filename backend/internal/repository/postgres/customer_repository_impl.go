@@ -152,7 +152,7 @@ func (r *customerRepoImpl) List(ctx context.Context, filter repository.CustomerF
 	}
 	defer rows.Close()
 
-	var results []*models.Customer
+	results := []*models.Customer{}
 	for rows.Next() {
 		var c models.Customer
 		err := rows.Scan(
@@ -176,16 +176,26 @@ func (r *customerRepoImpl) Update(ctx context.Context, c *models.Customer) error
 		UPDATE customers SET
 			code = $1, type = $2, name = $3, company_name = $4, industry = $5, website = $6, email = $7, phone = $8, phone_alt = $9, 
 			status = $10, address = $11, city = $12, province = $13, postal_code = $14, country = $15, 
-			checkin_radius = $16, territory_id = $17, assigned_to = $18, 
-			credit_limit = $19, payment_terms = $20, notes = $21, updated_at = NOW()
-		WHERE id = $22 AND deleted_at IS NULL
+			location = NULLIF(ST_SetSRID(ST_MakePoint($16, $17), 4326), ST_SetSRID(ST_MakePoint(0,0), 4326)),
+			checkin_radius = $18, territory_id = $19, assigned_to = $20, 
+			credit_limit = $21, payment_terms = $22, notes = $23, updated_at = NOW()
+		WHERE id = $24 AND deleted_at IS NULL
 		RETURNING updated_at
 	`
+
+	var lat, lon float64
+	if c.Latitude != nil && c.Longitude != nil {
+		lat = *c.Latitude
+		lon = *c.Longitude
+	}
+
 	err := r.db.QueryRow(ctx, query,
 		c.Code, c.Type, c.Name, c.CompanyName, c.Industry, c.Website, c.Email, c.Phone, c.PhoneAlt,
 		c.Status, c.Address, c.City, c.Province, c.PostalCode, c.Country,
-		c.CheckinRadius, c.TerritoryID, c.AssignedTo,
-		c.CreditLimit, c.PaymentTerms, c.Notes, c.ID,
+		lon, lat, // $16, $17
+		c.CheckinRadius, c.TerritoryID, c.AssignedTo, // $18, $19, $20
+		c.CreditLimit, c.PaymentTerms, c.Notes, // $21, $22, $23
+		c.ID, // $24
 	).Scan(&c.UpdatedAt)
 
 	if err != nil {
@@ -259,7 +269,7 @@ func (r *customerRepoImpl) GetContactsByCustomer(ctx context.Context, customerID
 	}
 	defer rows.Close()
 
-	var results []*models.Contact
+	results := []*models.Contact{}
 	for rows.Next() {
 		var c models.Contact
 		err := rows.Scan(

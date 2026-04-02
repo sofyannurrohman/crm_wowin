@@ -1,5 +1,6 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http_parser/http_parser.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../models/attendance_model.dart';
 
@@ -9,37 +10,44 @@ class AttendanceRemoteDataSource {
   AttendanceRemoteDataSource(this.dio);
 
   Future<AttendanceModel> clockIn({
-    required File photo,
+    required List<int> photoBytes,
+    required String photoName,
     required double latitude,
     required double longitude,
     String? address,
     String? notes,
   }) async {
     return _submitAttendance(
-        ApiEndpoints.clockIn, photo, latitude, longitude, address, notes);
+        ApiEndpoints.clockIn, photoBytes, photoName, latitude, longitude, address, notes);
   }
 
   Future<AttendanceModel> clockOut({
-    required File photo,
+    required List<int> photoBytes,
+    required String photoName,
     required double latitude,
     required double longitude,
     String? address,
     String? notes,
   }) async {
     return _submitAttendance(
-        ApiEndpoints.clockOut, photo, latitude, longitude, address, notes);
+        ApiEndpoints.clockOut, photoBytes, photoName, latitude, longitude, address, notes);
   }
 
   Future<AttendanceModel> _submitAttendance(
     String endpoint,
-    File photo,
+    List<int> photoBytes,
+    String photoName,
     double latitude,
     double longitude,
     String? address,
     String? notes,
   ) async {
     final formData = FormData.fromMap({
-      'photo': await MultipartFile.fromFile(photo.path),
+      'photo': MultipartFile.fromBytes(
+        photoBytes,
+        filename: photoName,
+        contentType: MediaType('image', 'jpeg'),
+      ),
       'latitude': latitude,
       'longitude': longitude,
       'address': address ?? '',

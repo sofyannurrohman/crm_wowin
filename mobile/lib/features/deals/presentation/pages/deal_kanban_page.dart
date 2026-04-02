@@ -49,6 +49,7 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
     return Scaffold(
       backgroundColor: _bg,
       drawer: const AppSidebar(),
+      floatingActionButton: _buildFab(),
       body: SafeArea(
         child: Column(
           children: [
@@ -126,14 +127,6 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
             icon: const Icon(LucideIcons.search, color: Color(0xFF4B5563)),
             onPressed: () {},
           ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: _orange,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(LucideIcons.plus, color: Colors.white, size: 22),
-          ),
         ],
       ),
     );
@@ -149,11 +142,11 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
       unselectedLabelColor: Colors.grey.shade500,
       labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
       unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-      tabs: [
-        _buildTab('Lead', 4),
-        _buildTab('Prospect', 3),
-        _buildTab('Negotiation', 2),
-        _buildTab('Closing', 1),
+      tabs: const [
+        Tab(text: 'PROSPECTING'),
+        Tab(text: 'QUALIFICATION'),
+        Tab(text: 'NEGOTIATION'),
+        Tab(text: 'PROPOSAL'),
       ],
     );
   }
@@ -246,6 +239,20 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
     );
   }
 
+  Widget _buildFab() {
+    return FloatingActionButton(
+      onPressed: () async {
+        final result = await context.pushNamed(kRouteAddDeal);
+        if (result == true) {
+          if (mounted) {
+            context.read<DealBloc>().add(FetchDeals());
+          }
+        }
+      },
+      backgroundColor: _orange,
+      child: const Icon(LucideIcons.plus, color: Colors.white),
+    );
+  }
 }
 
 class _DealCard extends StatelessWidget {
@@ -257,15 +264,14 @@ class _DealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fmt = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final bool isOverdue = deal.expectedClose != null && deal.expectedClose!.isBefore(DateTime.now());
-    final bool isFollowUp = deal.probability != null && deal.probability! < 50; // Manual mock logic
+    final bool isFollowUp = deal.probability != null && deal.probability! < 50; 
 
     Color accentColor = isOverdue ? const Color(0xFFEF4444) : (isFollowUp ? const Color(0xFF10B981) : _navy);
-    String badgeText = isOverdue ? "! OVERDUE" : (isFollowUp ? "FOLLOW-UP TODAY" : "UPDATED 2H AGO");
+    String badgeText = isOverdue ? "! TERLAMBAT" : (isFollowUp ? "FOLLOW-UP HARI INI" : "DIPERBARUI 2J LALU");
     Color badgeBg = isOverdue ? const Color(0xFFFEE2E2) : (isFollowUp ? const Color(0xFFD1FAE5) : const Color(0xFFF3F4F6));
     Color badgeTextCol = isOverdue ? const Color(0xFFB91C1C) : (isFollowUp ? const Color(0xFF047857) : const Color(0xFF4B5563));
-
-    final fmt = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -276,97 +282,106 @@ class _DealCard extends StatelessWidget {
           BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          children: [
-            Container(
-              width: 5,
-              decoration: BoxDecoration(
-                color: accentColor,
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(6)),
-                          child: Text(
-                            badgeText,
-                            style: TextStyle(color: badgeTextCol, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                          ),
-                        ),
-                        const Icon(LucideIcons.moreHorizontal, color: Color(0xFF9CA3AF), size: 20),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      deal.title,
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
-                          child: const Icon(LucideIcons.building2, size: 12, color: Color(0xFF64748B)),
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Client Corporation', // Needs backend customer expand logic
-                            style: TextStyle(color: Color(0xFF6B7280), fontSize: 14, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const Divider(height: 1),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              fmt.format(deal.amount ?? 0),
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${deal.probability ?? 0}% Probability',
-                              style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isOverdue ? _orange : const Color(0xFFF1F5F9),
-                            foregroundColor: isOverdue ? Colors.white : const Color(0xFF1A1A1A),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: const Text('Details', style: TextStyle(fontWeight: FontWeight.w700)),
-                        ),
-                      ],
-                    ),
-                  ],
+      child: GestureDetector(
+        onTap: () => context.pushNamed(
+          kRouteDealDetail,
+          pathParameters: {'id': deal.id},
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              Container(
+                width: 5,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(6)),
+                            child: Text(
+                              badgeText,
+                              style: TextStyle(color: badgeTextCol, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                            ),
+                          ),
+                          const Icon(LucideIcons.moreHorizontal, color: Color(0xFF9CA3AF), size: 20),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        deal.title,
+                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
+                            child: const Icon(LucideIcons.building2, size: 12, color: Color(0xFF64748B)),
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Client Corporation',
+                              style: TextStyle(color: Color(0xFF6B7280), fontSize: 14, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Divider(height: 1),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                fmt.format(deal.amount ?? 0),
+                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${deal.probability ?? 0}% Probability',
+                                style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                          ElevatedButton(
+                            onPressed: () => context.pushNamed(
+                              kRouteDealDetail,
+                              pathParameters: {'id': deal.id},
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isOverdue ? _orange : const Color(0xFFF1F5F9),
+                              foregroundColor: isOverdue ? Colors.white : const Color(0xFF1A1A1A),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('Details', style: TextStyle(fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

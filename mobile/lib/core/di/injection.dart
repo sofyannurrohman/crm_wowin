@@ -53,6 +53,9 @@ import '../../features/deals/data/repositories/deal_repository_impl.dart';
 import '../../features/deals/domain/repositories/deal_repository.dart';
 import '../../features/deals/domain/usecases/get_deals.dart';
 import '../../features/deals/domain/usecases/update_deal_stage.dart';
+import '../../features/deals/domain/usecases/create_deal.dart';
+import '../../features/deals/domain/usecases/update_deal.dart';
+import '../../features/deals/domain/usecases/delete_deal.dart';
 import '../../features/deals/presentation/bloc/deal_bloc.dart';
 import '../../features/map/presentation/bloc/map_bloc.dart';
 import '../../features/dashboard/data/datasources/dashboard_remote_data_source.dart';
@@ -182,6 +185,9 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetDealItems(sl()));
   sl.registerLazySingleton(() => AddDealItem(sl()));
   sl.registerLazySingleton(() => RemoveDealItem(sl()));
+  sl.registerLazySingleton(() => CreateDeal(sl()));
+  sl.registerLazySingleton(() => UpdateDeal(sl()));
+  sl.registerLazySingleton(() => DeleteDeal(sl()));
   sl.registerLazySingleton(() => GetKpiSummary(sl()));
   sl.registerLazySingleton(() => GetProducts(sl()));
   sl.registerLazySingleton(() => GetProductDetail(sl()));
@@ -221,6 +227,9 @@ Future<void> initDependencies() async {
         getDealItems: sl(),
         addDealItem: sl(),
         removeDealItem: sl(),
+        createDeal: sl(),
+        updateDeal: sl(),
+        deleteDeal: sl(),
       ));
   sl.registerFactory(() => MapBloc(
         getCustomers: sl(),

@@ -273,22 +273,47 @@ CREATE TABLE IF NOT EXISTS visit_schedules (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
--- 15. Visit Activities
-CREATE TABLE IF NOT EXISTS visit_activities (
+-- 15. Visits Table
+CREATE TABLE IF NOT EXISTS visits (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    schedule_id UUID REFERENCES visit_schedules(id) ON DELETE CASCADE,
+    schedule_id UUID REFERENCES visit_schedules(id) ON DELETE SET NULL,
     sales_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-    type VARCHAR(50) NOT NULL, -- check_in / check_out / reporting
-    location GEOMETRY(POINT, 4326),
-    photo_path TEXT,
-    distance DECIMAL(10, 2), -- distance in meters from customer location
-    is_offline BOOLEAN DEFAULT FALSE,
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    deal_id UUID REFERENCES deals(id) ON DELETE SET NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'in_progress',
+    checkin_at TIMESTAMP WITH TIME ZONE,
+    checkin_location GEOMETRY(POINT, 4326),
+    checkin_distance DECIMAL(10, 2),
+    checkout_at TIMESTAMP WITH TIME ZONE,
+    checkout_location GEOMETRY(POINT, 4326),
+    result_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 16. Tracking Sessions
+-- 16. App Settings Table
+CREATE TABLE IF NOT EXISTS app_settings (
+    key VARCHAR(100) PRIMARY KEY,
+    value JSONB NOT NULL,
+    description TEXT,
+    updated_by UUID REFERENCES users(id),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+INSERT INTO app_settings (key, value, description) VALUES
+('visit.checkin_radius_default', '100', 'Default radius check-in (meter)'),
+('tracking.interval_seconds', '30', 'Interval kirim GPS saat bergerak (detik)'),
+('tracking.idle_interval_seconds', '120', 'Interval kirim GPS saat diam (detik)'),
+('tracking.work_start_hour', '7', 'Jam mulai tracking otomatis (WIB)'),
+('tracking.work_end_hour', '18', 'Jam selesai tracking otomatis (WIB)'),
+('photo.max_size_kb', '5120', 'Ukuran maksimum foto kunjungan (KB)'),
+('photo.allowed_types', '["image/jpeg","image/png","image/webp"]', 'Tipe file foto yang diizinkan'),
+('storage.upload_base_path', '"/app/uploads"', 'Root folder penyimpanan file di VPS (diakses Gin)'),
+('storage.visit_photos_path', '"visits/{YYYY}/{MM}/{DD}/{visit_id}"', 'Pola subfolder foto kunjungan'),
+('storage.attendance_photos_path', '"attendance/{YYYY}/{MM}"', 'Subfolder foto absensi'),
+('storage.base_url', '"http://localhost:8082/uploads"', 'Base URL static file server Gin (/uploads route)');
+
+-- 17. Tracking Sessions
 CREATE TABLE IF NOT EXISTS tracking_sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     sales_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -303,7 +328,7 @@ CREATE TABLE IF NOT EXISTS tracking_sessions (
     UNIQUE(sales_id, session_date)
 );
 
--- 17. GPS Points
+-- 18. GPS Points
 CREATE TABLE IF NOT EXISTS gps_points (
     id BIGSERIAL PRIMARY KEY,
     session_id UUID NOT NULL REFERENCES tracking_sessions(id) ON DELETE CASCADE,
@@ -317,7 +342,7 @@ CREATE TABLE IF NOT EXISTS gps_points (
     battery_level INTEGER
 );
 
--- 18. Sales Live Positions
+-- 19. Sales Live Positions
 CREATE TABLE IF NOT EXISTS sales_live_positions (
     sales_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     location GEOMETRY(POINT, 4326),
@@ -328,7 +353,7 @@ CREATE TABLE IF NOT EXISTS sales_live_positions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 19. Notifications
+-- 20. Notifications
 CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -365,11 +390,12 @@ FOR EACH ROW EXECUTE FUNCTION fn_auto_assign_territory();
 -- +goose Down
 DROP TRIGGER IF EXISTS trg_customers_auto_assign_territory ON customers;
 DROP FUNCTION IF EXISTS fn_auto_assign_territory();
+DROP TABLE IF EXISTS app_settings;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS sales_live_positions;
 DROP TABLE IF EXISTS gps_points;
 DROP TABLE IF EXISTS tracking_sessions;
-DROP TABLE IF EXISTS visit_activities;
+DROP TABLE IF EXISTS visits;
 DROP TABLE IF EXISTS visit_schedules;
 DROP VIEW IF EXISTS daily_attendance;
 DROP TABLE IF EXISTS attendances;
