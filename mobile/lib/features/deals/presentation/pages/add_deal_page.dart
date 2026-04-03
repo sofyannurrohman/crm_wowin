@@ -9,10 +9,14 @@ import '../../domain/entities/deal.dart';
 import '../bloc/deal_bloc.dart';
 import '../bloc/deal_event.dart';
 import '../bloc/deal_state.dart';
-import '../../../customers/domain/entities/customer.dart';
+import '../../../customers/presentation/bloc/customer_state.dart';
+import '../../../products/presentation/bloc/product_bloc.dart';
+import '../../../products/presentation/bloc/product_event.dart';
+import '../../../products/presentation/bloc/product_state.dart';
 import '../../../customers/presentation/bloc/customer_bloc.dart';
 import '../../../customers/presentation/bloc/customer_event.dart';
-import '../../../customers/presentation/bloc/customer_state.dart';
+import '../../../products/domain/entities/product.dart';
+import '../../domain/entities/deal_item.dart';
 
 class AddDealPage extends StatefulWidget {
   final Deal? initialDeal;
@@ -35,6 +39,7 @@ class _AddDealPageState extends State<AddDealPage> {
   String? _selectedCustomerName;
   String _selectedStage = 'prospecting';
   DateTime? _expectedCloseDate;
+  List<DealItem> _items = [];
 
   final List<String> _stages = [
     'prospecting',
@@ -60,6 +65,10 @@ class _AddDealPageState extends State<AddDealPage> {
     _selectedCustomerId = deal?.customerId;
     _selectedCustomerName = deal?.customer?.name;
     _selectedStage = deal?.stage ?? 'prospecting';
+    _items = deal?.items ?? [];
+    
+    // Fetch products for the picker
+    context.read<ProductBloc>().add(const FetchProducts());
   }
 
   @override
@@ -87,6 +96,135 @@ class _AddDealPageState extends State<AddDealPage> {
         _expectedCloseController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
       });
     }
+  }
+
+  void _calculateTotal() {
+    double total = 0;
+    for (var item in _items) {
+      total += (item.price * item.quantity);
+    }
+    setState(() {
+      _amountController.text = total.toStringAsFixed(0);
+    });
+  }
+
+  void _showProductPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('Tambah Produk dari Katalog', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              Expanded(
+                child: BlocBuilder<ProductBloc, ProductState>(
+                  builder: (context, state) {
+                    if (state is ProductLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (state is ProductsLoaded) {
+                      return ListView.builder(
+                        controller: scrollController,
+                        itemCount: state.products.length,
+                        itemBuilder: (context, index) {
+                          final product = state.products[index];
+                          return ListTile(
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0D8549).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(LucideIcons.package, color: Color(0xFF0D8549)),
+                            ),
+                            title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text('${product.unit ?? 'Pcs'} • Rp ${NumberFormat('#,###', 'id_ID').format(product.price)}'),
+                            trailing: const Icon(LucideIcons.plusCircle, color: Color(0xFFE8622A)),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _showQuantityDialog(product);
+                            },
+                          );
+                        },
+                      );
+                    }
+                    return const Center(child: Text('Gagal memuat katalog produk'));
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showQuantityDialog(Product product) {
+    final qtyController = TextEditingController(text: '1');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Input Jumlah: ${product.name}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: qtyController,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Jumlah (${product.unit ?? 'Pcs'})',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () {
+              final qty = double.tryParse(qtyController.text) ?? 0;
+              if (qty > 0) {
+                setState(() {
+                  _items.add(DealItem(
+                    id: const Uuid().v4(),
+                    dealId: widget.initialDeal?.id ?? '',
+                    productId: product.id,
+                    name: product.name,
+                    quantity: qty,
+                    unitPrice: product.price,
+                    discount: 0,
+                    subtotal: qty * product.price,
+                    unit: product.unit ?? 'Pcs',
+                  ));
+                });
+                _calculateTotal();
+                Navigator.pop(context);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE8622A)),
+            child: const Text('Tambah', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showCustomerPicker() {
@@ -175,6 +313,7 @@ class _AddDealPageState extends State<AddDealPage> {
         expectedClose: _expectedCloseDate,
         description: _descriptionController.text,
         status: 'open',
+        items: _items,
       );
 
       if (widget.initialDeal == null) {
@@ -240,10 +379,10 @@ class _AddDealPageState extends State<AddDealPage> {
                     Expanded(
                       child: _buildTextField(
                         controller: _amountController,
-                        label: 'Nilai Deal',
+                        label: 'Nilai Deal (Auto-calculated)',
                         hint: 'Rp 0',
                         icon: LucideIcons.dollarSign,
-                        keyboardType: TextInputType.number,
+                        readOnly: true,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -262,6 +401,22 @@ class _AddDealPageState extends State<AddDealPage> {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 24),
+                _buildSectionHeader('Produk & Item', LucideIcons.package),
+                const SizedBox(height: 16),
+                _buildItemsList(),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _showProductPicker,
+                  icon: const Icon(LucideIcons.plus, size: 18),
+                  label: const Text('Tambah Produk dari Katalog'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFE8622A),
+                    side: const BorderSide(color: Color(0xFFE8622A)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
@@ -390,12 +545,14 @@ class _AddDealPageState extends State<AddDealPage> {
     required IconData icon,
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      readOnly: readOnly,
       validator: validator,
       decoration: InputDecoration(
         labelText: label,
@@ -411,7 +568,70 @@ class _AddDealPageState extends State<AddDealPage> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE8622A), width: 2),
         ),
+        fillColor: readOnly ? Colors.grey.shade50 : null,
+        filled: readOnly,
       ),
+    );
+  }
+
+  Widget _buildItemsList() {
+    if (_items.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: const Center(
+          child: Text('Belum ada item dipilih', style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+
+    return Column(
+      children: _items.asMap().entries.map((entry) {
+        final index = entry.key;
+        final item = entry.value;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2)),
+            ],
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(
+              '${item.quantity} ${item.unit} x Rp ${NumberFormat('#,###', 'id_ID').format(item.price)}',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Rp ${NumberFormat('#,###', 'id_ID').format(item.price * item.quantity)}',
+                  style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1A237E)),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(LucideIcons.trash2, color: Colors.red, size: 20),
+                  onPressed: () {
+                    setState(() {
+                      _items.removeAt(index);
+                    });
+                    _calculateTotal();
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

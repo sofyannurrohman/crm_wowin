@@ -20,7 +20,8 @@ class LeadListPage extends StatefulWidget {
 class _LeadListPageState extends State<LeadListPage> {
   final TextEditingController _searchController = TextEditingController();
   
-  static const Color _orange = Color(0xFFEA580C);
+  // changed orange -> new green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
@@ -99,7 +100,7 @@ class _LeadListPageState extends State<LeadListPage> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF7ED),
+              color: const Color(0xFFEFFBF5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(LucideIcons.users, color: _orange, size: 24),
@@ -404,7 +405,7 @@ class _LeadListPageState extends State<LeadListPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        lead.name,
+                        lead.title,
                         style: const TextStyle(
                           color: _textPrimary,
                           fontSize: 16,
@@ -435,6 +436,16 @@ class _LeadListPageState extends State<LeadListPage> {
                 const SizedBox(height: 6),
                 Row(
                   children: [
+                    Icon(LucideIcons.user, size: 12, color: _textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      lead.name,
+                      style: const TextStyle(
+                        color: _textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Icon(sourceIcon, size: 12, color: _textSecondary),
                     const SizedBox(width: 4),
                     Text(
@@ -446,6 +457,23 @@ class _LeadListPageState extends State<LeadListPage> {
                     ),
                   ],
                 ),
+                if (lead.potentialProducts != null && lead.potentialProducts!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(LucideIcons.package, size: 12, color: Color(0xFF0D8549)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${lead.potentialProducts!.length} Produk Potensial',
+                        style: const TextStyle(
+                          color: Color(0xFF0D8549),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

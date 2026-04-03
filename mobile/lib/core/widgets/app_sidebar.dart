@@ -10,7 +10,8 @@ import '../../features/auth/presentation/bloc/auth_state.dart';
 class AppSidebar extends StatelessWidget {
   const AppSidebar({super.key});
 
-  static const Color _orange = Color(0xFFE8622A);
+  // changed orange -> new green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
   static const Color _navy = Color(0xFF1A237E);
 
   @override
@@ -65,6 +66,12 @@ class AppSidebar extends StatelessWidget {
             LucideIcons.briefcase, 
             l10n.dealsPipeline, 
             () => _navigate(context, kRouteDeals),
+          ),
+          _buildDrawerItem(
+            context, 
+            LucideIcons.activity, 
+            'Aktivitas Sales', 
+            () => _navigate(context, kRouteSalesActivities),
           ),
           
           const Divider(height: 32, color: Color(0xFFF3F4F6)),

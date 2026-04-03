@@ -27,7 +27,8 @@ class AttendanceHomePage extends StatefulWidget {
 }
 
 class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBindingObserver {
-  static const Color _orange = Color(0xFFEA580C);
+  // changed orange -> new green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
@@ -283,7 +284,8 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              color: const Color(0xFFE5D5CD),
+              // previous warm color replaced with subtle greenish placeholder
+              color: const Color(0xFFE5F3EA),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -431,7 +433,7 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF6ED),
+            color: const Color(0xFFEFFBF5),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(

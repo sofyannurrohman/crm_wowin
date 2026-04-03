@@ -40,6 +40,7 @@ type Deal struct {
 	ClosedAt      *time.Time `json:"closed_at,omitempty"`
 	LostReason    *string    `json:"lost_reason,omitempty"`
 	Description   *string    `json:"description,omitempty"`
+	Items         []DealItem `json:"items,omitempty"`
 	CreatedBy     *uuid.UUID `json:"created_by,omitempty"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`

@@ -22,6 +22,12 @@ func NewDealRepository(db *pgxpool.Pool) repository.DealRepository {
 }
 
 func (r *dealRepoImpl) Create(ctx context.Context, d *models.Deal) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
 	query := `
 		INSERT INTO deals (
 			title, customer_id, contact_id, assigned_to, stage, status, 
@@ -30,7 +36,7 @@ func (r *dealRepoImpl) Create(ctx context.Context, d *models.Deal) error {
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 		) RETURNING id, created_at, updated_at
 	`
-	err := r.db.QueryRow(ctx, query,
+	err = tx.QueryRow(ctx, query,
 		d.Title, d.CustomerID, d.ContactID, d.AssignedTo, d.Stage, d.Status,
 		d.Amount, d.Probability, d.ExpectedClose, d.Description, d.CreatedBy,
 	).Scan(&d.ID, &d.CreatedAt, &d.UpdatedAt)
@@ -38,7 +44,23 @@ func (r *dealRepoImpl) Create(ctx context.Context, d *models.Deal) error {
 	if err != nil {
 		return err
 	}
-	return nil
+
+	// Insert Items
+	for i := range d.Items {
+		itemQuery := `
+			INSERT INTO deal_items (deal_id, product_id, name, quantity, unit, unit_price, discount, notes)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, subtotal, created_at
+		`
+		err = tx.QueryRow(ctx, itemQuery,
+			d.ID, d.Items[i].ProductID, d.Items[i].Name, d.Items[i].Quantity, d.Items[i].Unit,
+			d.Items[i].UnitPrice, d.Items[i].Discount, d.Items[i].Notes,
+		).Scan(&d.Items[i].ID, &d.Items[i].Subtotal, &d.Items[i].CreatedAt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *dealRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Deal, error) {
@@ -61,6 +83,27 @@ func (r *dealRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Deal,
 		}
 		return nil, err
 	}
+
+	// Fetch Items
+	itemQuery := `
+		SELECT id, deal_id, product_id, name, quantity, unit, unit_price, discount, subtotal, notes, created_at
+		FROM deal_items WHERE deal_id = $1 ORDER BY created_at ASC
+	`
+	rows, err := r.db.Query(ctx, itemQuery, d.ID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var it models.DealItem
+			err := rows.Scan(
+				&it.ID, &it.DealID, &it.ProductID, &it.Name, &it.Quantity, &it.Unit,
+				&it.UnitPrice, &it.Discount, &it.Subtotal, &it.Notes, &it.CreatedAt,
+			)
+			if err == nil {
+				d.Items = append(d.Items, it)
+			}
+		}
+	}
+
 	return &d, nil
 }
 
@@ -116,6 +159,12 @@ func (r *dealRepoImpl) List(ctx context.Context, filter repository.DealFilter) (
 }
 
 func (r *dealRepoImpl) Update(ctx context.Context, d *models.Deal) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
 	query := `
 		UPDATE deals SET
 			title = $1, customer_id = $2, contact_id = $3, assigned_to = $4,
@@ -124,7 +173,7 @@ func (r *dealRepoImpl) Update(ctx context.Context, d *models.Deal) error {
 		WHERE id = $12
 		RETURNING updated_at
 	`
-	err := r.db.QueryRow(ctx, query,
+	err = tx.QueryRow(ctx, query,
 		d.Title, d.CustomerID, d.ContactID, d.AssignedTo, d.Status,
 		d.Amount, d.Probability, d.ExpectedClose, d.ClosedAt, d.LostReason, d.Description, d.ID,
 	).Scan(&d.UpdatedAt)
@@ -135,7 +184,28 @@ func (r *dealRepoImpl) Update(ctx context.Context, d *models.Deal) error {
 		}
 		return err
 	}
-	return nil
+
+	// Simple Sync Strategy: Delete all and re-insert
+	_, err = tx.Exec(ctx, "DELETE FROM deal_items WHERE deal_id = $1", d.ID)
+	if err != nil {
+		return err
+	}
+
+	for i := range d.Items {
+		itemQuery := `
+			INSERT INTO deal_items (deal_id, product_id, name, quantity, unit, unit_price, discount, notes)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, subtotal, created_at
+		`
+		err = tx.QueryRow(ctx, itemQuery,
+			d.ID, d.Items[i].ProductID, d.Items[i].Name, d.Items[i].Quantity, d.Items[i].Unit,
+			d.Items[i].UnitPrice, d.Items[i].Discount, d.Items[i].Notes,
+		).Scan(&d.Items[i].ID, &d.Items[i].Subtotal, &d.Items[i].CreatedAt)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 // UpdateStage handles the explicit transition mechanics (Kanban Drop) and generates trails
@@ -216,13 +286,13 @@ func (r *leadRepoImpl) Create(ctx context.Context, l *models.Lead) error {
 	query := `
 		INSERT INTO leads (
 			title, name, company, email, phone, source, status, 
-			assigned_to, estimated_value, notes, created_by
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+			assigned_to, estimated_value, potential_products, notes, created_by
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 		RETURNING id, created_at, updated_at
 	`
 	err := r.db.QueryRow(ctx, query,
 		l.Title, l.Name, l.Company, l.Email, l.Phone, l.Source, l.Status,
-		l.AssignedTo, l.EstimatedValue, l.Notes, l.CreatedBy,
+		l.AssignedTo, l.EstimatedValue, l.PotentialProducts, l.Notes, l.CreatedBy,
 	).Scan(&l.ID, &l.CreatedAt, &l.UpdatedAt)
 
 	return err
@@ -231,13 +301,13 @@ func (r *leadRepoImpl) Create(ctx context.Context, l *models.Lead) error {
 func (r *leadRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Lead, error) {
 	query := `
 		SELECT id, title, name, company, email, phone, source, status, assigned_to, 
-		customer_id, estimated_value, notes, converted_at, created_by, created_at, updated_at
+		customer_id, estimated_value, potential_products, notes, converted_at, created_by, created_at, updated_at
 		FROM leads WHERE id = $1
 	`
 	var l models.Lead
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&l.ID, &l.Title, &l.Name, &l.Company, &l.Email, &l.Phone, &l.Source, &l.Status, &l.AssignedTo,
-		&l.CustomerID, &l.EstimatedValue, &l.Notes, &l.ConvertedAt, &l.CreatedBy, &l.CreatedAt, &l.UpdatedAt,
+		&l.CustomerID, &l.EstimatedValue, &l.PotentialProducts, &l.Notes, &l.ConvertedAt, &l.CreatedBy, &l.CreatedAt, &l.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, dberrors.ErrNotFound
@@ -246,7 +316,7 @@ func (r *leadRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Lead,
 }
 
 func (r *leadRepoImpl) List(ctx context.Context, filter repository.LeadFilter) ([]*models.Lead, error) {
-	baseQuery := `SELECT id, title, name, company, email, phone, status, source, assigned_to, created_at FROM leads WHERE 1=1 `
+	baseQuery := `SELECT id, title, name, company, email, phone, status, source, assigned_to, potential_products, created_at FROM leads WHERE 1=1 `
 	args := []interface{}{}
 	argCount := 1
 
@@ -277,7 +347,7 @@ func (r *leadRepoImpl) List(ctx context.Context, filter repository.LeadFilter) (
 	for rows.Next() {
 		var l models.Lead
 		err := rows.Scan(
-			&l.ID, &l.Title, &l.Name, &l.Company, &l.Email, &l.Phone, &l.Status, &l.Source, &l.AssignedTo, &l.CreatedAt,
+			&l.ID, &l.Title, &l.Name, &l.Company, &l.Email, &l.Phone, &l.Status, &l.Source, &l.AssignedTo, &l.PotentialProducts, &l.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -291,12 +361,12 @@ func (r *leadRepoImpl) Update(ctx context.Context, l *models.Lead) error {
 	query := `
 		UPDATE leads SET
 			title=$1, name=$2, company=$3, email=$4, phone=$5, source=$6, status=$7, 
-			assigned_to=$8, estimated_value=$9, notes=$10, updated_at=NOW()
-		WHERE id=$11 RETURNING updated_at
+			assigned_to=$8, estimated_value=$9, potential_products=$10, notes=$11, updated_at=NOW()
+		WHERE id=$12 RETURNING updated_at
 	`
 	err := r.db.QueryRow(ctx, query,
 		l.Title, l.Name, l.Company, l.Email, l.Phone, l.Source, l.Status,
-		l.AssignedTo, l.EstimatedValue, l.Notes, l.ID,
+		l.AssignedTo, l.EstimatedValue, l.PotentialProducts, l.Notes, l.ID,
 	).Scan(&l.UpdatedAt)
 	
 	if errors.Is(err, pgx.ErrNoRows) {

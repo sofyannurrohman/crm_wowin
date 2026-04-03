@@ -11,6 +11,7 @@ abstract class Product with _$Product {
     required String name,
     String? description,
     required double price,
+    String? unit,
     @JsonKey(name: 'is_active') @Default(true) bool isActive,
     String? sku,
     @JsonKey(name: 'created_at') String? createdAt,

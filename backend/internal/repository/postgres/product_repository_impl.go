@@ -162,16 +162,16 @@ func NewDealItemRepository(db *pgxpool.Pool) repository.DealItemRepository {
 
 
 func (r *dealItemRepoImpl) AddItem(ctx context.Context, item *models.DealItem) error {
-	query := `INSERT INTO deal_items (deal_id, product_id, quantity, unit_price, discount, notes)
-			  VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, subtotal, created_at`
+	query := `INSERT INTO deal_items (deal_id, product_id, name, quantity, unit, unit_price, discount, notes)
+			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, subtotal, created_at`
 	// db trigger calculates subtotal
-	err := r.db.QueryRow(ctx, query, item.DealID, item.ProductID, item.Quantity, item.UnitPrice, item.Discount, item.Notes).
+	err := r.db.QueryRow(ctx, query, item.DealID, item.ProductID, item.Name, item.Quantity, item.Unit, item.UnitPrice, item.Discount, item.Notes).
 		Scan(&item.ID, &item.Subtotal, &item.CreatedAt)
 	return err
 }
 
 func (r *dealItemRepoImpl) GetItemsByDealID(ctx context.Context, dealID uuid.UUID) ([]*models.DealItem, error) {
-	query := `SELECT id, deal_id, product_id, quantity, unit_price, discount, subtotal, notes, created_at 
+	query := `SELECT id, deal_id, product_id, name, quantity, unit, unit_price, discount, subtotal, notes, created_at 
 			  FROM deal_items WHERE deal_id=$1 ORDER BY created_at ASC`
 	rows, err := r.db.Query(ctx, query, dealID)
 	if err != nil {
@@ -182,7 +182,7 @@ func (r *dealItemRepoImpl) GetItemsByDealID(ctx context.Context, dealID uuid.UUI
 	var results []*models.DealItem
 	for rows.Next() {
 		var i models.DealItem
-		err := rows.Scan(&i.ID, &i.DealID, &i.ProductID, &i.Quantity, &i.UnitPrice, &i.Discount, &i.Subtotal, &i.Notes, &i.CreatedAt)
+		err := rows.Scan(&i.ID, &i.DealID, &i.ProductID, &i.Name, &i.Quantity, &i.Unit, &i.UnitPrice, &i.Discount, &i.Subtotal, &i.Notes, &i.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -192,9 +192,9 @@ func (r *dealItemRepoImpl) GetItemsByDealID(ctx context.Context, dealID uuid.UUI
 }
 
 func (r *dealItemRepoImpl) GetItemByID(ctx context.Context, id uuid.UUID) (*models.DealItem, error) {
-	query := `SELECT id, deal_id, product_id, quantity, unit_price, discount, subtotal, notes, created_at FROM deal_items WHERE id=$1`
+	query := `SELECT id, deal_id, product_id, name, quantity, unit, unit_price, discount, subtotal, notes, created_at FROM deal_items WHERE id=$1`
 	var i models.DealItem
-	err := r.db.QueryRow(ctx, query, id).Scan(&i.ID, &i.DealID, &i.ProductID, &i.Quantity, &i.UnitPrice, &i.Discount, &i.Subtotal, &i.Notes, &i.CreatedAt)
+	err := r.db.QueryRow(ctx, query, id).Scan(&i.ID, &i.DealID, &i.ProductID, &i.Name, &i.Quantity, &i.Unit, &i.UnitPrice, &i.Discount, &i.Subtotal, &i.Notes, &i.CreatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, dberrors.ErrNotFound
 	}
@@ -202,9 +202,9 @@ func (r *dealItemRepoImpl) GetItemByID(ctx context.Context, id uuid.UUID) (*mode
 }
 
 func (r *dealItemRepoImpl) UpdateItem(ctx context.Context, item *models.DealItem) error {
-	query := `UPDATE deal_items SET quantity=$1, unit_price=$2, discount=$3, notes=$4 
-			  WHERE id=$5 RETURNING subtotal`
-	err := r.db.QueryRow(ctx, query, item.Quantity, item.UnitPrice, item.Discount, item.Notes, item.ID).Scan(&item.Subtotal)
+	query := `UPDATE deal_items SET quantity=$1, unit=$2, unit_price=$3, discount=$4, notes=$5 
+			  WHERE id=$6 RETURNING subtotal`
+	err := r.db.QueryRow(ctx, query, item.Quantity, item.Unit, item.UnitPrice, item.Discount, item.Notes, item.ID).Scan(&item.Subtotal)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dberrors.ErrNotFound
 	}

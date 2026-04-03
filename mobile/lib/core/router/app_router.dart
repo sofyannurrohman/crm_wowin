@@ -35,6 +35,9 @@ import '../../features/leads/domain/entities/lead.dart';
 import '../../features/deals/domain/entities/deal.dart';
 import '../../features/deals/presentation/pages/add_deal_page.dart';
 import '../../features/visits/presentation/pages/visit_summary_result_page.dart';
+import '../../features/activities/presentation/pages/sales_activity_list_page.dart';
+import '../../features/activities/presentation/pages/add_sales_activity_page.dart';
+import '../../features/activities/domain/entities/sales_activity.dart';
 
 
 
@@ -245,6 +248,18 @@ final GoRouter appRouter = GoRouter(
         final lead = state.extra as Lead;
         return ConvertLeadPage(lead: lead);
       },
+    ),
+    GoRoute(
+      path: '/sales-activities',
+      name: kRouteSalesActivities,
+      builder: (context, state) => const SalesActivityListPage(),
+    ),
+    GoRoute(
+      path: '/sales-activities/add',
+      name: kRouteAddSalesActivity,
+      builder: (context, state) => AddSalesActivityPage(
+        initialActivity: state.extra as SalesActivity?,
+      ),
     ),
   ],
   redirect: (context, state) async {

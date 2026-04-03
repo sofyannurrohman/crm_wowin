@@ -8,7 +8,9 @@ abstract class DealEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class FetchDeals extends DealEvent {}
+class FetchDeals extends DealEvent {
+  const FetchDeals();
+}
 
 class FetchDealDetail extends DealEvent {
   final String id;
@@ -38,22 +40,26 @@ class FetchDealItems extends DealEvent {
 class AddDealItemSubmitted extends DealEvent {
   final String dealId;
   final String productId;
-  final int quantity;
+  final String name;
+  final double quantity;
   final double price;
+  final String unit;
   final double discount;
   final String? notes;
 
   const AddDealItemSubmitted({
     required this.dealId,
     required this.productId,
+    required this.name,
     required this.quantity,
     required this.price,
+    required this.unit,
     this.discount = 0,
     this.notes,
   });
 
   @override
-  List<Object?> get props => [dealId, productId, quantity, price, discount, notes];
+  List<Object?> get props => [dealId, productId, name, quantity, price, unit, discount, notes];
 }
 
 class RemoveDealItemSubmitted extends DealEvent {

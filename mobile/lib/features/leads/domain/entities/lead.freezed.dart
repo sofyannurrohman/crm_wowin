@@ -17,6 +17,7 @@ mixin _$Lead {
   String get id;
   String get title;
   String get name;
+  @JsonKey(name: 'company_name')
   String? get company;
   String? get email;
   String? get phone;
@@ -26,6 +27,8 @@ mixin _$Lead {
   String? get customerId;
   @JsonKey(name: 'estimated_value')
   double? get estimatedValue;
+  @JsonKey(name: 'potential_products')
+  List<String>? get potentialProducts;
   String? get notes;
   @JsonKey(name: 'converted_at')
   DateTime? get convertedAt;
@@ -57,6 +60,8 @@ mixin _$Lead {
                 other.customerId == customerId) &&
             (identical(other.estimatedValue, estimatedValue) ||
                 other.estimatedValue == estimatedValue) &&
+            const DeepCollectionEquality()
+                .equals(other.potentialProducts, potentialProducts) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.convertedAt, convertedAt) ||
                 other.convertedAt == convertedAt));
@@ -64,12 +69,25 @@ mixin _$Lead {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, title, name, company, email,
-      phone, source, status, customerId, estimatedValue, notes, convertedAt);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      title,
+      name,
+      company,
+      email,
+      phone,
+      source,
+      status,
+      customerId,
+      estimatedValue,
+      const DeepCollectionEquality().hash(potentialProducts),
+      notes,
+      convertedAt);
 
   @override
   String toString() {
-    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, notes: $notes, convertedAt: $convertedAt)';
+    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt)';
   }
 }
 
@@ -82,13 +100,14 @@ abstract mixin class $LeadCopyWith<$Res> {
       {String id,
       String title,
       String name,
-      String? company,
+      @JsonKey(name: 'company_name') String? company,
       String? email,
       String? phone,
       String source,
       String status,
       @JsonKey(name: 'customer_id') String? customerId,
       @JsonKey(name: 'estimated_value') double? estimatedValue,
+      @JsonKey(name: 'potential_products') List<String>? potentialProducts,
       String? notes,
       @JsonKey(name: 'converted_at') DateTime? convertedAt});
 }
@@ -115,6 +134,7 @@ class _$LeadCopyWithImpl<$Res> implements $LeadCopyWith<$Res> {
     Object? status = null,
     Object? customerId = freezed,
     Object? estimatedValue = freezed,
+    Object? potentialProducts = freezed,
     Object? notes = freezed,
     Object? convertedAt = freezed,
   }) {
@@ -159,6 +179,10 @@ class _$LeadCopyWithImpl<$Res> implements $LeadCopyWith<$Res> {
           ? _self.estimatedValue
           : estimatedValue // ignore: cast_nullable_to_non_nullable
               as double?,
+      potentialProducts: freezed == potentialProducts
+          ? _self.potentialProducts
+          : potentialProducts // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
       notes: freezed == notes
           ? _self.notes
           : notes // ignore: cast_nullable_to_non_nullable
@@ -268,13 +292,15 @@ extension LeadPatterns on Lead {
             String id,
             String title,
             String name,
-            String? company,
+            @JsonKey(name: 'company_name') String? company,
             String? email,
             String? phone,
             String source,
             String status,
             @JsonKey(name: 'customer_id') String? customerId,
             @JsonKey(name: 'estimated_value') double? estimatedValue,
+            @JsonKey(name: 'potential_products')
+            List<String>? potentialProducts,
             String? notes,
             @JsonKey(name: 'converted_at') DateTime? convertedAt)?
         $default, {
@@ -294,6 +320,7 @@ extension LeadPatterns on Lead {
             _that.status,
             _that.customerId,
             _that.estimatedValue,
+            _that.potentialProducts,
             _that.notes,
             _that.convertedAt);
       case _:
@@ -320,13 +347,15 @@ extension LeadPatterns on Lead {
             String id,
             String title,
             String name,
-            String? company,
+            @JsonKey(name: 'company_name') String? company,
             String? email,
             String? phone,
             String source,
             String status,
             @JsonKey(name: 'customer_id') String? customerId,
             @JsonKey(name: 'estimated_value') double? estimatedValue,
+            @JsonKey(name: 'potential_products')
+            List<String>? potentialProducts,
             String? notes,
             @JsonKey(name: 'converted_at') DateTime? convertedAt)
         $default,
@@ -345,6 +374,7 @@ extension LeadPatterns on Lead {
             _that.status,
             _that.customerId,
             _that.estimatedValue,
+            _that.potentialProducts,
             _that.notes,
             _that.convertedAt);
       case _:
@@ -370,13 +400,15 @@ extension LeadPatterns on Lead {
             String id,
             String title,
             String name,
-            String? company,
+            @JsonKey(name: 'company_name') String? company,
             String? email,
             String? phone,
             String source,
             String status,
             @JsonKey(name: 'customer_id') String? customerId,
             @JsonKey(name: 'estimated_value') double? estimatedValue,
+            @JsonKey(name: 'potential_products')
+            List<String>? potentialProducts,
             String? notes,
             @JsonKey(name: 'converted_at') DateTime? convertedAt)?
         $default,
@@ -395,6 +427,7 @@ extension LeadPatterns on Lead {
             _that.status,
             _that.customerId,
             _that.estimatedValue,
+            _that.potentialProducts,
             _that.notes,
             _that.convertedAt);
       case _:
@@ -410,15 +443,18 @@ class _Lead implements Lead {
       {required this.id,
       required this.title,
       required this.name,
-      this.company,
+      @JsonKey(name: 'company_name') this.company,
       this.email,
       this.phone,
       required this.source,
       required this.status,
       @JsonKey(name: 'customer_id') this.customerId,
       @JsonKey(name: 'estimated_value') this.estimatedValue,
+      @JsonKey(name: 'potential_products')
+      final List<String>? potentialProducts,
       this.notes,
-      @JsonKey(name: 'converted_at') this.convertedAt});
+      @JsonKey(name: 'converted_at') this.convertedAt})
+      : _potentialProducts = potentialProducts;
   factory _Lead.fromJson(Map<String, dynamic> json) => _$LeadFromJson(json);
 
   @override
@@ -428,6 +464,7 @@ class _Lead implements Lead {
   @override
   final String name;
   @override
+  @JsonKey(name: 'company_name')
   final String? company;
   @override
   final String? email;
@@ -443,6 +480,18 @@ class _Lead implements Lead {
   @override
   @JsonKey(name: 'estimated_value')
   final double? estimatedValue;
+  final List<String>? _potentialProducts;
+  @override
+  @JsonKey(name: 'potential_products')
+  List<String>? get potentialProducts {
+    final value = _potentialProducts;
+    if (value == null) return null;
+    if (_potentialProducts is EqualUnmodifiableListView)
+      return _potentialProducts;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
   @override
   final String? notes;
   @override
@@ -481,6 +530,8 @@ class _Lead implements Lead {
                 other.customerId == customerId) &&
             (identical(other.estimatedValue, estimatedValue) ||
                 other.estimatedValue == estimatedValue) &&
+            const DeepCollectionEquality()
+                .equals(other._potentialProducts, _potentialProducts) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.convertedAt, convertedAt) ||
                 other.convertedAt == convertedAt));
@@ -488,12 +539,25 @@ class _Lead implements Lead {
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, title, name, company, email,
-      phone, source, status, customerId, estimatedValue, notes, convertedAt);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      title,
+      name,
+      company,
+      email,
+      phone,
+      source,
+      status,
+      customerId,
+      estimatedValue,
+      const DeepCollectionEquality().hash(_potentialProducts),
+      notes,
+      convertedAt);
 
   @override
   String toString() {
-    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, notes: $notes, convertedAt: $convertedAt)';
+    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt)';
   }
 }
 
@@ -507,13 +571,14 @@ abstract mixin class _$LeadCopyWith<$Res> implements $LeadCopyWith<$Res> {
       {String id,
       String title,
       String name,
-      String? company,
+      @JsonKey(name: 'company_name') String? company,
       String? email,
       String? phone,
       String source,
       String status,
       @JsonKey(name: 'customer_id') String? customerId,
       @JsonKey(name: 'estimated_value') double? estimatedValue,
+      @JsonKey(name: 'potential_products') List<String>? potentialProducts,
       String? notes,
       @JsonKey(name: 'converted_at') DateTime? convertedAt});
 }
@@ -540,6 +605,7 @@ class __$LeadCopyWithImpl<$Res> implements _$LeadCopyWith<$Res> {
     Object? status = null,
     Object? customerId = freezed,
     Object? estimatedValue = freezed,
+    Object? potentialProducts = freezed,
     Object? notes = freezed,
     Object? convertedAt = freezed,
   }) {
@@ -584,6 +650,10 @@ class __$LeadCopyWithImpl<$Res> implements _$LeadCopyWith<$Res> {
           ? _self.estimatedValue
           : estimatedValue // ignore: cast_nullable_to_non_nullable
               as double?,
+      potentialProducts: freezed == potentialProducts
+          ? _self._potentialProducts
+          : potentialProducts // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
       notes: freezed == notes
           ? _self.notes
           : notes // ignore: cast_nullable_to_non_nullable

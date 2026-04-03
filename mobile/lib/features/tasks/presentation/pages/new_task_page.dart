@@ -16,7 +16,8 @@ class NewTaskPage extends StatefulWidget {
 }
 
 class _NewTaskPageState extends State<NewTaskPage> {
-  static const Color _orange = Color(0xFFEA580C);
+  // changed orange -> new green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
@@ -157,11 +158,12 @@ class _NewTaskPageState extends State<NewTaskPage> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: const Color(0xFFFED7AA) /* light orange accent */, width: 1),
+          // light border from orange -> light green tint
+          borderSide: BorderSide(color: const Color(0xFFCFF1E0) /* light green accent */, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: const Color(0xFFFED7AA), width: 1),
+          borderSide: BorderSide(color: const Color(0xFFCFF1E0), width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -174,7 +176,8 @@ class _NewTaskPageState extends State<NewTaskPage> {
   Widget _buildPriorityToggle() {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF3E8E0), // Soft pale orange/grey mix mimicking mock
+        // soft pale orange -> soft pale green
+        color: const Color(0xFFF3FBF7),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(4),
@@ -271,11 +274,11 @@ class _NewTaskPageState extends State<NewTaskPage> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: const Color(0xFFFED7AA), width: 1),
+              borderSide: BorderSide(color: const Color(0xFFCFF1E0), width: 1),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: const Color(0xFFFED7AA), width: 1),
+              borderSide: BorderSide(color: const Color(0xFFCFF1E0), width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -288,9 +291,9 @@ class _NewTaskPageState extends State<NewTaskPage> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFFFDF6F3),
+            color: const Color(0xFFF3FBF7),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFFAEBE5)),
+            border: Border.all(color: const Color(0xFFF3FBF7)),
           ),
           child: Row(
             children: [
@@ -298,7 +301,8 @@ class _NewTaskPageState extends State<NewTaskPage> {
                  width: 36,
                  height: 36,
                  alignment: Alignment.center,
-                 decoration: BoxDecoration(color: const Color(0xFFFCD3AD), shape: BoxShape.circle),
+                 // pale accent -> pale green
+                 decoration: BoxDecoration(color: const Color(0xFFCFF1E0), shape: BoxShape.circle),
                  child: const Text('JD', style: TextStyle(color: _orange, fontWeight: FontWeight.bold, fontSize: 13)),
                ),
                const SizedBox(width: 12),

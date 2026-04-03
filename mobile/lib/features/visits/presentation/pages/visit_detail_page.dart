@@ -18,11 +18,11 @@ class VisitDetailPage extends StatefulWidget {
 }
 
 class _VisitDetailPageState extends State<VisitDetailPage> {
-  static const Color _orange = Color(0xFFEA580C);
+  static const Color _orange = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
-  static const Color _lightOrangeBg = Color(0xFFFFF7ED);
+  static const Color _lightOrangeBg = Color(0xFFEFFBF5);
 
   @override
   void initState() {

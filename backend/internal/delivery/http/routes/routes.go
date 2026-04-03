@@ -24,6 +24,7 @@ func SetupRouter(
 	targetHandler *handlers.TargetHandler,
 	taskHandler *handlers.TaskHandler,
 	settingsHandler *handlers.SettingsHandler,
+	salesActivityHandler *handlers.SalesActivityHandler,
 ) {
 
 	v1 := r.Group("/api/v1")
@@ -157,6 +158,13 @@ func SetupRouter(
 		settingsGroup := protected.Group("/settings")
 		settingsGroup.GET("", settingsHandler.GetSettings)
 		settingsGroup.PATCH("/:key", settingsHandler.UpdateSetting)
+
+		// Sales Activities
+		activityGroup := protected.Group("/activities")
+		activityGroup.POST("", salesActivityHandler.Create)
+		activityGroup.GET("", salesActivityHandler.List)
+		activityGroup.PUT("/:id", salesActivityHandler.Update)
+		activityGroup.DELETE("/:id", salesActivityHandler.Delete)
 		
 		// Example of RBAC implementation
 		// managerOnly := protected.Group("/admin")

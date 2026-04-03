@@ -31,7 +31,8 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _currentNavIndex = 0;
 
-  static const Color _orange = Color(0xFFE8622A);
+  // changed orange -> new green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
   static const Color _navy = Color(0xFF1A237E);
   static const Color _bg = Color(0xFFF2F4F8);
 
@@ -50,7 +51,7 @@ class _DashboardPageState extends State<DashboardPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Orange header
+            // header now uses _orange (green)
             _buildHeader(context, l10n),
             // Scrollable body
             Expanded(
@@ -467,7 +468,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildRecommendationItem(VisitRecommendation item, AppLocalizations l10n) {
     final bool isHigh = item.priority == 'high';
-    final Color priorityColor = isHigh ? Colors.red : (item.priority == 'medium' ? Colors.orange : _navy);
+    // replace Colors.orange with the new green
+    final Color priorityColor = isHigh ? Colors.red : (item.priority == 'medium' ? const Color(0xFF0D8549) : _navy);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -611,7 +613,8 @@ class _DashboardPageState extends State<DashboardPage> {
         break;
       case 'stale':
         label = 'Butuh Perhatian';
-        color = Colors.orange;
+        // replace Colors.orange with new green
+        color = const Color(0xFF0D8549);
         icon = LucideIcons.alertTriangle;
         break;
       case 'scheduled':

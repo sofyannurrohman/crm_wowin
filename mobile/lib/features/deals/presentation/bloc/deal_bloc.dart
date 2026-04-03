@@ -111,8 +111,10 @@ class DealBloc extends Bloc<DealEvent, DealState> {
     final result = await addDealItem(
       dealId: event.dealId,
       productId: event.productId,
+      name: event.name,
       quantity: event.quantity,
       price: event.price,
+      unit: event.unit,
       discount: event.discount,
       notes: event.notes,
     );

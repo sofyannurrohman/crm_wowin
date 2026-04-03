@@ -99,8 +99,10 @@ class DealRepositoryImpl implements DealRepository {
   Future<Either<Failure, DealItem>> addDealItem({
     required String dealId,
     required String productId,
-    required int quantity,
+    required String name,
+    required double quantity,
     required double price,
+    required String unit,
     double discount = 0,
     String? notes,
   }) async {
@@ -108,8 +110,10 @@ class DealRepositoryImpl implements DealRepository {
       final item = await remoteDataSource.addDealItem({
         'deal_id': dealId,
         'product_id': productId,
+        'name': name,
         'quantity': quantity,
-        'unit_price': price,
+        'price': price,
+        'unit': unit,
         'discount': discount,
         'notes': notes,
       });

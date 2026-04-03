@@ -17,8 +17,10 @@ class RouteHistoryPage extends StatefulWidget {
 }
 
 class _RouteHistoryPageState extends State<RouteHistoryPage> {
-  static const Color _orange = Color(0xFFEA580C);
-  static const Color _lightOrange = Color(0xFFFFF7ED);
+  // changed orange -> new green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
+  // light orange -> light green tint
+  static const Color _lightOrange = Color(0xFFEFFBF5);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);

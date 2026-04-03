@@ -20,6 +20,7 @@ mixin _$Product {
   String get name;
   String? get description;
   double get price;
+  String? get unit;
   @JsonKey(name: 'is_active')
   bool get isActive;
   String? get sku;
@@ -50,6 +51,7 @@ mixin _$Product {
             (identical(other.description, description) ||
                 other.description == description) &&
             (identical(other.price, price) || other.price == price) &&
+            (identical(other.unit, unit) || other.unit == unit) &&
             (identical(other.isActive, isActive) ||
                 other.isActive == isActive) &&
             (identical(other.sku, sku) || other.sku == sku) &&
@@ -62,11 +64,11 @@ mixin _$Product {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, categoryId, name,
-      description, price, isActive, sku, createdAt, updatedAt);
+      description, price, unit, isActive, sku, createdAt, updatedAt);
 
   @override
   String toString() {
-    return 'Product(id: $id, categoryId: $categoryId, name: $name, description: $description, price: $price, isActive: $isActive, sku: $sku, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Product(id: $id, categoryId: $categoryId, name: $name, description: $description, price: $price, unit: $unit, isActive: $isActive, sku: $sku, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }
 
@@ -81,6 +83,7 @@ abstract mixin class $ProductCopyWith<$Res> {
       String name,
       String? description,
       double price,
+      String? unit,
       @JsonKey(name: 'is_active') bool isActive,
       String? sku,
       @JsonKey(name: 'created_at') String? createdAt,
@@ -104,6 +107,7 @@ class _$ProductCopyWithImpl<$Res> implements $ProductCopyWith<$Res> {
     Object? name = null,
     Object? description = freezed,
     Object? price = null,
+    Object? unit = freezed,
     Object? isActive = null,
     Object? sku = freezed,
     Object? createdAt = freezed,
@@ -130,6 +134,10 @@ class _$ProductCopyWithImpl<$Res> implements $ProductCopyWith<$Res> {
           ? _self.price
           : price // ignore: cast_nullable_to_non_nullable
               as double,
+      unit: freezed == unit
+          ? _self.unit
+          : unit // ignore: cast_nullable_to_non_nullable
+              as String?,
       isActive: null == isActive
           ? _self.isActive
           : isActive // ignore: cast_nullable_to_non_nullable
@@ -249,6 +257,7 @@ extension ProductPatterns on Product {
             String name,
             String? description,
             double price,
+            String? unit,
             @JsonKey(name: 'is_active') bool isActive,
             String? sku,
             @JsonKey(name: 'created_at') String? createdAt,
@@ -265,6 +274,7 @@ extension ProductPatterns on Product {
             _that.name,
             _that.description,
             _that.price,
+            _that.unit,
             _that.isActive,
             _that.sku,
             _that.createdAt,
@@ -295,6 +305,7 @@ extension ProductPatterns on Product {
             String name,
             String? description,
             double price,
+            String? unit,
             @JsonKey(name: 'is_active') bool isActive,
             String? sku,
             @JsonKey(name: 'created_at') String? createdAt,
@@ -310,6 +321,7 @@ extension ProductPatterns on Product {
             _that.name,
             _that.description,
             _that.price,
+            _that.unit,
             _that.isActive,
             _that.sku,
             _that.createdAt,
@@ -339,6 +351,7 @@ extension ProductPatterns on Product {
             String name,
             String? description,
             double price,
+            String? unit,
             @JsonKey(name: 'is_active') bool isActive,
             String? sku,
             @JsonKey(name: 'created_at') String? createdAt,
@@ -354,6 +367,7 @@ extension ProductPatterns on Product {
             _that.name,
             _that.description,
             _that.price,
+            _that.unit,
             _that.isActive,
             _that.sku,
             _that.createdAt,
@@ -373,6 +387,7 @@ class _Product implements Product {
       required this.name,
       this.description,
       required this.price,
+      this.unit,
       @JsonKey(name: 'is_active') this.isActive = true,
       this.sku,
       @JsonKey(name: 'created_at') this.createdAt,
@@ -391,6 +406,8 @@ class _Product implements Product {
   final String? description;
   @override
   final double price;
+  @override
+  final String? unit;
   @override
   @JsonKey(name: 'is_active')
   final bool isActive;
@@ -430,6 +447,7 @@ class _Product implements Product {
             (identical(other.description, description) ||
                 other.description == description) &&
             (identical(other.price, price) || other.price == price) &&
+            (identical(other.unit, unit) || other.unit == unit) &&
             (identical(other.isActive, isActive) ||
                 other.isActive == isActive) &&
             (identical(other.sku, sku) || other.sku == sku) &&
@@ -442,11 +460,11 @@ class _Product implements Product {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, categoryId, name,
-      description, price, isActive, sku, createdAt, updatedAt);
+      description, price, unit, isActive, sku, createdAt, updatedAt);
 
   @override
   String toString() {
-    return 'Product(id: $id, categoryId: $categoryId, name: $name, description: $description, price: $price, isActive: $isActive, sku: $sku, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'Product(id: $id, categoryId: $categoryId, name: $name, description: $description, price: $price, unit: $unit, isActive: $isActive, sku: $sku, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }
 
@@ -462,6 +480,7 @@ abstract mixin class _$ProductCopyWith<$Res> implements $ProductCopyWith<$Res> {
       String name,
       String? description,
       double price,
+      String? unit,
       @JsonKey(name: 'is_active') bool isActive,
       String? sku,
       @JsonKey(name: 'created_at') String? createdAt,
@@ -485,6 +504,7 @@ class __$ProductCopyWithImpl<$Res> implements _$ProductCopyWith<$Res> {
     Object? name = null,
     Object? description = freezed,
     Object? price = null,
+    Object? unit = freezed,
     Object? isActive = null,
     Object? sku = freezed,
     Object? createdAt = freezed,
@@ -511,6 +531,10 @@ class __$ProductCopyWithImpl<$Res> implements _$ProductCopyWith<$Res> {
           ? _self.price
           : price // ignore: cast_nullable_to_non_nullable
               as double,
+      unit: freezed == unit
+          ? _self.unit
+          : unit // ignore: cast_nullable_to_non_nullable
+              as String?,
       isActive: null == isActive
           ? _self.isActive
           : isActive // ignore: cast_nullable_to_non_nullable

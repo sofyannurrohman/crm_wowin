@@ -43,7 +43,7 @@ class ConvertLeadPage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Ubah "${lead.name}" menjadi pelanggan tetap dan buat peluang baru di pipeline Anda.',
+                'Ubah "${lead.title}" menjadi pelanggan tetap dan buat peluang baru di pipeline Anda.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 15, color: Colors.grey[600], height: 1.6),
               ),
@@ -120,11 +120,11 @@ class ConvertLeadPage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _buildInfoItem('PROSPEK UTAMA', lead.name, LucideIcons.user),
+          _buildInfoItem('NAMA TOKO / BISNIS', lead.title, LucideIcons.shoppingBag),
           const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider()),
-          _buildInfoItem('NAMA PERUSAHAAN', lead.company ?? '-', LucideIcons.building),
+          _buildInfoItem('NAMA PEMILIK / PIC', lead.name, LucideIcons.user),
           const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider()),
-          _buildInfoItem('TIPE DEAL', 'Project Solution', LucideIcons.briefcase),
+          _buildInfoItem('PRODUK POTENSIAL', (lead.potentialProducts?.isEmpty ?? true) ? '-' : lead.potentialProducts!.join(', '), LucideIcons.package),
         ],
       ),
     );
@@ -226,11 +226,11 @@ class ConvertLeadPage extends StatelessWidget {
             style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF8E8E93), letterSpacing: 1.5),
           ),
           const SizedBox(height: 16),
-          _buildInfoRow('Lead Title', lead.title, LucideIcons.type),
+          _buildInfoRow('Nama Toko', lead.title, LucideIcons.shoppingBag),
           const Divider(height: 24),
-          _buildInfoRow('Customer', lead.name, LucideIcons.user),
+          _buildInfoRow('Pemilik / PIC', lead.name, LucideIcons.user),
           const Divider(height: 24),
-          _buildInfoRow('Sales Cycle', 'New Pipeline Item', LucideIcons.trendingUp),
+          _buildInfoRow('Produk', (lead.potentialProducts?.isEmpty ?? true) ? '-' : lead.potentialProducts!.join(', '), LucideIcons.package),
         ],
       ),
     );

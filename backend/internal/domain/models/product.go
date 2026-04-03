@@ -33,7 +33,9 @@ type DealItem struct {
 	ID          uuid.UUID `json:"id"`
 	DealID      uuid.UUID `json:"deal_id"`
 	ProductID   uuid.UUID `json:"product_id"`
-	Quantity    int       `json:"quantity"`
+	Name        string    `json:"name"`
+	Quantity    float64   `json:"quantity"` // Changed to float for fractions if needed
+	Unit        string    `json:"unit"`     // pcs, dus, crate
 	UnitPrice   float64   `json:"unit_price"`
 	Discount    float64   `json:"discount"`
 	Subtotal    float64   `json:"subtotal"` // Formula: (UnitPrice * Quantity) - Discount

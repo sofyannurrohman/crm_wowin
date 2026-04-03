@@ -14,8 +14,10 @@ abstract class DealRepository {
   Future<Either<Failure, DealItem>> addDealItem({
     required String dealId,
     required String productId,
-    required int quantity,
+    required String name,
+    required double quantity,
     required double price,
+    required String unit,
     double discount = 0,
     String? notes,
   });

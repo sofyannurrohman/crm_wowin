@@ -21,6 +21,7 @@ import 'features/dashboard/presentation/bloc/dashboard_event.dart';
 import 'features/tasks/presentation/bloc/task_bloc.dart';
 import 'features/tasks/presentation/bloc/task_event.dart';
 import 'features/settings/presentation/bloc/settings_bloc.dart';
+import 'features/activities/presentation/bloc/sales_activity_bloc.dart';
 
 import 'core/theme/app_theme.dart';
 
@@ -75,6 +76,9 @@ class WowinCrmApp extends StatelessWidget {
         ),
         BlocProvider<SettingsBloc>(
           create: (_) => sl<SettingsBloc>()..add(FetchSettings()),
+        ),
+        BlocProvider<SalesActivityBloc>(
+          create: (_) => sl<SalesActivityBloc>(),
         ),
       ],
       child: MaterialApp.router(

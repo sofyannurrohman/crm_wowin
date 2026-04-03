@@ -159,6 +159,7 @@ func main() {
 	targetRepo := postgres.NewTargetRepository(dbpool)
 	taskRepo := postgres.NewTaskRepository(dbpool)
 	settingsRepo := postgres.NewSettingsRepository(dbpool)
+	salesActivityRepo := postgres.NewSalesActivityRepository(dbpool)
 	
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -199,9 +200,10 @@ func main() {
 	targetHandler := handlers.NewTargetHandler(targetUC)
 	taskHandler := handlers.NewTaskHandler(taskUC)
 	settingsHandler := handlers.NewSettingsHandler(settingsUC)
+	salesActivityHandler := handlers.NewSalesActivityHandler(salesActivityRepo)
 
 	// Setup Routes
-	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler, targetHandler, taskHandler, settingsHandler)
+	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler, targetHandler, taskHandler, settingsHandler, salesActivityHandler)
 
 	// Additionally inject basic health check underneath v1
 	router.GET("/api/v1/health", func(c *gin.Context) {

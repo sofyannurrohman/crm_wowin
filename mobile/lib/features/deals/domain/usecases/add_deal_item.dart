@@ -11,16 +11,20 @@ class AddDealItem {
   Future<Either<Failure, DealItem>> call({
     required String dealId,
     required String productId,
-    required int quantity,
+    required String name,
+    required double quantity,
     required double price,
+    required String unit,
     double discount = 0,
     String? notes,
   }) async {
     return await repository.addDealItem(
       dealId: dealId,
       productId: productId,
+      name: name,
       quantity: quantity,
       price: price,
+      unit: unit,
       discount: discount,
       notes: notes,
     );

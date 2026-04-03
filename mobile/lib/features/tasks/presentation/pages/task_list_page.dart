@@ -18,7 +18,8 @@ class TaskListPage extends StatefulWidget {
 }
 
 class _TaskListPageState extends State<TaskListPage> {
-  static const Color _orange = Color(0xFFEA580C);
+  // changed orange -> new green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
@@ -189,7 +190,7 @@ class _TaskListPageState extends State<TaskListPage> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF7ED),
+              color: const Color(0xFFEFFBF5),
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(LucideIcons.list, color: _orange, size: 22),

@@ -26,7 +26,8 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isPasswordVisible = false;
   bool _agreedToTerms = false;
 
-  static const Color _orange = Color(0xFFE8622A);
+  // changed orange -> new green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
 
   @override
   void dispose() {

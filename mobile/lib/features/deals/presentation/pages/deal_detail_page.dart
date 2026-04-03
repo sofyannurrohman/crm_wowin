@@ -877,7 +877,7 @@ class _DealDetailPageState extends State<DealDetailPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                item.productName ?? 'Produk ${item.productId.substring(0, 4)}',
+                item.name ?? 'Produk ${item.productId.substring(0, 4)}',
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
@@ -886,7 +886,7 @@ class _DealDetailPageState extends State<DealDetailPage> {
               ),
               const SizedBox(height: 2),
               Text(
-                '${item.quantity} x ${currencyFormatter.format(item.unitPrice)}',
+                '${item.quantity} ${item.unit ?? ''} x ${currencyFormatter.format(item.price)}',
                 style: const TextStyle(color: _textSecondary, fontSize: 12),
               ),
             ],
@@ -896,7 +896,7 @@ class _DealDetailPageState extends State<DealDetailPage> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              currencyFormatter.format(item.subtotal),
+              currencyFormatter.format(item.price * item.quantity),
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
@@ -1005,14 +1005,17 @@ class _AddProductSheet extends StatefulWidget {
 
 class _AddProductSheetState extends State<_AddProductSheet> {
   String? _selectedProductId;
-  int _quantity = 1;
+  double _quantity = 1;
   double _price = 0;
   String _productName = '';
+  String _unit = 'pcs';
+  final TextEditingController _quantityController = TextEditingController(text: '1');
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
 
   @override
   void dispose() {
+    _quantityController.dispose();
     _priceController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -1059,6 +1062,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                   _selectedProductId = product.id;
                   _productName = product.name;
                   _price = product.price;
+                  _unit = product.unit ?? 'pcs';
                   _priceController.text = _price.toStringAsFixed(0);
                 });
               }
@@ -1073,22 +1077,24 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                   children: [
                     const Text('Jumlah', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(LucideIcons.minusCircle),
-                          onPressed: () => setState(() { if(_quantity > 1) _quantity--; }),
-                        ),
-                        Text('$_quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        IconButton(
-                          icon: const Icon(LucideIcons.plusCircle),
-                          onPressed: () => setState(() => _quantity++),
-                        ),
-                      ],
+                    TextField(
+                      controller: _quantityController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        suffixText: _unit,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _quantity = double.tryParse(value) ?? 0;
+                        });
+                      },
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1143,8 +1149,10 @@ class _AddProductSheetState extends State<_AddProductSheet> {
               context.read<DealBloc>().add(AddDealItemSubmitted(
                 dealId: widget.dealId,
                 productId: _selectedProductId!,
+                name: _productName,
                 quantity: _quantity,
                 price: _price,
+                unit: _unit,
               ));
               Navigator.pop(context);
             },

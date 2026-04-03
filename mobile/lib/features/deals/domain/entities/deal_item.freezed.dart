@@ -19,16 +19,14 @@ mixin _$DealItem {
   String get dealId;
   @JsonKey(name: 'product_id')
   String get productId;
-  int get quantity;
+  String get name;
+  double get quantity;
+  String get unit;
   @JsonKey(name: 'unit_price')
   double get unitPrice;
   double get discount;
   double get subtotal;
   String? get notes;
-  @JsonKey(name: 'product_name')
-  String? get productName;
-  @JsonKey(name: 'product_sku')
-  String? get productSku;
 
   /// Create a copy of DealItem
   /// with the given fields replaced by the non-null parameter values.
@@ -49,29 +47,27 @@ mixin _$DealItem {
             (identical(other.dealId, dealId) || other.dealId == dealId) &&
             (identical(other.productId, productId) ||
                 other.productId == productId) &&
+            (identical(other.name, name) || other.name == name) &&
             (identical(other.quantity, quantity) ||
                 other.quantity == quantity) &&
+            (identical(other.unit, unit) || other.unit == unit) &&
             (identical(other.unitPrice, unitPrice) ||
                 other.unitPrice == unitPrice) &&
             (identical(other.discount, discount) ||
                 other.discount == discount) &&
             (identical(other.subtotal, subtotal) ||
                 other.subtotal == subtotal) &&
-            (identical(other.notes, notes) || other.notes == notes) &&
-            (identical(other.productName, productName) ||
-                other.productName == productName) &&
-            (identical(other.productSku, productSku) ||
-                other.productSku == productSku));
+            (identical(other.notes, notes) || other.notes == notes));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, dealId, productId, quantity,
-      unitPrice, discount, subtotal, notes, productName, productSku);
+  int get hashCode => Object.hash(runtimeType, id, dealId, productId, name,
+      quantity, unit, unitPrice, discount, subtotal, notes);
 
   @override
   String toString() {
-    return 'DealItem(id: $id, dealId: $dealId, productId: $productId, quantity: $quantity, unitPrice: $unitPrice, discount: $discount, subtotal: $subtotal, notes: $notes, productName: $productName, productSku: $productSku)';
+    return 'DealItem(id: $id, dealId: $dealId, productId: $productId, name: $name, quantity: $quantity, unit: $unit, unitPrice: $unitPrice, discount: $discount, subtotal: $subtotal, notes: $notes)';
   }
 }
 
@@ -84,13 +80,13 @@ abstract mixin class $DealItemCopyWith<$Res> {
       {String id,
       @JsonKey(name: 'deal_id') String dealId,
       @JsonKey(name: 'product_id') String productId,
-      int quantity,
+      String name,
+      double quantity,
+      String unit,
       @JsonKey(name: 'unit_price') double unitPrice,
       double discount,
       double subtotal,
-      String? notes,
-      @JsonKey(name: 'product_name') String? productName,
-      @JsonKey(name: 'product_sku') String? productSku});
+      String? notes});
 }
 
 /// @nodoc
@@ -108,13 +104,13 @@ class _$DealItemCopyWithImpl<$Res> implements $DealItemCopyWith<$Res> {
     Object? id = null,
     Object? dealId = null,
     Object? productId = null,
+    Object? name = null,
     Object? quantity = null,
+    Object? unit = null,
     Object? unitPrice = null,
     Object? discount = null,
     Object? subtotal = null,
     Object? notes = freezed,
-    Object? productName = freezed,
-    Object? productSku = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -129,10 +125,18 @@ class _$DealItemCopyWithImpl<$Res> implements $DealItemCopyWith<$Res> {
           ? _self.productId
           : productId // ignore: cast_nullable_to_non_nullable
               as String,
+      name: null == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
       quantity: null == quantity
           ? _self.quantity
           : quantity // ignore: cast_nullable_to_non_nullable
-              as int,
+              as double,
+      unit: null == unit
+          ? _self.unit
+          : unit // ignore: cast_nullable_to_non_nullable
+              as String,
       unitPrice: null == unitPrice
           ? _self.unitPrice
           : unitPrice // ignore: cast_nullable_to_non_nullable
@@ -148,14 +152,6 @@ class _$DealItemCopyWithImpl<$Res> implements $DealItemCopyWith<$Res> {
       notes: freezed == notes
           ? _self.notes
           : notes // ignore: cast_nullable_to_non_nullable
-              as String?,
-      productName: freezed == productName
-          ? _self.productName
-          : productName // ignore: cast_nullable_to_non_nullable
-              as String?,
-      productSku: freezed == productSku
-          ? _self.productSku
-          : productSku // ignore: cast_nullable_to_non_nullable
               as String?,
     ));
   }
@@ -258,13 +254,13 @@ extension DealItemPatterns on DealItem {
             String id,
             @JsonKey(name: 'deal_id') String dealId,
             @JsonKey(name: 'product_id') String productId,
-            int quantity,
+            String name,
+            double quantity,
+            String unit,
             @JsonKey(name: 'unit_price') double unitPrice,
             double discount,
             double subtotal,
-            String? notes,
-            @JsonKey(name: 'product_name') String? productName,
-            @JsonKey(name: 'product_sku') String? productSku)?
+            String? notes)?
         $default, {
     required TResult orElse(),
   }) {
@@ -275,13 +271,13 @@ extension DealItemPatterns on DealItem {
             _that.id,
             _that.dealId,
             _that.productId,
+            _that.name,
             _that.quantity,
+            _that.unit,
             _that.unitPrice,
             _that.discount,
             _that.subtotal,
-            _that.notes,
-            _that.productName,
-            _that.productSku);
+            _that.notes);
       case _:
         return orElse();
     }
@@ -306,13 +302,13 @@ extension DealItemPatterns on DealItem {
             String id,
             @JsonKey(name: 'deal_id') String dealId,
             @JsonKey(name: 'product_id') String productId,
-            int quantity,
+            String name,
+            double quantity,
+            String unit,
             @JsonKey(name: 'unit_price') double unitPrice,
             double discount,
             double subtotal,
-            String? notes,
-            @JsonKey(name: 'product_name') String? productName,
-            @JsonKey(name: 'product_sku') String? productSku)
+            String? notes)
         $default,
   ) {
     final _that = this;
@@ -322,13 +318,13 @@ extension DealItemPatterns on DealItem {
             _that.id,
             _that.dealId,
             _that.productId,
+            _that.name,
             _that.quantity,
+            _that.unit,
             _that.unitPrice,
             _that.discount,
             _that.subtotal,
-            _that.notes,
-            _that.productName,
-            _that.productSku);
+            _that.notes);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -352,13 +348,13 @@ extension DealItemPatterns on DealItem {
             String id,
             @JsonKey(name: 'deal_id') String dealId,
             @JsonKey(name: 'product_id') String productId,
-            int quantity,
+            String name,
+            double quantity,
+            String unit,
             @JsonKey(name: 'unit_price') double unitPrice,
             double discount,
             double subtotal,
-            String? notes,
-            @JsonKey(name: 'product_name') String? productName,
-            @JsonKey(name: 'product_sku') String? productSku)?
+            String? notes)?
         $default,
   ) {
     final _that = this;
@@ -368,13 +364,13 @@ extension DealItemPatterns on DealItem {
             _that.id,
             _that.dealId,
             _that.productId,
+            _that.name,
             _that.quantity,
+            _that.unit,
             _that.unitPrice,
             _that.discount,
             _that.subtotal,
-            _that.notes,
-            _that.productName,
-            _that.productSku);
+            _that.notes);
       case _:
         return null;
     }
@@ -383,18 +379,19 @@ extension DealItemPatterns on DealItem {
 
 /// @nodoc
 @JsonSerializable()
-class _DealItem implements DealItem {
+class _DealItem extends DealItem {
   const _DealItem(
       {required this.id,
       @JsonKey(name: 'deal_id') required this.dealId,
       @JsonKey(name: 'product_id') required this.productId,
+      required this.name,
       required this.quantity,
+      required this.unit,
       @JsonKey(name: 'unit_price') required this.unitPrice,
       required this.discount,
       required this.subtotal,
-      this.notes,
-      @JsonKey(name: 'product_name') this.productName,
-      @JsonKey(name: 'product_sku') this.productSku});
+      this.notes})
+      : super._();
   factory _DealItem.fromJson(Map<String, dynamic> json) =>
       _$DealItemFromJson(json);
 
@@ -407,7 +404,11 @@ class _DealItem implements DealItem {
   @JsonKey(name: 'product_id')
   final String productId;
   @override
-  final int quantity;
+  final String name;
+  @override
+  final double quantity;
+  @override
+  final String unit;
   @override
   @JsonKey(name: 'unit_price')
   final double unitPrice;
@@ -417,12 +418,6 @@ class _DealItem implements DealItem {
   final double subtotal;
   @override
   final String? notes;
-  @override
-  @JsonKey(name: 'product_name')
-  final String? productName;
-  @override
-  @JsonKey(name: 'product_sku')
-  final String? productSku;
 
   /// Create a copy of DealItem
   /// with the given fields replaced by the non-null parameter values.
@@ -448,29 +443,27 @@ class _DealItem implements DealItem {
             (identical(other.dealId, dealId) || other.dealId == dealId) &&
             (identical(other.productId, productId) ||
                 other.productId == productId) &&
+            (identical(other.name, name) || other.name == name) &&
             (identical(other.quantity, quantity) ||
                 other.quantity == quantity) &&
+            (identical(other.unit, unit) || other.unit == unit) &&
             (identical(other.unitPrice, unitPrice) ||
                 other.unitPrice == unitPrice) &&
             (identical(other.discount, discount) ||
                 other.discount == discount) &&
             (identical(other.subtotal, subtotal) ||
                 other.subtotal == subtotal) &&
-            (identical(other.notes, notes) || other.notes == notes) &&
-            (identical(other.productName, productName) ||
-                other.productName == productName) &&
-            (identical(other.productSku, productSku) ||
-                other.productSku == productSku));
+            (identical(other.notes, notes) || other.notes == notes));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, dealId, productId, quantity,
-      unitPrice, discount, subtotal, notes, productName, productSku);
+  int get hashCode => Object.hash(runtimeType, id, dealId, productId, name,
+      quantity, unit, unitPrice, discount, subtotal, notes);
 
   @override
   String toString() {
-    return 'DealItem(id: $id, dealId: $dealId, productId: $productId, quantity: $quantity, unitPrice: $unitPrice, discount: $discount, subtotal: $subtotal, notes: $notes, productName: $productName, productSku: $productSku)';
+    return 'DealItem(id: $id, dealId: $dealId, productId: $productId, name: $name, quantity: $quantity, unit: $unit, unitPrice: $unitPrice, discount: $discount, subtotal: $subtotal, notes: $notes)';
   }
 }
 
@@ -485,13 +478,13 @@ abstract mixin class _$DealItemCopyWith<$Res>
       {String id,
       @JsonKey(name: 'deal_id') String dealId,
       @JsonKey(name: 'product_id') String productId,
-      int quantity,
+      String name,
+      double quantity,
+      String unit,
       @JsonKey(name: 'unit_price') double unitPrice,
       double discount,
       double subtotal,
-      String? notes,
-      @JsonKey(name: 'product_name') String? productName,
-      @JsonKey(name: 'product_sku') String? productSku});
+      String? notes});
 }
 
 /// @nodoc
@@ -509,13 +502,13 @@ class __$DealItemCopyWithImpl<$Res> implements _$DealItemCopyWith<$Res> {
     Object? id = null,
     Object? dealId = null,
     Object? productId = null,
+    Object? name = null,
     Object? quantity = null,
+    Object? unit = null,
     Object? unitPrice = null,
     Object? discount = null,
     Object? subtotal = null,
     Object? notes = freezed,
-    Object? productName = freezed,
-    Object? productSku = freezed,
   }) {
     return _then(_DealItem(
       id: null == id
@@ -530,10 +523,18 @@ class __$DealItemCopyWithImpl<$Res> implements _$DealItemCopyWith<$Res> {
           ? _self.productId
           : productId // ignore: cast_nullable_to_non_nullable
               as String,
+      name: null == name
+          ? _self.name
+          : name // ignore: cast_nullable_to_non_nullable
+              as String,
       quantity: null == quantity
           ? _self.quantity
           : quantity // ignore: cast_nullable_to_non_nullable
-              as int,
+              as double,
+      unit: null == unit
+          ? _self.unit
+          : unit // ignore: cast_nullable_to_non_nullable
+              as String,
       unitPrice: null == unitPrice
           ? _self.unitPrice
           : unitPrice // ignore: cast_nullable_to_non_nullable
@@ -549,14 +550,6 @@ class __$DealItemCopyWithImpl<$Res> implements _$DealItemCopyWith<$Res> {
       notes: freezed == notes
           ? _self.notes
           : notes // ignore: cast_nullable_to_non_nullable
-              as String?,
-      productName: freezed == productName
-          ? _self.productName
-          : productName // ignore: cast_nullable_to_non_nullable
-              as String?,
-      productSku: freezed == productSku
-          ? _self.productSku
-          : productSku // ignore: cast_nullable_to_non_nullable
               as String?,
     ));
   }

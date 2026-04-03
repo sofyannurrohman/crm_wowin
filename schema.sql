@@ -207,6 +207,7 @@ CREATE TABLE leads (
     assigned_to     UUID REFERENCES users(id) ON DELETE SET NULL,
     customer_id     UUID REFERENCES customers(id) ON DELETE SET NULL,
     estimated_value NUMERIC(15,2),
+    potential_products TEXT[],
     notes           TEXT,
     converted_at    TIMESTAMPTZ,
     created_by      UUID REFERENCES users(id),
@@ -274,8 +275,8 @@ CREATE TABLE products (
     name        VARCHAR(255) NOT NULL,
     category_id UUID REFERENCES product_categories(id),
     description TEXT,
-    unit        VARCHAR(50),                        -- pcs, kg, liter, box, dll
-    base_price  NUMERIC(15,2) NOT NULL,
+    unit        VARCHAR(50),                        -- Global default unit
+    base_price  NUMERIC(15,2) NOT NULL DEFAULT 0,
     is_active   BOOLEAN NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -287,6 +288,7 @@ CREATE TABLE deal_items (
     product_id  UUID REFERENCES products(id),
     name        VARCHAR(255) NOT NULL,
     quantity    NUMERIC(10,2) NOT NULL DEFAULT 1,
+    unit        VARCHAR(50) NOT NULL,               -- pcs, dus, crate
     unit_price  NUMERIC(15,2) NOT NULL,
     discount    NUMERIC(5,2) DEFAULT 0,             -- persen
     subtotal    NUMERIC(15,2) GENERATED ALWAYS AS

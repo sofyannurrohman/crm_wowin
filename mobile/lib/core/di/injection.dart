@@ -79,6 +79,11 @@ import '../../features/deals/domain/usecases/remove_deal_item.dart';
 import '../../features/deals/domain/usecases/get_deal_detail.dart';
 import '../../features/settings/data/datasources/settings_remote_data_source.dart';
 import '../../features/settings/presentation/bloc/settings_bloc.dart';
+import '../../features/activities/data/datasources/sales_activity_remote_data_source.dart';
+import '../../features/activities/data/repositories/sales_activity_repository_impl.dart';
+import '../../features/activities/domain/repositories/sales_activity_repository.dart';
+import '../../features/activities/presentation/bloc/sales_activity_bloc.dart';
+
 
 final sl = GetIt.instance;
 
@@ -124,6 +129,10 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<SettingsRemoteDataSource>(
     () => SettingsRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<SalesActivityRemoteDataSource>(
+    () => SalesActivityRemoteDataSourceImpl(sl()),
+  );
+
 
 
   // Repositories
@@ -160,6 +169,10 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<TaskRepository>(
     () => TaskRepositoryImpl(remoteDataSource: sl()),
   );
+  sl.registerLazySingleton<SalesActivityRepository>(
+    () => SalesActivityRepositoryImpl(sl()),
+  );
+
 
 
   // UseCases
@@ -244,5 +257,7 @@ Future<void> initDependencies() async {
       ));
   sl.registerFactory(() => TaskBloc(repository: sl()));
   sl.registerFactory(() => SettingsBloc(sl()));
+  sl.registerFactory(() => SalesActivityBloc(repository: sl()));
+
 
 }

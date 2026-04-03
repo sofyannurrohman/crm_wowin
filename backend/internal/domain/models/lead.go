@@ -37,10 +37,11 @@ type Lead struct {
 	Source         LeadSource  `json:"source"`
 	Status         LeadStatus  `json:"status"`
 	AssignedTo     *uuid.UUID  `json:"assigned_to,omitempty"`
-	CustomerID     *uuid.UUID  `json:"customer_id,omitempty"` // populated if converted
-	EstimatedValue *float64    `json:"estimated_value,omitempty"`
-	Notes          *string     `json:"notes,omitempty"`
-	ConvertedAt    *time.Time  `json:"converted_at,omitempty"`
+	CustomerID        *uuid.UUID  `json:"customer_id,omitempty"` // populated if converted
+	EstimatedValue    *float64    `json:"estimated_value,omitempty"`
+	PotentialProducts []string    `json:"potential_products,omitempty"`
+	Notes             *string     `json:"notes,omitempty"`
+	ConvertedAt       *time.Time  `json:"converted_at,omitempty"`
 	CreatedBy      *uuid.UUID  `json:"created_by,omitempty"`
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at"`

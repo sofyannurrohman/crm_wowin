@@ -23,9 +23,10 @@ class _LoginPageState extends State<LoginPage> {
   bool _isPasswordVisible = false;
   bool _rememberMe = false;
 
-  // Wowin brand orange
-  static const Color _orange = Color(0xFFE8622A);
-  static const Color _orangeLight = Color(0xFFFBEEE8);
+  // Wowin brand orange -> changed to green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
+  // light tint changed to light green
+  static const Color _orangeLight = Color(0xFFEFFBF5);
 
   @override
   void dispose() {

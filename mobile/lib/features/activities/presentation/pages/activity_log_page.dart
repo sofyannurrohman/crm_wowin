@@ -20,7 +20,8 @@ class ActivityLogPage extends StatefulWidget {
 }
 
 class _ActivityLogPageState extends State<ActivityLogPage> {
-  static const Color _orange = Color(0xFFEA580C);
+  // changed orange -> new green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
@@ -165,7 +166,7 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
     if (type == 'checkin' || type == 'clockin') {
       icon = type == 'clockin' ? LucideIcons.logIn : LucideIcons.mapPin;
       iconColor = type == 'clockin' ? Colors.blue : _orange;
-      iconBgColor = type == 'clockin' ? const Color(0xFFEFF6FF) : const Color(0xFFFFF7ED);
+      iconBgColor = type == 'clockin' ? const Color(0xFFEFF6FF) : const Color(0xFFEFFBF5);
     } else if (type == 'checkout' || type == 'clockout') {
       icon = type == 'clockout' ? LucideIcons.logOut : LucideIcons.checkCircle;
       iconColor = type == 'clockout' ? Colors.red : const Color(0xFF10B981);

@@ -8,7 +8,8 @@ class AppColors {
 
   // Secondary / Accent
   static const Color secondary = Color(0xFF6366F1);
-  static const Color accent = Color(0xFFF59E0B);
+  // changed accent from orange -> new green #0D8549
+  static const Color accent = Color(0xFF0D8549);
 
   // Neutral
   static const Color background = Color(0xFFF8FAFC);

@@ -7,6 +7,10 @@ import '../../domain/entities/lead.dart';
 import '../bloc/lead_bloc.dart';
 import '../bloc/lead_event.dart';
 import '../bloc/lead_state.dart';
+import '../../../products/presentation/bloc/product_bloc.dart';
+import '../../../products/presentation/bloc/product_event.dart';
+import '../../../products/presentation/bloc/product_state.dart';
+import '../../../products/domain/entities/product.dart';
 
 class AddLeadPage extends StatefulWidget {
   final Lead? initialLead;
@@ -26,6 +30,7 @@ class _AddLeadPageState extends State<AddLeadPage> {
   final _valueController = TextEditingController();
   final _notesController = TextEditingController();
   String _selectedSource = 'Survey';
+  List<Product> _selectedProducts = [];
 
   @override
   void initState() {
@@ -40,7 +45,11 @@ class _AddLeadPageState extends State<AddLeadPage> {
       _valueController.text = lead.estimatedValue?.toString() ?? '';
       _notesController.text = lead.notes ?? '';
       _selectedSource = lead.source;
+      
+      // We will need to fetch actual product objects if we have IDs
+      // For now, let's trigger production fetch
     }
+    context.read<ProductBloc>().add(const FetchProducts());
   }
 
   final List<String> _sources = ['Survey', 'Referral', 'Website', 'Event', 'Other'];
@@ -69,6 +78,7 @@ class _AddLeadPageState extends State<AddLeadPage> {
         source: _selectedSource,
         status: widget.initialLead?.status ?? 'NEW',
         estimatedValue: double.tryParse(_valueController.text) ?? 0.0,
+        potentialProducts: _selectedProducts.map((p) => p.name).toList(), // Using names for now as per "berpotensi menjual produk apa"
         notes: _notesController.text,
       );
       
@@ -114,24 +124,24 @@ class _AddLeadPageState extends State<AddLeadPage> {
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _titleController,
-                  label: 'Lead Title / Requirement',
-                  hint: 'e.g. 50pcs Office Chairs',
-                  icon: LucideIcons.type,
-                  validator: (v) => v!.isEmpty ? 'Title is required' : null,
+                  label: 'Nama Toko / Bisnis',
+                  hint: 'Contoh: Toko Berkah atau Warung Makan Sedap',
+                  icon: LucideIcons.shoppingBag,
+                  validator: (v) => v!.isEmpty ? 'Nama toko wajib diisi' : null,
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _nameController,
-                  label: 'Contact Name',
-                  hint: 'Full name of the person',
+                  label: 'Nama Pemilik / PIC',
+                  hint: 'Nama lengkap pemilik atau penanggung jawab',
                   icon: LucideIcons.user,
-                  validator: (v) => v!.isEmpty ? 'Name is required' : null,
+                  validator: (v) => v!.isEmpty ? 'Nama PIC wajib diisi' : null,
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _companyController,
-                  label: 'Company Name',
-                  hint: 'Business name',
+                  label: 'Tipe Bisnis / Cabang',
+                  hint: 'Contoh: Warung Makan, Toko Kelontong, Agen',
                   icon: LucideIcons.building,
                 ),
                 const SizedBox(height: 24),
@@ -169,7 +179,7 @@ class _AddLeadPageState extends State<AddLeadPage> {
                       child: DropdownButtonFormField<String>(
                         value: _selectedSource,
                         decoration: InputDecoration(
-                          labelText: 'Lead Source',
+                          labelText: 'Sumber Prospek',
                           prefixIcon: const Icon(LucideIcons.compass, size: 20),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
@@ -177,18 +187,12 @@ class _AddLeadPageState extends State<AddLeadPage> {
                         onChanged: (v) => setState(() => _selectedSource = v!),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildTextField(
-                        controller: _valueController,
-                        label: 'Estimated Value',
-                        hint: 'Amount (Rp)',
-                        icon: LucideIcons.dollarSign,
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
                   ],
                 ),
+                const SizedBox(height: 24),
+                _buildSectionHeader('Produk Potensial', LucideIcons.package),
+                const SizedBox(height: 16),
+                _buildProductSelector(),
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _notesController,
@@ -223,6 +227,131 @@ class _AddLeadPageState extends State<AddLeadPage> {
                 const SizedBox(height: 20),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_selectedProducts.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200, style: BorderStyle.solid),
+            ),
+            child: const Row(
+              children: [
+                Icon(LucideIcons.info, size: 16, color: Colors.grey),
+                SizedBox(width: 8),
+                Text('Belum ada produk yang dipilih', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              ],
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _selectedProducts.map((product) => Chip(
+              label: Text(product.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              onDeleted: () => setState(() => _selectedProducts.remove(product)),
+              deleteIconColor: Colors.red,
+              backgroundColor: const Color(0xFFEFFBF5),
+              side: const BorderSide(color: Color(0xFF0D8549), width: 0.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            )).toList(),
+          ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _showProductPickerDialog,
+          icon: const Icon(LucideIcons.plus, size: 16),
+          label: const Text('Pilih Produk dari Katalog'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF0D8549),
+            side: const BorderSide(color: Color(0xFF0D8549)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showProductPickerDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: Text('Pilih Produk Katalog', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              Expanded(
+                child: BlocBuilder<ProductBloc, ProductState>(
+                  builder: (context, state) {
+                    if (state is ProductLoading) return const Center(child: CircularProgressIndicator());
+                    if (state is ProductsLoaded) {
+                      return ListView.separated(
+                        controller: scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: state.products.length,
+                        separatorBuilder: (context, index) => const Divider(),
+                        itemBuilder: (context, index) {
+                          final Product product = state.products[index];
+                          final isSelected = _selectedProducts.any((Product p) => p.id == product.id);
+                          return CheckboxListTile(
+                            value: isSelected,
+                            title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text('Rp ${product.price.toStringAsFixed(0)}'),
+                            activeColor: const Color(0xFF0D8549),
+                            onChanged: (val) {
+                              setState(() {
+                                if (val == true) {
+                                  _selectedProducts.add(product);
+                                } else {
+                                  _selectedProducts.removeWhere((p) => p.id == product.id);
+                                }
+                              });
+                              // Keep dialog open for multiple selection
+                            },
+                          );
+                        },
+                      );
+                    }
+                    return const Center(child: Text('Gagal memuat produk'));
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1A1A1A),
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Selesai', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
         ),
       ),

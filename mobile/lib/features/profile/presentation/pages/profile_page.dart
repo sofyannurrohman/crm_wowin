@@ -17,7 +17,8 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  static const Color _orange = Color(0xFFEA580C);
+  // changed orange -> new green #0D8549
+  static const Color _orange = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
@@ -135,7 +136,8 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildHeader(UserEntity user) {
     final avatarUrl = user.avatarPath != null 
       ? '${ApiEndpoints.uploadsBaseUrl}${user.avatarPath}'
-      : 'https://ui-avatars.com/api/?name=${user.name}&background=EA580C&color=fff';
+      // update avatar bg param from EA580C -> 0D8549
+      : 'https://ui-avatars.com/api/?name=${user.name}&background=0D8549&color=fff';
 
     return Column(
       children: [
@@ -145,7 +147,7 @@ class _ProfilePageState extends State<ProfilePage> {
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFFED7AA), width: 2),
+                border: Border.all(color: const Color(0xFFCFF1E0), width: 2),
               ),
               child: CircleAvatar(
                 radius: 46,
