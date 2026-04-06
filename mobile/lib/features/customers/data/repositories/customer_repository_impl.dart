@@ -22,7 +22,7 @@ class CustomerRepositoryImpl implements CustomerRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal mengambil data pelanggan'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -34,7 +34,7 @@ class CustomerRepositoryImpl implements CustomerRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal mengambil detail pelanggan'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -46,7 +46,7 @@ class CustomerRepositoryImpl implements CustomerRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal membuat data pelanggan'));
+      return Left(ServerFailure(e.toString()));
     }
   }
   @override
@@ -57,7 +57,7 @@ class CustomerRepositoryImpl implements CustomerRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal memperbarui data pelanggan'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -69,7 +69,7 @@ class CustomerRepositoryImpl implements CustomerRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal menghapus data pelanggan'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 }

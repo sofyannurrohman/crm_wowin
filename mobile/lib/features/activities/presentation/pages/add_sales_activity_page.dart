@@ -1,10 +1,17 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 
+import 'map_picker_page.dart';
+import 'live_photo_capture_page.dart';
 import '../../domain/entities/sales_activity.dart';
 import '../bloc/sales_activity_bloc.dart';
 import '../bloc/sales_activity_event.dart';
@@ -43,13 +50,26 @@ class _AddSalesActivityPageState extends State<AddSalesActivityPage> {
   String? _selectedDealId;
   String? _selectedDealTitle;
 
+  // Additional fields for Visit
+  LatLng? _selectedLocation;
+  String? _address;
+  String? _selfieBase64;
+  Uint8List? _selfieBytes;
+  String? _storefrontBase64;
+  Uint8List? _storefrontBytes;
+  DateTime? _checkInTime;
+
+  late TextEditingController _outcomeController;
+
   final List<Map<String, dynamic>> _types = [
     {'value': 'visit', 'label': 'Kunjungan', 'icon': LucideIcons.mapPin},
     {'value': 'negotiation', 'label': 'Negosiasi', 'icon': LucideIcons.messageSquare},
-    {'value': 'deal', 'label': 'Deal / Closing', 'icon': LucideIcons.users},
+    {'value': 'deal_closing', 'label': 'Deal / Closing', 'icon': LucideIcons.users},
     {'value': 'follow_up', 'label': 'Follow Up', 'icon': LucideIcons.phoneCall},
     {'value': 'other', 'label': 'Lainnya', 'icon': LucideIcons.activity},
   ];
+
+  String _closingStage = 'closed_won';
 
   @override
   void initState() {
@@ -57,6 +77,7 @@ class _AddSalesActivityPageState extends State<AddSalesActivityPage> {
     final activity = widget.initialActivity;
     _titleController = TextEditingController(text: activity?.title ?? '');
     _notesController = TextEditingController(text: activity?.notes ?? '');
+    _outcomeController = TextEditingController(text: activity?.outcome ?? '');
     _selectedType = activity?.activityType ?? 'visit';
     _selectedLeadId = activity?.leadId;
     _selectedLeadName = activity?.lead?.name;
@@ -64,12 +85,32 @@ class _AddSalesActivityPageState extends State<AddSalesActivityPage> {
     _selectedCustomerName = activity?.customer?.name;
     _selectedDealId = activity?.dealId;
     _selectedDealTitle = activity?.deal?.title;
+    
+    // Existing visit data
+    if (activity != null) {
+      if (activity.photoBase64 != null) {
+        _selfieBase64 = activity.photoBase64;
+        try { _selfieBytes = base64Decode(activity.photoBase64!); } catch(_) {}
+      }
+      if (activity.storefrontPhotoBase64 != null) {
+        _storefrontBase64 = activity.storefrontPhotoBase64;
+        try { _storefrontBytes = base64Decode(activity.storefrontPhotoBase64!); } catch(_) {}
+      }
+      if (activity.latitude != null && activity.longitude != null) {
+        _selectedLocation = LatLng(activity.latitude!, activity.longitude!);
+      }
+      _address = activity.address;
+      _checkInTime = activity.checkInTime;
+    } else {
+      _checkInTime = DateTime.now(); // default checkin time
+    }
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _notesController.dispose();
+    _outcomeController.dispose();
     super.dispose();
   }
 
@@ -224,8 +265,69 @@ class _AddSalesActivityPageState extends State<AddSalesActivityPage> {
     );
   }
 
+  Future<void> _fetchAddress(LatLng loc) async {
+    try {
+      final response = await http.get(
+        Uri.parse('https://nominatim.openstreetmap.org/reverse?lat=${loc.latitude}&lon=${loc.longitude}&format=json'),
+        headers: {'User-Agent': 'wowin_crm_mobile'},
+      );
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        if (mounted) {
+          setState(() {
+            _address = json['display_name'];
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _getLocation() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => MapPickerPage(
+          initialLocation: _selectedLocation,
+      )),
+    );
+
+    if (result != null && result is LatLng) {
+      setState(() {
+        _selectedLocation = result;
+      });
+      _fetchAddress(result);
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const LivePhotoCapturePage()),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        _selfieBase64 = result['selfie'];
+        _storefrontBase64 = result['storefront'];
+        
+        if (_selfieBase64 != null) {
+          try { _selfieBytes = base64Decode(_selfieBase64!); } catch(_) {}
+        }
+        if (_storefrontBase64 != null) {
+          try { _storefrontBytes = base64Decode(_storefrontBase64!); } catch(_) {}
+        }
+      });
+    }
+  }
+
   void _submit() {
     if (_formKey.currentState!.validate()) {
+      if (_selectedType == 'visit' && _selectedLocation == null && widget.initialActivity == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Harap pilih lokasi pada peta untuk Kunjungan'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+
       final authState = context.read<AuthBloc>().state;
       String userId = '';
       if (authState is Authenticated) {
@@ -240,9 +342,17 @@ class _AddSalesActivityPageState extends State<AddSalesActivityPage> {
         userId: userId,
         activityType: _selectedType,
         notes: _notesController.text,
+        outcome: _outcomeController.text.isNotEmpty ? _outcomeController.text : null,
         leadId: _selectedLeadId,
         customerId: _selectedCustomerId,
         dealId: _selectedDealId,
+        latitude: _selectedLocation?.latitude ?? widget.initialActivity?.latitude,
+        longitude: _selectedLocation?.longitude ?? widget.initialActivity?.longitude,
+        address: _address ?? widget.initialActivity?.address,
+        photoBase64: _selfieBase64,
+        storefrontPhotoBase64: _storefrontBase64,
+        checkInTime: _selectedType == 'visit' ? _checkInTime : null,
+        checkOutTime: widget.initialActivity?.checkOutTime,
         activityAt: widget.initialActivity?.activityAt ?? DateTime.now(),
         createdAt: widget.initialActivity?.createdAt ?? DateTime.now(),
       );
@@ -271,6 +381,16 @@ class _AddSalesActivityPageState extends State<AddSalesActivityPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message), backgroundColor: Colors.green),
             );
+            
+            // Auto update deal stage
+            if (_selectedDealId != null) {
+              if (_selectedType == 'deal_closing' || _selectedType == 'closing') {
+                context.read<DealBloc>().add(UpdateDealStageSubmitted(id: _selectedDealId!, stage: _closingStage));
+              } else if (_selectedType == 'negotiation') {
+                context.read<DealBloc>().add(UpdateDealStageSubmitted(id: _selectedDealId!, stage: 'negotiation'));
+              }
+            }
+            
             context.pop(true);
           } else if (state is SalesActivityError) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -363,6 +483,78 @@ class _AddSalesActivityPageState extends State<AddSalesActivityPage> {
                   onTap: _showDealPicker,
                 ),
                 const SizedBox(height: 24),
+                
+                // --- VISITOR SECTION ---
+                if (_selectedType == 'visit') ...[
+                  _buildSectionHeader('Verifikasi Kunjungan', LucideIcons.mapPin),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _getLocation,
+                          icon: Icon(LucideIcons.map, color: _selectedLocation != null ? Colors.green : const Color(0xFFE8622A), size: 18),
+                          label: Text(_selectedLocation != null ? 'Lokasi Tersimpan' : 'Pilih Lokasi', style: TextStyle(color: _selectedLocation != null ? Colors.green : const Color(0xFFE8622A))),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: _selectedLocation != null ? Colors.green : const Color(0xFFE8622A)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _takePhoto,
+                          icon: Icon(LucideIcons.camera, color: _selfieBytes != null ? Colors.blue : const Color(0xFFE8622A), size: 18),
+                          label: Text(_selfieBytes != null ? 'Foto Tersimpan' : 'Ambil Foto', style: TextStyle(color: _selfieBytes != null ? Colors.blue : const Color(0xFFE8622A))),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: _selfieBytes != null ? Colors.blue : const Color(0xFFE8622A)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_address != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(LucideIcons.mapPin, size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(_address!, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (_selfieBytes != null) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(_selfieBytes!, height: 120, width: double.infinity, fit: BoxFit.cover),
+                          ),
+                        ),
+                        if (_storefrontBytes != null) ...[
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.memory(_storefrontBytes!, height: 120, width: double.infinity, fit: BoxFit.cover),
+                            ),
+                          ),
+                        ]
+                      ],
+                    )
+                  ],
+                  const SizedBox(height: 24),
+                ],
+                
                 _buildSectionHeader('Catatan & Detail', LucideIcons.fileText),
                 const SizedBox(height: 16),
                 _buildTextField(
@@ -372,6 +564,32 @@ class _AddSalesActivityPageState extends State<AddSalesActivityPage> {
                   icon: LucideIcons.alignLeft,
                   maxLines: 5,
                 ),
+                if (_selectedType == 'negotiation' || _selectedType == 'deal_closing' || _selectedType == 'closing') ...[
+                  const SizedBox(height: 16),
+                  if (_selectedType == 'deal_closing' || _selectedType == 'closing') ...[
+                    DropdownButtonFormField<String>(
+                      value: _closingStage,
+                      decoration: InputDecoration(
+                        labelText: 'Status Kesepakatan',
+                        prefixIcon: const Icon(LucideIcons.checkSquare, size: 20),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'closed_won', child: Text('Kesepakatan Berhasil (Closed Won)')),
+                        DropdownMenuItem(value: 'closed_lost', child: Text('Kesepakatan Gagal (Closed Lost)')),
+                      ],
+                      onChanged: (v) => setState(() => _closingStage = v!),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  _buildTextField(
+                    controller: _outcomeController,
+                    label: 'Hasil (Outcome)',
+                    hint: 'Contoh: Pelanggan sepakat harga Rp 1.500.000',
+                    icon: LucideIcons.checkCircle,
+                    maxLines: 2,
+                  ),
+                ],
                 const SizedBox(height: 40),
                 SizedBox(
                   width: double.infinity,

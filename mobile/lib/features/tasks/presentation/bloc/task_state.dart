@@ -1,11 +1,21 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/task.dart';
+import '../../domain/entities/warehouse.dart';
 
 abstract class TaskState extends Equatable {
   const TaskState();
 
   @override
   List<Object?> get props => [];
+}
+
+class WarehousesLoaded extends TaskState {
+  final List<Warehouse> warehouses;
+
+  const WarehousesLoaded(this.warehouses);
+
+  @override
+  List<Object?> get props => [warehouses];
 }
 
 class TaskInitial extends TaskState {}

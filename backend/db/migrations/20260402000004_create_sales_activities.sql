@@ -1,4 +1,6 @@
 -- Create sales_activities table
+
+-- +goose Up
 CREATE TABLE IF NOT EXISTS sales_activities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -21,3 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_sales_activities_lead_id ON sales_activities(lead
 CREATE INDEX IF NOT EXISTS idx_sales_activities_customer_id ON sales_activities(customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_activities_deal_id ON sales_activities(deal_id);
 CREATE INDEX IF NOT EXISTS idx_sales_activities_activity_at ON sales_activities(activity_at);
+
+-- +goose Down
+DROP TABLE IF EXISTS sales_activities;
+

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:wowin_crm/l10n/app_localizations.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../../core/di/injection.dart';
 import '../bloc/product_bloc.dart';
@@ -28,7 +29,7 @@ class ProductDetailView extends StatelessWidget {
   Widget build(BuildContext context) {
     final currencyFormatter = NumberFormat.currency(
       locale: 'id_ID',
-      symbol: 'Rp ',
+      symbol: '${AppLocalizations.of(context)!.currencySymbol} ',
       decimalDigits: 0,
     );
 
@@ -145,7 +146,6 @@ class ProductDetailView extends StatelessWidget {
           return const SizedBox();
         },
       ),
-      bottomNavigationBar: _buildBottomBar(context, currencyFormatter),
     );
   }
 
@@ -164,69 +164,6 @@ class ProductDetailView extends StatelessWidget {
               fontSize: 14, fontWeight: FontWeight.w700, color: Colors.blueGrey),
         ),
       ],
-    );
-  }
-
-  Widget _buildBottomBar(BuildContext context, NumberFormat formatter) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Price Per Unit',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-              BlocBuilder<ProductBloc, ProductState>(
-                builder: (context, state) {
-                  final price = state is ProductDetailLoaded ? state.product.price : 0.0;
-                  return Text(
-                    formatter.format(price),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF1A237E),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // Action to create an offer or add to lead/deal
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Offer created with this product')),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE8622A),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Add to Deal',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

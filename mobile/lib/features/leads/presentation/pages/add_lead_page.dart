@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../domain/entities/lead.dart';
 import '../bloc/lead_bloc.dart';
 import '../bloc/lead_event.dart';
@@ -31,6 +32,9 @@ class _AddLeadPageState extends State<AddLeadPage> {
   final _notesController = TextEditingController();
   String _selectedSource = 'Survey';
   List<Product> _selectedProducts = [];
+  
+  Position? _currentPosition;
+  bool _isGettingLocation = false;
 
   @override
   void initState() {
@@ -48,6 +52,21 @@ class _AddLeadPageState extends State<AddLeadPage> {
       
       // We will need to fetch actual product objects if we have IDs
       // For now, let's trigger production fetch
+      if (lead.latitude != null && lead.longitude != null) {
+        // Mocking Position since geolocator doesn't have a simple constructor for this
+        _currentPosition = Position(
+          latitude: lead.latitude!,
+          longitude: lead.longitude!,
+          timestamp: DateTime.now(),
+          accuracy: 0,
+          altitude: 0,
+          heading: 0,
+          speed: 0,
+          speedAccuracy: 0,
+          altitudeAccuracy: 0,
+          headingAccuracy: 0,
+        );
+      }
     }
     context.read<ProductBloc>().add(const FetchProducts());
   }
@@ -66,6 +85,37 @@ class _AddLeadPageState extends State<AddLeadPage> {
     super.dispose();
   }
 
+  Future<void> _getLocation() async {
+    setState(() => _isGettingLocation = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw 'Location services are disabled.';
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw 'Location permissions are denied';
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        throw 'Location permissions are permanently denied';
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      setState(() => _currentPosition = position);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() => _isGettingLocation = false);
+    }
+  }
+
   void _submit() {
     if (_formKey.currentState!.validate()) {
       final lead = Lead(
@@ -75,11 +125,13 @@ class _AddLeadPageState extends State<AddLeadPage> {
         company: _companyController.text,
         email: _emailController.text,
         phone: _phoneController.text,
-        source: _selectedSource,
+        source: _selectedSource.toLowerCase(),
         status: widget.initialLead?.status ?? 'NEW',
         estimatedValue: double.tryParse(_valueController.text) ?? 0.0,
         potentialProducts: _selectedProducts.map((p) => p.name).toList(), // Using names for now as per "berpotensi menjual produk apa"
         notes: _notesController.text,
+        latitude: _currentPosition?.latitude,
+        longitude: _currentPosition?.longitude,
       );
       
       if (widget.initialLead == null) {
@@ -189,6 +241,63 @@ class _AddLeadPageState extends State<AddLeadPage> {
                     ),
                   ],
                 ),
+                if (_selectedSource == 'Survey') ...[
+                  const SizedBox(height: 24),
+                  _buildSectionHeader('Survey Location', LucideIcons.mapPin),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_currentPosition != null) ...[
+                          Row(
+                            children: [
+                              const Icon(LucideIcons.checkCircle, color: Colors.green, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Lat: ${_currentPosition!.latitude.toStringAsFixed(6)}, Lon: ${_currentPosition!.longitude.toStringAsFixed(6)}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _getLocation,
+                                child: const Text('Refresh', style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
+                          ),
+                        ] else ...[
+                          const Text(
+                            'Lokasi survey sangat disarankan untuk validasi.',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _isGettingLocation ? null : _getLocation,
+                              icon: _isGettingLocation 
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(LucideIcons.mapPin, size: 16),
+                              label: Text(_isGettingLocation ? 'Mengambil Lokasi...' : 'Ambil Titik Lokasi Survey'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFFE8622A),
+                                side: const BorderSide(color: Color(0xFFE8622A)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
                 _buildSectionHeader('Produk Potensial', LucideIcons.package),
                 const SizedBox(height: 16),
@@ -308,28 +417,57 @@ class _AddLeadPageState extends State<AddLeadPage> {
                   builder: (context, state) {
                     if (state is ProductLoading) return const Center(child: CircularProgressIndicator());
                     if (state is ProductsLoaded) {
-                      return ListView.separated(
-                        controller: scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: state.products.length,
-                        separatorBuilder: (context, index) => const Divider(),
-                        itemBuilder: (context, index) {
-                          final Product product = state.products[index];
-                          final isSelected = _selectedProducts.any((Product p) => p.id == product.id);
-                          return CheckboxListTile(
-                            value: isSelected,
-                            title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text('Rp ${product.price.toStringAsFixed(0)}'),
-                            activeColor: const Color(0xFF0D8549),
-                            onChanged: (val) {
-                              setState(() {
-                                if (val == true) {
-                                  _selectedProducts.add(product);
-                                } else {
-                                  _selectedProducts.removeWhere((p) => p.id == product.id);
-                                }
-                              });
-                              // Keep dialog open for multiple selection
+                      return StatefulBuilder(
+                        builder: (context, setModalState) {
+                          return ListView.separated(
+                            controller: scrollController,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: state.products.length,
+                            separatorBuilder: (context, index) => const Divider(),
+                            itemBuilder: (context, index) {
+                              final Product product = state.products[index];
+                              final isSelected = _selectedProducts.any((Product p) => p.id == product.id);
+                              return ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF0D8549).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(LucideIcons.package, color: Color(0xFF0D8549), size: 20),
+                                ),
+                                title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                subtitle: Text('Rp ${product.price.toStringAsFixed(0)}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                trailing: Icon(
+                                  isSelected ? LucideIcons.checkCircle2 : LucideIcons.plusCircle,
+                                  color: isSelected ? const Color(0xFF0D8549) : const Color(0xFFE8622A),
+                                  size: 22,
+                                ),
+                                onTap: () {
+                                  if (isSelected) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Item sudah ditambahkan sebelumnya'),
+                                        duration: Duration(seconds: 1),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  } else {
+                                    setState(() {
+                                      _selectedProducts.add(product);
+                                    });
+                                    setModalState(() {}); // Update modal UI
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('${product.name} ditambahkan'),
+                                        duration: const Duration(seconds: 1),
+                                        backgroundColor: const Color(0xFF0D8549),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                              );
                             },
                           );
                         },

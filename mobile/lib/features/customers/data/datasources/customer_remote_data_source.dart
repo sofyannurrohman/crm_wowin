@@ -27,15 +27,34 @@ class CustomerRemoteDataSourceImpl implements CustomerRemoteDataSource {
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
-    final List? data = response.data['data'];
+    final dynamic responseData = response.data;
+    final List? data = responseData is Map ? responseData['data'] : responseData;
+    
     if (data == null) return [];
-    return data.map((e) => Customer.fromJson(e as Map<String, dynamic>)).toList();
+    
+    return data
+        .where((e) => e != null)
+        .map((e) => _mapToCustomer(e as Map<String, dynamic>))
+        .toList();
   }
 
   @override
   Future<Customer> getCustomerDetail(String id) async {
     final response = await _dio.get('/customers/$id');
-    return Customer.fromJson(response.data['data']);
+    final dynamic dataRaw = response.data['data'] ?? response.data;
+    
+    if (dataRaw == null) {
+      throw Exception('Data pelanggan tidak ditemukan dalam respon API');
+    }
+
+    Map<String, dynamic> data;
+    if (dataRaw is Map<String, dynamic> && dataRaw.containsKey('customer')) {
+      data = dataRaw['customer'] as Map<String, dynamic>;
+    } else {
+      data = dataRaw as Map<String, dynamic>;
+    }
+    
+    return _mapToCustomer(data);
   }
 
   @override
@@ -44,7 +63,11 @@ class CustomerRemoteDataSourceImpl implements CustomerRemoteDataSource {
       '/customers',
       data: customer.toJson(),
     );
-    return Customer.fromJson(response.data['data']);
+    final dynamic responseData = response.data;
+    final Map<String, dynamic> data = responseData is Map && responseData.containsKey('data') 
+        ? responseData['data'] 
+        : responseData;
+    return _mapToCustomer(data);
   }
 
   @override
@@ -53,11 +76,42 @@ class CustomerRemoteDataSourceImpl implements CustomerRemoteDataSource {
       '/customers/${customer.id}',
       data: customer.toJson(),
     );
-    return Customer.fromJson(response.data['data']);
+    final dynamic responseData = response.data;
+    final Map<String, dynamic> data = responseData is Map && responseData.containsKey('data') 
+        ? responseData['data'] 
+        : responseData;
+    return _mapToCustomer(data);
   }
 
   @override
   Future<void> deleteCustomer(String id) async {
     await _dio.delete('/customers/$id');
+  }
+
+  /// Map JSON to Customer with type safety for key fields
+  Customer _mapToCustomer(Map<String, dynamic> json) {
+    // Ensure critical fields are strings even if they come back as numbers
+    final Map<String, dynamic> normalized = Map<String, dynamic>.from(json);
+    
+    if (normalized['id'] != null) {
+      normalized['id'] = normalized['id'].toString();
+    }
+    
+    if (normalized['name'] != null) {
+      normalized['name'] = normalized['name'].toString();
+    } else {
+      normalized['name'] = 'No Name'; // Fallback for required field
+    }
+
+    // Handle checkin_radius as int if it comes back as string or double
+    if (normalized['checkin_radius'] != null) {
+      if (normalized['checkin_radius'] is String) {
+        normalized['checkin_radius'] = int.tryParse(normalized['checkin_radius']) ?? 0;
+      } else if (normalized['checkin_radius'] is double) {
+        normalized['checkin_radius'] = (normalized['checkin_radius'] as double).toInt();
+      }
+    }
+
+    return Customer.fromJson(normalized);
   }
 }

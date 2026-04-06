@@ -133,7 +133,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get retry => 'Coba Lagi';
 
   @override
-  String get currencySymbol => 'Rp';
+  String get currencySymbol => 'Rp.';
 
   @override
   String get preview => 'PRATINJAU';

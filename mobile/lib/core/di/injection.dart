@@ -68,6 +68,9 @@ import '../../features/products/data/repositories/product_repository_impl.dart';
 import '../../features/products/domain/repositories/product_repository.dart';
 import '../../features/products/domain/usecases/get_products.dart';
 import '../../features/products/domain/usecases/get_product_detail.dart';
+import '../../features/products/domain/usecases/create_product.dart';
+import '../../features/products/domain/usecases/update_product.dart';
+import '../../features/products/domain/usecases/delete_product.dart';
 import '../../features/products/presentation/bloc/product_bloc.dart';
 import '../../features/tasks/data/datasources/task_remote_data_source.dart';
 import '../../features/tasks/data/repositories/task_repository_impl.dart';
@@ -204,6 +207,9 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetKpiSummary(sl()));
   sl.registerLazySingleton(() => GetProducts(sl()));
   sl.registerLazySingleton(() => GetProductDetail(sl()));
+  sl.registerLazySingleton(() => CreateProduct(sl()));
+  sl.registerLazySingleton(() => UpdateProduct(sl()));
+  sl.registerLazySingleton(() => DeleteProduct(sl()));
 
   // Blocs
   sl.registerFactory(() => AuthBloc(
@@ -254,6 +260,9 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => ProductBloc(
         getProducts: sl(),
         getProductDetail: sl(),
+        createProduct: sl(),
+        updateProduct: sl(),
+        deleteProduct: sl(),
       ));
   sl.registerFactory(() => TaskBloc(repository: sl()));
   sl.registerFactory(() => SettingsBloc(sl()));

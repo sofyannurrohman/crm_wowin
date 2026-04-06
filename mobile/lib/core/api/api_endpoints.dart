@@ -42,4 +42,5 @@ class ApiEndpoints {
   static const String kpiSummary = '/reports/kpi-summary';
   static const String analytics = '/reports/analytics';
   static const String visitRecommendations = '/reports/recommendations';
+  static const String warehouses = '/warehouses';
 }

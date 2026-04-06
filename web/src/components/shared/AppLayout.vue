@@ -2,11 +2,12 @@
 import { useUiStore } from '@/stores/ui.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRouter } from 'vue-router'
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import {
   PanelLeft, LogOut, LayoutDashboard, Users, UserPlus, FileText,
   Calendar, Map, MapPin, BarChart3, Settings, ChevronDown,
-  Sun, Moon, Bell, Search, Target, Flame, Package, ClipboardList, Timer
+  Sun, Moon, Bell, Search, Target, Flame, Package, ClipboardList, Timer,
+  AlertCircle, Clock, Warehouse
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -25,6 +26,71 @@ const auth = useAuthStore()
 const router = useRouter()
 const mobileOpen = ref(false)
 
+const notifications = ref([
+  { id: 1, title: 'Follow-up Restock Toko Maju Jaya', type: 'reminder', time: '10 menit yang lalu', isRead: false },
+  { id: 2, title: 'Deal "Proyek IT" stagnan lebih dari 14 hari', type: 'alert', time: '1 jam yang lalu', isRead: false },
+  { id: 3, title: 'Sales "Budi" tidak aktif sejak 08:00', type: 'warning', time: '3 jam yang lalu', isRead: true },
+])
+
+const unreadCount = computed(() => notifications.value.filter(n => !n.isRead).length)
+
+const markAsRead = (id: number) => {
+  const notif = notifications.value.find(n => n.id === id)
+  if (notif) notif.isRead = true
+}
+
+const clearAll = () => {
+  notifications.value.forEach(n => n.isRead = true)
+}
+
+let ws: WebSocket | null = null
+
+function initWebSocket() {
+  if (!auth.user?.id) return
+  // Construct WS url based on current host or environment
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  // For local development, assume backend is on :8080 or use matching port
+  // Usually this corresponds to VITE_API_URL but replacing protocol
+  const host = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host
+  const wsUrl = `${protocol}//${host}/api/v1/notifications/ws?user_id=${auth.user.id}`
+  
+  ws = new WebSocket(wsUrl)
+  
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data)
+      const payload = data.payload // Maps to the Notification Model of backend
+      
+      notifications.value.unshift({
+        id: payload.id || Date.now(),
+        title: payload.title || 'Pemberitahuan Baru',
+        type: payload.type || 'alert',
+        time: 'Baru saja',
+        isRead: false
+      })
+    } catch (e) {
+      console.error('Error parsing WS message', e)
+    }
+  }
+  
+  ws.onclose = () => {
+    // try to reconnect after 5 seconds if connection drops
+    setTimeout(() => initWebSocket(), 5000)
+  }
+}
+
+onMounted(() => {
+  if (auth.isAuthenticated) {
+    initWebSocket()
+  }
+})
+
+onUnmounted(() => {
+  if (ws) {
+    ws.close()
+  }
+})
+
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, group: 'overview' },
   { name: 'Pelanggan', href: '/customers', icon: Users, group: 'crm' },
@@ -42,6 +108,7 @@ const navigation = [
   { name: 'Laporan Pipeline', href: '/reports/pipeline', icon: BarChart3, group: 'reports' },
   { name: 'Manajemen Pengguna', href: '/settings/users', icon: Settings, group: 'settings' },
   { name: 'Pengaturan Target', href: '/settings/targets', icon: Target, group: 'settings' },
+  { name: 'Manajemen Gudang', href: '/settings/warehouses', icon: Warehouse, group: 'settings' },
 ]
 
 const groups = [
@@ -229,6 +296,60 @@ function handleLogout() {
           </div>
 
           <div class="flex items-center gap-1">
+            <!-- Notifications -->
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <Button variant="ghost" size="icon" class="relative text-muted-foreground mr-1">
+                  <Bell class="w-4 h-4" />
+                  <span v-if="unreadCount > 0" class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive border-2 border-background"></span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" class="w-80 p-0 border-muted">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-muted">
+                  <span class="text-sm font-semibold">Notifikasi</span>
+                  <Button v-if="unreadCount > 0" variant="ghost" size="sm" class="h-auto p-0 text-xs text-primary hover:bg-transparent" @click="clearAll">
+                    Tandai semua dibaca
+                  </Button>
+                </div>
+                <ScrollArea class="h-[320px]">
+                  <div v-if="notifications.length === 0" class="p-8 text-center text-sm text-muted-foreground flex flex-col items-center">
+                    <Bell class="w-8 h-8 text-muted/30 mb-2" />
+                    Belum ada notifikasi baru
+                  </div>
+                  <div v-else class="flex flex-col py-1">
+                    <DropdownMenuItem 
+                      v-for="notif in notifications" 
+                      :key="notif.id"
+                      class="flex flex-col items-start px-4 py-3 cursor-pointer gap-1 focus:bg-accent rounded-none"
+                      :class="{ 'bg-primary/5': !notif.isRead }"
+                      @click.prevent="markAsRead(notif.id)"
+                    >
+                      <div class="flex items-start gap-3 w-full">
+                        <div class="mt-0.5 rounded-full p-1.5 flex-shrink-0" :class="{
+                          'bg-destructive/10 text-destructive dark:bg-destructive/20': notif.type === 'alert',
+                          'bg-amber-100 text-amber-600 dark:bg-amber-900/30': notif.type === 'warning',
+                          'bg-primary/10 text-primary dark:bg-primary/20': notif.type === 'reminder'
+                        }">
+                          <AlertCircle v-if="notif.type === 'alert'" class="w-3.5 h-3.5" />
+                          <Clock v-else-if="notif.type === 'reminder'" class="w-3.5 h-3.5" />
+                          <Target v-else class="w-3.5 h-3.5" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-[13px] font-medium leading-tight mb-1 break-words" :class="{'text-muted-foreground': notif.isRead}">
+                            {{ notif.title }}
+                          </p>
+                          <p class="text-[11px] text-muted-foreground flex items-center gap-1">
+                            {{ notif.time }}
+                          </p>
+                        </div>
+                        <div v-if="!notif.isRead" class="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5"></div>
+                      </div>
+                    </DropdownMenuItem>
+                  </div>
+                </ScrollArea>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button variant="ghost" size="icon" @click="ui.toggleTheme" class="text-muted-foreground">
               <Sun v-if="ui.isDarkTheme" class="w-4 h-4" />
               <Moon v-else class="w-4 h-4" />

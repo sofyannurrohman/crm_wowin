@@ -4,6 +4,10 @@ import (
 	"context"
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
+	"crm_wowin_backend/pkg/email"
+	"crm_wowin_backend/pkg/websocket"
+	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 )
@@ -31,7 +35,23 @@ func (u *notificationUseCaseImpl) Send(ctx context.Context, n *models.Notificati
 	if err != nil {
 		return err
 	}
-	// TODO: Trigger Push Notification & Email
+	if websocket.DefaultHub != nil {
+		websocket.DefaultHub.PushNotification(n.UserID.String(), n)
+	}
+	
+	// Fire email asynchronously
+	go func() {
+		// Mock email address for now, realistically we should fetch the user from a Repo to get their actual email
+		mockUserEmail := fmt.Sprintf("user_%s@example.com", n.UserID.String())
+		errEmail := email.SendNotificationEmail(
+			mockUserEmail,
+			"CRM Wowin: " + n.Title,
+			n.Body,
+		)
+		if errEmail != nil {
+			log.Printf("Failed to send notification email: %v", errEmail)
+		}
+	}()
 	return nil
 }
 
@@ -40,7 +60,18 @@ func (u *notificationUseCaseImpl) Broadcast(ctx context.Context, n *models.Notif
 		n.UserID = userID
 		n.ID = uuid.Nil // Force new ID
 		_ = u.repo.Create(ctx, n)
-		// TODO: Trigger Push Notification
+		if websocket.DefaultHub != nil {
+			websocket.DefaultHub.PushNotification(userID.String(), n)
+		}
+		
+		go func(uID uuid.UUID, notif *models.Notification) {
+			mockUserEmail := fmt.Sprintf("user_%s@example.com", uID.String())
+			email.SendNotificationEmail(
+				mockUserEmail,
+				"CRM Wowin: " + notif.Title,
+				notif.Body,
+			)
+		}(userID, n)
 	}
 	return nil
 }

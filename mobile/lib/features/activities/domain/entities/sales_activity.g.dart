@@ -14,7 +14,8 @@ _SalesActivity _$SalesActivityFromJson(Map<String, dynamic> json) =>
       leadId: json['lead_id'] as String?,
       customerId: json['customer_id'] as String?,
       dealId: json['deal_id'] as String?,
-      activityType: json['activity_type'] as String,
+      taskDestinationId: json['task_destination_id'] as String?,
+      activityType: json['type'] as String,
       notes: json['notes'] as String,
       activityAt: DateTime.parse(json['activity_at'] as String),
       createdAt: json['created_at'] == null
@@ -23,6 +24,18 @@ _SalesActivity _$SalesActivityFromJson(Map<String, dynamic> json) =>
       updatedAt: json['updated_at'] == null
           ? null
           : DateTime.parse(json['updated_at'] as String),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      checkInTime: json['check_in_time'] == null
+          ? null
+          : DateTime.parse(json['check_in_time'] as String),
+      checkOutTime: json['check_out_time'] == null
+          ? null
+          : DateTime.parse(json['check_out_time'] as String),
+      photoBase64: json['photo_base64'] as String?,
+      storefrontPhotoBase64: json['storefront_photo_base64'] as String?,
+      address: json['address'] as String?,
+      outcome: json['outcome'] as String?,
       lead: json['lead'] == null
           ? null
           : Lead.fromJson(json['lead'] as Map<String, dynamic>),
@@ -42,11 +55,20 @@ Map<String, dynamic> _$SalesActivityToJson(_SalesActivity instance) =>
       'lead_id': instance.leadId,
       'customer_id': instance.customerId,
       'deal_id': instance.dealId,
-      'activity_type': instance.activityType,
+      'task_destination_id': instance.taskDestinationId,
+      'type': instance.activityType,
       'notes': instance.notes,
       'activity_at': instance.activityAt.toIso8601String(),
       'created_at': instance.createdAt?.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
+      'latitude': instance.latitude,
+      'longitude': instance.longitude,
+      'check_in_time': instance.checkInTime?.toIso8601String(),
+      'check_out_time': instance.checkOutTime?.toIso8601String(),
+      'photo_base64': instance.photoBase64,
+      'storefront_photo_base64': instance.storefrontPhotoBase64,
+      'address': instance.address,
+      'outcome': instance.outcome,
       'lead': instance.lead,
       'customer': instance.customer,
       'deal': instance.deal,

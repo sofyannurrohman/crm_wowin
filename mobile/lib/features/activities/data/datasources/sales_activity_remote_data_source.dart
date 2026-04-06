@@ -45,7 +45,9 @@ class SalesActivityRemoteDataSourceImpl implements SalesActivityRemoteDataSource
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
-    final List? data = response.data['data'];
+    final dynamic responseData = response.data;
+    final List? data = responseData is Map ? responseData['data'] : responseData;
+    
     if (data == null) return [];
     return data.map((e) => SalesActivityModel.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -56,7 +58,12 @@ class SalesActivityRemoteDataSourceImpl implements SalesActivityRemoteDataSource
       '/activities',
       data: activity.toJson(),
     );
-    return SalesActivityModel.fromJson(response.data['data']);
+    final dynamic responseData = response.data;
+    final Map<String, dynamic> data = responseData is Map && responseData.containsKey('data') 
+        ? responseData['data'] 
+        : responseData;
+        
+    return SalesActivityModel.fromJson(data);
   }
 
   @override
@@ -65,7 +72,12 @@ class SalesActivityRemoteDataSourceImpl implements SalesActivityRemoteDataSource
       '/activities/${activity.id}',
       data: activity.toJson(),
     );
-    return SalesActivityModel.fromJson(response.data['data']);
+    final dynamic responseData = response.data;
+    final Map<String, dynamic> data = responseData is Map && responseData.containsKey('data') 
+        ? responseData['data'] 
+        : responseData;
+
+    return SalesActivityModel.fromJson(data);
   }
 
   @override

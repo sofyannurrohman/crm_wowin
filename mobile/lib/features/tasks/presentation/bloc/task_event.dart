@@ -53,3 +53,7 @@ class DeleteTask extends TaskEvent {
   @override
   List<Object?> get props => [id];
 }
+
+class FetchWarehouses extends TaskEvent {
+  const FetchWarehouses();
+}

@@ -18,6 +18,7 @@ const (
 type LeadSource string
 
 const (
+	LeadSourceSurvey      LeadSource = "survey"
 	LeadSourceReferral    LeadSource = "referral"
 	LeadSourceColdCall    LeadSource = "cold_call"
 	LeadSourceSocialMedia LeadSource = "social_media"
@@ -42,6 +43,8 @@ type Lead struct {
 	PotentialProducts []string    `json:"potential_products,omitempty"`
 	Notes             *string     `json:"notes,omitempty"`
 	ConvertedAt       *time.Time  `json:"converted_at,omitempty"`
+	Latitude          *float64    `json:"latitude,omitempty"`
+	Longitude         *float64    `json:"longitude,omitempty"`
 	CreatedBy      *uuid.UUID  `json:"created_by,omitempty"`
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at"`

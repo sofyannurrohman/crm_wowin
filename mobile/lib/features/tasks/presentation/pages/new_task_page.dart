@@ -7,6 +7,7 @@ import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
 import '../../domain/entities/task.dart' as ent;
+import '../../domain/entities/warehouse.dart' as ent;
 
 class NewTaskPage extends StatefulWidget {
   const NewTaskPage({super.key});
@@ -28,7 +29,15 @@ class _NewTaskPageState extends State<NewTaskPage> {
   
   ent.TaskPriority _selectedPriority = ent.TaskPriority.MEDIUM;
   DateTime? _selectedDate;
+  String? _selectedWarehouseId;
+  List<ent.Warehouse> _warehouses = [];
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<TaskBloc>().add(const FetchWarehouses());
+  }
 
   void _submit() {
     final title = _titleController.text.trim();
@@ -39,9 +48,17 @@ class _NewTaskPageState extends State<NewTaskPage> {
       return;
     }
 
+    if (_selectedWarehouseId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Silakan pilih gudang asal'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     final newTask = ent.Task(
       id: const Uuid().v4(),
       salesId: 'CURRENT_USER_ID', // In real app, get from AuthBloc
+      warehouseId: _selectedWarehouseId,
       title: title,
       description: _descController.text.trim(),
       priority: _selectedPriority,
@@ -60,6 +77,14 @@ class _NewTaskPageState extends State<NewTaskPage> {
       listener: (context, state) {
         if (state is TaskLoading) {
            setState(() => _isSubmitting = true);
+        } else if (state is WarehousesLoaded) {
+           setState(() {
+             _isSubmitting = false;
+             _warehouses = state.warehouses;
+             if (_warehouses.isNotEmpty && _selectedWarehouseId == null) {
+               _selectedWarehouseId = _warehouses.first.id;
+             }
+           });
         } else if (state is TaskOperationSuccess) {
            setState(() => _isSubmitting = false);
            ScaffoldMessenger.of(context).showSnackBar(
@@ -95,6 +120,10 @@ class _NewTaskPageState extends State<NewTaskPage> {
             
             _buildLabel('Due Date'),
             _buildDateField(),
+            const SizedBox(height: 24),
+
+            _buildLabel('Starting Warehouse'),
+            _buildWarehouseDropdown(),
             const SizedBox(height: 24),
             
             _buildLabel('Link to Customer'),
@@ -255,6 +284,32 @@ class _NewTaskPageState extends State<NewTaskPage> {
             ),
             Icon(LucideIcons.calendar, size: 20, color: const Color(0xFF9CA3AF)),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWarehouseDropdown() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFCFF1E0), width: 1),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedWarehouseId,
+          isExpanded: true,
+          icon: const Icon(LucideIcons.chevronDown, size: 20, color: _textSecondary),
+          hint: const Text('Pilih Gudang', style: TextStyle(color: Color(0xFF9CA3AF))),
+          items: _warehouses.map<DropdownMenuItem<String>>((w) {
+            return DropdownMenuItem<String>(
+              value: w.id,
+              child: Text(w.name, style: const TextStyle(color: _textPrimary, fontSize: 15)),
+            );
+          }).toList(),
+          onChanged: (val) => setState(() => _selectedWarehouseId = val),
         ),
       ),
     );

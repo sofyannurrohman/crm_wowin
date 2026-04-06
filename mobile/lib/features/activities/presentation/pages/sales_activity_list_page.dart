@@ -7,7 +7,10 @@ import 'package:intl/intl.dart';
 import '../bloc/sales_activity_bloc.dart';
 import '../bloc/sales_activity_event.dart';
 import '../bloc/sales_activity_state.dart';
+import '../../domain/entities/sales_activity.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/app_sidebar.dart';
+import '../../../../core/router/route_constants.dart';
 
 class SalesActivityListPage extends StatefulWidget {
   const SalesActivityListPage({super.key});
@@ -17,6 +20,12 @@ class SalesActivityListPage extends StatefulWidget {
 }
 
 class _SalesActivityListPageState extends State<SalesActivityListPage> {
+  // Brand color palette
+  static const Color _primary = Color(0xFFE8622A);
+  static const Color _bg = Color(0xFFF8F9FA);
+  static const Color _textPrimary = Color(0xFF1A1A1A);
+  static const Color _textSecondary = Color(0xFF6B7280);
+
   @override
   void initState() {
     super.initState();
@@ -27,94 +36,259 @@ class _SalesActivityListPageState extends State<SalesActivityListPage> {
     context.read<SalesActivityBloc>().add(const FetchSalesActivities());
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('Aktivitas Sales', 
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF1A1A1A),
+  // ── Icon & color helpers ──────────────────────────────────────────────────
+
+  IconData _iconForType(String? type) {
+    switch ((type ?? '').toLowerCase()) {
+      case 'visit':
+        return LucideIcons.mapPin;
+      case 'negotiation':
+        return LucideIcons.messageSquare;
+      case 'deal':
+        return LucideIcons.users;
+      case 'follow_up':
+        return LucideIcons.phoneCall;
+      default:
+        return LucideIcons.activity;
+    }
+  }
+
+  Color _colorForType(String? type) {
+    switch ((type ?? '').toLowerCase()) {
+      case 'visit':
+        return Colors.blue;
+      case 'negotiation':
+        return Colors.orange;
+      case 'deal':
+        return Colors.green;
+      case 'follow_up':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _labelForType(String? type) {
+    switch ((type ?? '').toLowerCase()) {
+      case 'visit':
+        return 'KUNJUNGAN';
+      case 'negotiation':
+        return 'NEGOSIASI';
+      case 'deal':
+        return 'DEAL / CLOSING';
+      case 'follow_up':
+        return 'FOLLOW UP';
+      default:
+        return (type ?? 'LAINNYA').toUpperCase();
+    }
+  }
+
+  // ── CRUD actions ──────────────────────────────────────────────────────────
+
+  Future<void> _onAdd() async {
+    final result = await context.pushNamed(kRouteAddSalesActivity);
+    if (result == true && mounted) {
+      _fetchActivities();
+    }
+  }
+
+  Future<void> _onEdit(SalesActivity activity) async {
+    final result = await context.pushNamed(
+      kRouteAddSalesActivity,
+      extra: activity,
+    );
+    if (result == true && mounted) {
+      _fetchActivities();
+    }
+  }
+
+  Future<void> _onDelete(SalesActivity activity) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Hapus Aktivitas?',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          'Aktivitas "${activity.title}" akan dihapus secara permanen.',
+          style: TextStyle(color: _textSecondary),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.refreshCw, color: Colors.white, size: 20),
-            onPressed: _fetchActivities,
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Hapus',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
-      body: BlocBuilder<SalesActivityBloc, SalesActivityState>(
+    );
+
+    if (confirmed == true && mounted) {
+      context
+          .read<SalesActivityBloc>()
+          .add(DeleteSalesActivitySubmitted(activity.id));
+    }
+  }
+
+  void _onCheckOut(SalesActivity activity) {
+    if (activity.checkInTime == null) return;
+    
+    final updatedActivity = activity.copyWith(
+      checkOutTime: DateTime.now(),
+    );
+    context.read<SalesActivityBloc>().add(UpdateSalesActivitySubmitted(updatedActivity));
+  }
+
+  // ── Widget tree ──────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _bg,
+      drawer: const AppSidebar(),
+      appBar: _buildAppBar(context),
+      body: BlocConsumer<SalesActivityBloc, SalesActivityState>(
+        listener: (context, state) {
+          if (state is SalesActivityOperationSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+            _fetchActivities();
+          } else if (state is SalesActivityError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+        },
         builder: (context, state) {
           if (state is SalesActivityLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is SalesActivityError) {
-            return Center(child: Text('Error: ${state.message}'));
-          } else if (state is SalesActivityLoaded) {
+            return const Center(
+                child: CircularProgressIndicator(color: _primary));
+          }
+
+          if (state is SalesActivityError) {
+            return _buildErrorState(state.message);
+          }
+
+          if (state is SalesActivityLoaded) {
             if (state.activities.isEmpty) {
               return const EmptyStateWidget(
                 icon: LucideIcons.calendarX,
                 title: 'Belum Ada Aktivitas',
-                message: 'Catat aktivitas harianmu untuk melacak perkembangan hubungan dengan klien.',
+                message:
+                    'Catat aktivitas harianmu untuk melacak perkembangan hubungan dengan klien.',
               );
             }
 
             return RefreshIndicator(
+              color: _primary,
               onRefresh: () async => _fetchActivities(),
               child: ListView.builder(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                 itemCount: state.activities.length,
                 itemBuilder: (context, index) {
-                  final activity = state.activities[index];
-                  return _buildActivityCard(activity);
+                  return _buildActivityCard(state.activities[index]);
                 },
               ),
             );
           }
-          return const SizedBox.shrink();
+
+          // Initial state – show pull-to-refresh hint
+          return RefreshIndicator(
+            color: _primary,
+            onRefresh: () async => _fetchActivities(),
+            child: ListView(
+              children: const [
+                SizedBox(height: 200),
+                Center(
+                    child: Text('Tarik ke bawah untuk memuat aktivitas')),
+              ],
+            ),
+          );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await context.push('/activities/add');
-          if (result == true) {
-            _fetchActivities();
-          }
-        },
-        backgroundColor: const Color(0xFFE8622A),
-        child: const Icon(LucideIcons.plus, color: Colors.white),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _onAdd,
+        backgroundColor: _primary,
+        icon: const Icon(LucideIcons.plus, color: Colors.white),
+        label: const Text(
+          'Catat Aktivitas',
+          style: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
 
-  Widget _buildActivityCard(dynamic activity) {
-    // Assuming activity is SalesActivity entity
-    final date = activity.createdAt != null 
-        ? DateFormat('dd MMM yyyy, HH:mm').format(activity.createdAt!) 
-        : 'Unknown Date';
-    
-    IconData icon;
-    Color iconColor;
-    
-    switch (activity.activityType.toLowerCase()) {
-      case 'visit':
-        icon = LucideIcons.mapPin;
-        iconColor = Colors.blue;
-        break;
-      case 'negotiation':
-        icon = LucideIcons.messageSquare;
-        iconColor = Colors.orange;
-        break;
-      case 'deal':
-        icon = LucideIcons.users;
-        iconColor = Colors.green;
-        break;
-      case 'follow_up':
-        icon = LucideIcons.phoneCall;
-        iconColor = Colors.purple;
-        break;
-      default:
-        icon = LucideIcons.activity;
-        iconColor = Colors.grey;
-    }
+  AppBar _buildAppBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: const Icon(LucideIcons.menu, color: Color(0xFF4B5563)),
+          onPressed: () => Scaffold.of(context).openDrawer(),
+        ),
+      ),
+      centerTitle: true,
+      title: const Text(
+        'Aktivitas Sales',
+        style: TextStyle(
+          color: _textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      actions: [
+        IconButton(
+          icon: const Icon(LucideIcons.refreshCw,
+              color: Color(0xFF4B5563), size: 20),
+          onPressed: _fetchActivities,
+          tooltip: 'Muat ulang',
+        ),
+      ],
+    );
+  }
+
+  // ── Cards ────────────────────────────────────────────────────────────────
+
+  Widget _buildActivityCard(SalesActivity activity) {
+    final activityType = activity.activityType;
+    final icon = _iconForType(activityType);
+    final iconColor = _colorForType(activityType);
+    final typeLabel = _labelForType(activityType);
+
+    // Display activityAt (required, never null); fall back only on createdAt
+    final displayDate = DateFormat('dd MMM yyyy, HH:mm').format(
+      activity.activityAt,
+    );
+
+    // Null-safe notes
+    final notes = (activity.notes.isNotEmpty) ? activity.notes : null;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -132,11 +306,13 @@ class _SalesActivityListPageState extends State<SalesActivityListPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Header row ──
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Type icon badge
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
@@ -146,65 +322,110 @@ class _SalesActivityListPageState extends State<SalesActivityListPage> {
                   child: Icon(icon, color: iconColor, size: 24),
                 ),
                 const SizedBox(width: 16),
+                // Title + type + notes
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        activity.title,
+                        activity.title.isNotEmpty
+                            ? activity.title
+                            : 'Tanpa Judul',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
+                          color: _textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        activity.activityType.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w900,
-                          color: iconColor,
-                          letterSpacing: 1.0,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: iconColor.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          typeLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: iconColor,
+                            letterSpacing: 0.8,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      if (activity.notes != null && activity.notes!.isNotEmpty)
+                      if (notes != null) ...[
+                        const SizedBox(height: 8),
                         Text(
-                          activity.notes!,
+                          notes,
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey[600],
+                            color: _textSecondary,
                             height: 1.4,
                           ),
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                         ),
+                      ],
                     ],
                   ),
                 ),
+                // CRUD action menu
+                _buildActionMenu(activity),
               ],
             ),
           ),
-          const Divider(height: 1),
+          
+          if (activityType == 'visit' && activity.checkOutTime == null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _onCheckOut(activity),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.redAccent),
+                    foregroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(LucideIcons.logOut, size: 16),
+                  label: const Text('Check-Out Kunjungan', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ),
+          if (activityType == 'visit' && activity.checkOutTime == null)
+            const SizedBox(height: 12),
+
+          const Divider(height: 1, color: Color(0xFFF3F4F6)),
+
+          // ── Footer row: date + linked entity tag ──
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                Icon(LucideIcons.calendar, size: 14, color: Colors.grey[400]),
+                Icon(LucideIcons.calendar,
+                    size: 14, color: Colors.grey[400]),
                 const SizedBox(width: 6),
-                Text(
-                  date,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                Expanded(
+                  child: Text(
+                    displayDate,
+                    style:
+                        TextStyle(fontSize: 12, color: Colors.grey[500]),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const Spacer(),
-                if (activity.lead != null) ...[
-                  _buildTag(LucideIcons.user, activity.lead!.name, Colors.blueGrey),
-                ] else if (activity.customer != null) ...[
-                  _buildTag(LucideIcons.building, activity.customer!.name, Colors.teal),
-                ] else if (activity.deal != null) ...[
-                  _buildTag(LucideIcons.briefcase, activity.deal!.title, Colors.indigo),
-                ],
+                // Linked entity tag (null-safe)
+                if (activity.lead?.name != null)
+                  _buildTag(LucideIcons.user,
+                      activity.lead!.name, Colors.blueGrey)
+                else if (activity.customer?.name != null)
+                  _buildTag(LucideIcons.building,
+                      activity.customer!.name, Colors.teal)
+                else if (activity.deal?.title != null)
+                  _buildTag(LucideIcons.briefcase,
+                      activity.deal!.title, Colors.indigo),
               ],
             ),
           ),
@@ -213,7 +434,45 @@ class _SalesActivityListPageState extends State<SalesActivityListPage> {
     );
   }
 
-  Widget _buildTag(IconData icon, String text, Color color) {
+  /// Three-dot popup menu for Edit / Delete
+  Widget _buildActionMenu(SalesActivity activity) {
+    return PopupMenuButton<String>(
+      icon: const Icon(LucideIcons.moreVertical,
+          size: 20, color: Color(0xFF9CA3AF)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) {
+        if (value == 'edit') _onEdit(activity);
+        if (value == 'delete') _onDelete(activity);
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'edit',
+          child: Row(
+            children: [
+              Icon(LucideIcons.edit2, size: 16, color: _primary),
+              const SizedBox(width: 10),
+              const Text('Edit Aktivitas'),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(LucideIcons.trash2, size: 16, color: Colors.red),
+              SizedBox(width: 10),
+              Text('Hapus', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTag(IconData icon, String? text, Color color) {
+    if (text == null || text.isEmpty) return const SizedBox.shrink();
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -225,7 +484,8 @@ class _SalesActivityListPageState extends State<SalesActivityListPage> {
         children: [
           Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
-          Flexible(
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 100),
             child: Text(
               text,
               style: TextStyle(
@@ -238,6 +498,48 @@ class _SalesActivityListPageState extends State<SalesActivityListPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(LucideIcons.alertCircle,
+                size: 56, color: Colors.red),
+            const SizedBox(height: 16),
+            const Text(
+              'Gagal memuat data',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: _textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _textSecondary),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _fetchActivities,
+              icon: const Icon(LucideIcons.refreshCw, size: 16),
+              label: const Text('Coba Lagi'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

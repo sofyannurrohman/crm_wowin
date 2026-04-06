@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:wowin_crm/l10n/app_localizations.dart';
 
 import '../bloc/deal_bloc.dart';
 import '../bloc/deal_event.dart';
@@ -184,7 +185,11 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
   }
 
   Widget _buildSummaryCard(double total, double weighted) {
-    final fmt = NumberFormat.currency(symbol: '\$', decimalDigits: 0);
+    final fmt = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: '${AppLocalizations.of(context)!.currencySymbol} ',
+      decimalDigits: 0,
+    );
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -264,7 +269,11 @@ class _DealCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fmt = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final fmt = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: '${AppLocalizations.of(context)!.currencySymbol} ',
+      decimalDigits: 0,
+    );
     final bool isOverdue = deal.expectedClose != null && deal.expectedClose!.isBefore(DateTime.now());
     final bool isFollowUp = deal.probability != null && deal.probability! < 50; 
 

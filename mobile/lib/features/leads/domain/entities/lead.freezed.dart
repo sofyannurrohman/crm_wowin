@@ -32,6 +32,8 @@ mixin _$Lead {
   String? get notes;
   @JsonKey(name: 'converted_at')
   DateTime? get convertedAt;
+  double? get latitude;
+  double? get longitude;
 
   /// Create a copy of Lead
   /// with the given fields replaced by the non-null parameter values.
@@ -64,7 +66,11 @@ mixin _$Lead {
                 .equals(other.potentialProducts, potentialProducts) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.convertedAt, convertedAt) ||
-                other.convertedAt == convertedAt));
+                other.convertedAt == convertedAt) &&
+            (identical(other.latitude, latitude) ||
+                other.latitude == latitude) &&
+            (identical(other.longitude, longitude) ||
+                other.longitude == longitude));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -83,11 +89,13 @@ mixin _$Lead {
       estimatedValue,
       const DeepCollectionEquality().hash(potentialProducts),
       notes,
-      convertedAt);
+      convertedAt,
+      latitude,
+      longitude);
 
   @override
   String toString() {
-    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt)';
+    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt, latitude: $latitude, longitude: $longitude)';
   }
 }
 
@@ -109,7 +117,9 @@ abstract mixin class $LeadCopyWith<$Res> {
       @JsonKey(name: 'estimated_value') double? estimatedValue,
       @JsonKey(name: 'potential_products') List<String>? potentialProducts,
       String? notes,
-      @JsonKey(name: 'converted_at') DateTime? convertedAt});
+      @JsonKey(name: 'converted_at') DateTime? convertedAt,
+      double? latitude,
+      double? longitude});
 }
 
 /// @nodoc
@@ -137,6 +147,8 @@ class _$LeadCopyWithImpl<$Res> implements $LeadCopyWith<$Res> {
     Object? potentialProducts = freezed,
     Object? notes = freezed,
     Object? convertedAt = freezed,
+    Object? latitude = freezed,
+    Object? longitude = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -191,6 +203,14 @@ class _$LeadCopyWithImpl<$Res> implements $LeadCopyWith<$Res> {
           ? _self.convertedAt
           : convertedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      latitude: freezed == latitude
+          ? _self.latitude
+          : latitude // ignore: cast_nullable_to_non_nullable
+              as double?,
+      longitude: freezed == longitude
+          ? _self.longitude
+          : longitude // ignore: cast_nullable_to_non_nullable
+              as double?,
     ));
   }
 }
@@ -302,7 +322,9 @@ extension LeadPatterns on Lead {
             @JsonKey(name: 'potential_products')
             List<String>? potentialProducts,
             String? notes,
-            @JsonKey(name: 'converted_at') DateTime? convertedAt)?
+            @JsonKey(name: 'converted_at') DateTime? convertedAt,
+            double? latitude,
+            double? longitude)?
         $default, {
     required TResult orElse(),
   }) {
@@ -322,7 +344,9 @@ extension LeadPatterns on Lead {
             _that.estimatedValue,
             _that.potentialProducts,
             _that.notes,
-            _that.convertedAt);
+            _that.convertedAt,
+            _that.latitude,
+            _that.longitude);
       case _:
         return orElse();
     }
@@ -357,7 +381,9 @@ extension LeadPatterns on Lead {
             @JsonKey(name: 'potential_products')
             List<String>? potentialProducts,
             String? notes,
-            @JsonKey(name: 'converted_at') DateTime? convertedAt)
+            @JsonKey(name: 'converted_at') DateTime? convertedAt,
+            double? latitude,
+            double? longitude)
         $default,
   ) {
     final _that = this;
@@ -376,7 +402,9 @@ extension LeadPatterns on Lead {
             _that.estimatedValue,
             _that.potentialProducts,
             _that.notes,
-            _that.convertedAt);
+            _that.convertedAt,
+            _that.latitude,
+            _that.longitude);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -410,7 +438,9 @@ extension LeadPatterns on Lead {
             @JsonKey(name: 'potential_products')
             List<String>? potentialProducts,
             String? notes,
-            @JsonKey(name: 'converted_at') DateTime? convertedAt)?
+            @JsonKey(name: 'converted_at') DateTime? convertedAt,
+            double? latitude,
+            double? longitude)?
         $default,
   ) {
     final _that = this;
@@ -429,7 +459,9 @@ extension LeadPatterns on Lead {
             _that.estimatedValue,
             _that.potentialProducts,
             _that.notes,
-            _that.convertedAt);
+            _that.convertedAt,
+            _that.latitude,
+            _that.longitude);
       case _:
         return null;
     }
@@ -453,7 +485,9 @@ class _Lead implements Lead {
       @JsonKey(name: 'potential_products')
       final List<String>? potentialProducts,
       this.notes,
-      @JsonKey(name: 'converted_at') this.convertedAt})
+      @JsonKey(name: 'converted_at') this.convertedAt,
+      this.latitude,
+      this.longitude})
       : _potentialProducts = potentialProducts;
   factory _Lead.fromJson(Map<String, dynamic> json) => _$LeadFromJson(json);
 
@@ -497,6 +531,10 @@ class _Lead implements Lead {
   @override
   @JsonKey(name: 'converted_at')
   final DateTime? convertedAt;
+  @override
+  final double? latitude;
+  @override
+  final double? longitude;
 
   /// Create a copy of Lead
   /// with the given fields replaced by the non-null parameter values.
@@ -534,7 +572,11 @@ class _Lead implements Lead {
                 .equals(other._potentialProducts, _potentialProducts) &&
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.convertedAt, convertedAt) ||
-                other.convertedAt == convertedAt));
+                other.convertedAt == convertedAt) &&
+            (identical(other.latitude, latitude) ||
+                other.latitude == latitude) &&
+            (identical(other.longitude, longitude) ||
+                other.longitude == longitude));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -553,11 +595,13 @@ class _Lead implements Lead {
       estimatedValue,
       const DeepCollectionEquality().hash(_potentialProducts),
       notes,
-      convertedAt);
+      convertedAt,
+      latitude,
+      longitude);
 
   @override
   String toString() {
-    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt)';
+    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt, latitude: $latitude, longitude: $longitude)';
   }
 }
 
@@ -580,7 +624,9 @@ abstract mixin class _$LeadCopyWith<$Res> implements $LeadCopyWith<$Res> {
       @JsonKey(name: 'estimated_value') double? estimatedValue,
       @JsonKey(name: 'potential_products') List<String>? potentialProducts,
       String? notes,
-      @JsonKey(name: 'converted_at') DateTime? convertedAt});
+      @JsonKey(name: 'converted_at') DateTime? convertedAt,
+      double? latitude,
+      double? longitude});
 }
 
 /// @nodoc
@@ -608,6 +654,8 @@ class __$LeadCopyWithImpl<$Res> implements _$LeadCopyWith<$Res> {
     Object? potentialProducts = freezed,
     Object? notes = freezed,
     Object? convertedAt = freezed,
+    Object? latitude = freezed,
+    Object? longitude = freezed,
   }) {
     return _then(_Lead(
       id: null == id
@@ -662,6 +710,14 @@ class __$LeadCopyWithImpl<$Res> implements _$LeadCopyWith<$Res> {
           ? _self.convertedAt
           : convertedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      latitude: freezed == latitude
+          ? _self.latitude
+          : latitude // ignore: cast_nullable_to_non_nullable
+              as double?,
+      longitude: freezed == longitude
+          ? _self.longitude
+          : longitude // ignore: cast_nullable_to_non_nullable
+              as double?,
     ));
   }
 }

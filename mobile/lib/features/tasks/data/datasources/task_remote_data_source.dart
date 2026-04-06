@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../models/task_model.dart';
+import '../models/warehouse_model.dart';
 import '../../domain/entities/task.dart';
 
 class TaskRemoteDataSource {
@@ -62,6 +63,16 @@ class TaskRemoteDataSource {
     final response = await dio.delete('${ApiEndpoints.tasks}/$id');
     if (response.statusCode != 204 && response.statusCode != 200) {
       throw Exception('Gagal menghapus tugas');
+    }
+  }
+
+  Future<List<WarehouseModel>> getWarehouses() async {
+    final response = await dio.get(ApiEndpoints.warehouses);
+    if (response.statusCode == 200) {
+      final List data = response.data; // Backend returns List directly in this handler
+      return data.map((json) => WarehouseModel.fromJson(json)).toList();
+    } else {
+      throw Exception('Gagal memuat daftar gudang');
     }
   }
 }

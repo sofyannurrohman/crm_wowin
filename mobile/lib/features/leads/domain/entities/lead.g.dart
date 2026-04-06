@@ -24,6 +24,8 @@ _Lead _$LeadFromJson(Map<String, dynamic> json) => _Lead(
       convertedAt: json['converted_at'] == null
           ? null
           : DateTime.parse(json['converted_at'] as String),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
 
 Map<String, dynamic> _$LeadToJson(_Lead instance) => <String, dynamic>{
@@ -40,4 +42,6 @@ Map<String, dynamic> _$LeadToJson(_Lead instance) => <String, dynamic>{
       'potential_products': instance.potentialProducts,
       'notes': instance.notes,
       'converted_at': instance.convertedAt?.toIso8601String(),
+      'latitude': instance.latitude,
+      'longitude': instance.longitude,
     };

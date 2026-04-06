@@ -32,6 +32,7 @@ export interface VisitActivity {
 }
 
 export interface VisitScheduleFilter {
+  sales_id?: string
   status?: string
   search?: string
   date_from?: string
@@ -42,6 +43,7 @@ export interface VisitScheduleFilter {
 
 export async function fetchVisitSchedules(filter?: VisitScheduleFilter) {
   const params = new URLSearchParams()
+  if (filter?.sales_id) params.append('sales_id', filter.sales_id)
   if (filter?.status) params.append('status', filter.status)
   if (filter?.search) params.append('search', filter.search)
   if (filter?.date_from) params.append('date_from', filter.date_from)

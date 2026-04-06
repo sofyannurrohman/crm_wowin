@@ -13,7 +13,7 @@ import (
 type AttendanceUseCase interface {
 	ClockIn(ctx context.Context, a *models.Attendance) (*models.Attendance, error)
 	ClockOut(ctx context.Context, a *models.Attendance) (*models.Attendance, error)
-	GetHistory(ctx context.Context, userID uuid.UUID, month, year int) ([]models.DailyAttendance, error)
+	GetHistory(ctx context.Context, userID uuid.UUID, month, year int) ([]models.Attendance, error)
 }
 
 type attendanceUseCaseImpl struct {
@@ -49,10 +49,10 @@ func (u *attendanceUseCaseImpl) ClockOut(ctx context.Context, a *models.Attendan
 	return a, err
 }
 
-func (u *attendanceUseCaseImpl) GetHistory(ctx context.Context, userID uuid.UUID, month, year int) ([]models.DailyAttendance, error) {
+func (u *attendanceUseCaseImpl) GetHistory(ctx context.Context, userID uuid.UUID, month, year int) ([]models.Attendance, error) {
 	// Calculate start and end date of the month
 	startDate := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
-	endDate := startDate.AddDate(0, 1, -1)
+	endDate := startDate.AddDate(0, 1, 0).Add(-time.Nanosecond) // end of the month
 	
-	return u.repo.GetDailySummary(ctx, userID, startDate, endDate)
+	return u.repo.ListByUser(ctx, userID, startDate, endDate)
 }

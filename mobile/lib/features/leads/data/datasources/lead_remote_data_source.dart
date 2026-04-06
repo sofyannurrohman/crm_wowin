@@ -26,7 +26,9 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
     );
 
-    final List? data = response.data['data'];
+    final dynamic responseData = response.data;
+    final List? data = responseData is Map ? responseData['data'] : responseData;
+    
     if (data == null) return [];
     return data.map((e) => Lead.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -37,7 +39,12 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
       '/leads/$id',
       data: {'status': status},
     );
-    return Lead.fromJson(response.data['data']);
+    final dynamic responseData = response.data;
+    final Map<String, dynamic> data = responseData is Map && responseData.containsKey('data') 
+        ? responseData['data'] 
+        : responseData;
+        
+    return Lead.fromJson(data);
   }
 
   @override
@@ -46,7 +53,12 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
       '/leads',
       data: lead.toJson(),
     );
-    return Lead.fromJson(response.data['data']);
+    final dynamic responseData = response.data;
+    final Map<String, dynamic> data = responseData is Map && responseData.containsKey('data') 
+        ? responseData['data'] 
+        : responseData;
+
+    return Lead.fromJson(data);
   }
 
   @override
@@ -55,7 +67,12 @@ class LeadRemoteDataSourceImpl implements LeadRemoteDataSource {
       '/leads/${lead.id}',
       data: lead.toJson(),
     );
-    return Lead.fromJson(response.data['data']);
+    final dynamic responseData = response.data;
+    final Map<String, dynamic> data = responseData is Map && responseData.containsKey('data') 
+        ? responseData['data'] 
+        : responseData;
+
+    return Lead.fromJson(data);
   }
 
   @override

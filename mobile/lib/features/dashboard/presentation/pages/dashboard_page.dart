@@ -699,7 +699,11 @@ class _DashboardPageState extends State<DashboardPage> {
           Text(deal.title, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 4),
           Text(
-            NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(deal.amount),
+            NumberFormat.currency(
+              locale: 'id_ID',
+              symbol: '${AppLocalizations.of(context)!.currencySymbol} ',
+              decimalDigits: 0,
+            ).format(deal.amount),
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
         ],
@@ -778,10 +782,11 @@ class _DashboardPageState extends State<DashboardPage> {
   // Helpers
   // ---------------------------------------------------------------------------
   String _formatCurrency(double value, String symbol) {
-    if (value >= 1000) {
-      return '$symbol${(value / 1000).toStringAsFixed(1)}K';
-    }
-    return '$symbol${value.toStringAsFixed(0)}';
+    return NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: '$symbol ',
+      decimalDigits: 0,
+    ).format(value);
   }
 
   String _extractTime(String dateStr) {

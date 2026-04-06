@@ -13,6 +13,16 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<UpdateTask>(_onUpdateTask);
     on<CompleteTask>(_onCompleteTask);
     on<DeleteTask>(_onDeleteTask);
+    on<FetchWarehouses>(_onFetchWarehouses);
+  }
+
+  Future<void> _onFetchWarehouses(FetchWarehouses event, Emitter<TaskState> emit) async {
+    emit(TaskLoading());
+    final result = await repository.getWarehouses();
+    result.fold(
+      (failure) => emit(TaskError(failure.message)),
+      (warehouses) => emit(WarehousesLoaded(warehouses)),
+    );
   }
 
   Future<void> _onFetchTasks(FetchTasks event, Emitter<TaskState> emit) async {

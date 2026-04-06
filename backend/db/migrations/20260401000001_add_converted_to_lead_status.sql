@@ -1,6 +1,11 @@
 -- +goose Up
 -- +goose StatementBegin
-ALTER TYPE lead_status ADD VALUE IF NOT EXISTS 'converted';
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'lead_status') THEN
+        ALTER TYPE lead_status ADD VALUE IF NOT EXISTS 'converted';
+    END IF;
+END $$;
 -- +goose StatementEnd
 
 -- +goose Down

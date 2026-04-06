@@ -22,31 +22,39 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
   @override
   Future<List<Deal>> getDeals() async {
     final response = await _dio.get('/deals');
-    final List data = response.data['data'];
-    return data.map((e) => Deal.fromJson(e)).toList();
+    final List data = response.data['data'] ?? [];
+    return data.map((e) => Deal.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   @override
   Future<Deal> getDeal(String id) async {
     final response = await _dio.get('/deals/$id');
     final data = response.data['data'];
-    final Map<String, dynamic> dealPart = data['deal'];
-    if (data['customer'] != null) {
+    
+    // Some endpoints wrap the deal in a "deal" key
+    final Map<String, dynamic> dealPart = data['deal'] ?? data;
+    
+    if (data['customer'] != null && dealPart['customer'] == null) {
       dealPart['customer'] = data['customer'];
     }
+    
     return Deal.fromJson(dealPart);
   }
 
   @override
   Future<Deal> createDeal(Deal deal) async {
     final response = await _dio.post('/deals', data: deal.toJson());
-    return Deal.fromJson(response.data['data']);
+    final data = response.data['data'];
+    final Map<String, dynamic> dealPart = data['deal'] ?? data;
+    return Deal.fromJson(dealPart);
   }
 
   @override
   Future<Deal> updateDeal(Deal deal) async {
     final response = await _dio.put('/deals/${deal.id}', data: deal.toJson());
-    return Deal.fromJson(response.data['data']);
+    final data = response.data['data'];
+    final Map<String, dynamic> dealPart = data['deal'] ?? data;
+    return Deal.fromJson(dealPart);
   }
 
   @override
@@ -60,14 +68,21 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
       '/deals/$id/stage',
       data: {'stage': stage},
     );
-    return Deal.fromJson(response.data['data']);
+    final data = response.data['data'];
+    
+    // Ensure we extract the deal part even if it's nested
+    final Map<String, dynamic> dealData = data is Map && data.containsKey('deal') 
+        ? data['deal'] 
+        : (data ?? response.data);
+        
+    return Deal.fromJson(dealData as Map<String, dynamic>);
   }
 
   @override
   Future<List<DealItem>> getDealItems(String dealId) async {
     final response = await _dio.get('/deals/$dealId/items');
-    final List data = response.data['data'];
-    return data.map((e) => DealItem.fromJson(e)).toList();
+    final List data = response.data['data'] ?? [];
+    return data.map((e) => DealItem.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   @override

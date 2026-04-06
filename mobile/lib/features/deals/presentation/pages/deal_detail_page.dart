@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:wowin_crm/l10n/app_localizations.dart';
 
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_item.dart';
@@ -280,7 +281,19 @@ class _DealDetailPageState extends State<DealDetailPage> {
   Widget _buildMetricsGrid(dynamic deal) {
     return Row(
       children: [
-        Expanded(child: _buildMetricCard('Nilai Penjualan', '\$${deal.amount ?? 0}', LucideIcons.trendingUp, '10% dari rata-rata', true)),
+        Expanded(
+          child: _buildMetricCard(
+            'Nilai Penjualan',
+            NumberFormat.currency(
+              locale: 'id_ID',
+              symbol: '${AppLocalizations.of(context)!.currencySymbol} ',
+              decimalDigits: 0,
+            ).format(deal.amount ?? 0),
+            LucideIcons.trendingUp,
+            '10% dari rata-rata',
+            true,
+          ),
+        ),
         const SizedBox(width: 12),
         Expanded(child: _buildMetricCard('Peluang', '${deal.probability ?? 0}%', LucideIcons.arrowUp, 'Sinyal kuat', true)),
       ],
@@ -769,7 +782,11 @@ class _DealDetailPageState extends State<DealDetailPage> {
 
   Widget _buildDealItemsSection(BuildContext context, Deal deal) {
     final items = deal.items ?? [];
-    final currencyFormatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final currencyFormatter = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: '${AppLocalizations.of(context)!.currencySymbol} ',
+      decimalDigits: 0,
+    );
 
     return Container(
       padding: const EdgeInsets.all(20),

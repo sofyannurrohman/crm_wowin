@@ -3,6 +3,7 @@ package handlers
 import (
 	"crm_wowin_backend/internal/usecase"
 	"crm_wowin_backend/pkg/response"
+	"crm_wowin_backend/pkg/websocket"
 	"net/http"
 	"strconv"
 
@@ -74,4 +75,27 @@ func (h *NotificationHandler) GetUnreadCount(c *gin.Context) {
 	}
 
 	response.OK(c, gin.H{"unread_count": count})
+}
+
+func (h *NotificationHandler) ServeWS(c *gin.Context) {
+	val, exists := c.Get("user_id")
+	if !exists {
+		val = c.Query("token")
+		if val == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+	}
+
+	userIDStr, _ := val.(string)
+	if userIDStr == "" {
+		userIDStr = c.Query("user_id")
+	}
+
+	if userIDStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "no user_id provided"})
+		return
+	}
+
+	websocket.DefaultHub.ServeWs(c.Writer, c.Request, userIDStr)
 }

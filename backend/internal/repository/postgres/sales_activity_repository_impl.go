@@ -24,26 +24,30 @@ func NewSalesActivityRepository(db *pgxpool.Pool) repository.SalesActivityReposi
 
 func (r *salesActivityRepoImpl) Create(ctx context.Context, a *models.SalesActivity) error {
 	query := `INSERT INTO sales_activities (
-				user_id, lead_id, customer_id, deal_id, 
-				type, title, notes, latitude, longitude, activity_at
-			  ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+				user_id, lead_id, customer_id, deal_id, task_destination_id,
+				type, title, notes, latitude, longitude,
+				check_in_time, check_out_time, photo_base64, storefront_photo_base64, address, outcome, activity_at
+			  ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 			  RETURNING id, created_at, updated_at`
 
 	err := r.db.QueryRow(ctx, query,
-		a.UserID, a.LeadID, a.CustomerID, a.DealID,
-		a.Type, a.Title, a.Notes, a.Latitude, a.Longitude, a.ActivityAt,
+		a.UserID, a.LeadID, a.CustomerID, a.DealID, a.TaskDestinationID,
+		a.Type, a.Title, a.Notes, a.Latitude, a.Longitude,
+		a.CheckInTime, a.CheckOutTime, a.PhotoBase64, a.StorefrontPhotoBase64, a.Address, a.Outcome, a.ActivityAt,
 	).Scan(&a.ID, &a.CreatedAt, &a.UpdatedAt)
 	return err
 }
 
 func (r *salesActivityRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.SalesActivity, error) {
-	query := `SELECT id, user_id, lead_id, customer_id, deal_id, type, title, notes, latitude, longitude, activity_at, created_at, updated_at
+	query := `SELECT id, user_id, lead_id, customer_id, deal_id, task_destination_id, type, title, notes, latitude, longitude, 
+				check_in_time, check_out_time, photo_base64, storefront_photo_base64, address, outcome, activity_at, created_at, updated_at
 			  FROM sales_activities WHERE id = $1`
 
 	var a models.SalesActivity
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&a.ID, &a.UserID, &a.LeadID, &a.CustomerID, &a.DealID,
+		&a.ID, &a.UserID, &a.LeadID, &a.CustomerID, &a.DealID, &a.TaskDestinationID,
 		&a.Type, &a.Title, &a.Notes, &a.Latitude, &a.Longitude,
+		&a.CheckInTime, &a.CheckOutTime, &a.PhotoBase64, &a.StorefrontPhotoBase64, &a.Address, &a.Outcome,
 		&a.ActivityAt, &a.CreatedAt, &a.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -88,7 +92,8 @@ func (r *salesActivityRepoImpl) List(ctx context.Context, filter repository.Sale
 		argPos++
 	}
 
-	query := `SELECT id, user_id, lead_id, customer_id, deal_id, type, title, notes, latitude, longitude, activity_at, created_at, updated_at
+	query := `SELECT id, user_id, lead_id, customer_id, deal_id, task_destination_id, type, title, notes, latitude, longitude, 
+	            check_in_time, check_out_time, photo_base64, storefront_photo_base64, address, outcome, activity_at, created_at, updated_at
 			  FROM sales_activities`
 	if len(where) > 0 {
 		query += " WHERE " + strings.Join(where, " AND ")
@@ -105,8 +110,9 @@ func (r *salesActivityRepoImpl) List(ctx context.Context, filter repository.Sale
 	for rows.Next() {
 		var a models.SalesActivity
 		err := rows.Scan(
-			&a.ID, &a.UserID, &a.LeadID, &a.CustomerID, &a.DealID,
+			&a.ID, &a.UserID, &a.LeadID, &a.CustomerID, &a.DealID, &a.TaskDestinationID,
 			&a.Type, &a.Title, &a.Notes, &a.Latitude, &a.Longitude,
+			&a.CheckInTime, &a.CheckOutTime, &a.PhotoBase64, &a.StorefrontPhotoBase64, &a.Address, &a.Outcome,
 			&a.ActivityAt, &a.CreatedAt, &a.UpdatedAt,
 		)
 		if err != nil {
@@ -119,13 +125,17 @@ func (r *salesActivityRepoImpl) List(ctx context.Context, filter repository.Sale
 
 func (r *salesActivityRepoImpl) Update(ctx context.Context, a *models.SalesActivity) error {
 	query := `UPDATE sales_activities SET 
-				lead_id=$1, customer_id=$2, deal_id=$3, type=$4, 
-				title=$5, notes=$6, latitude=$7, longitude=$8, activity_at=$9, updated_at=NOW()
-			  WHERE id=$10 RETURNING updated_at`
+				lead_id=$1, customer_id=$2, deal_id=$3, task_destination_id=$4, type=$5, 
+				title=$6, notes=$7, latitude=$8, longitude=$9, 
+				check_in_time=$10, check_out_time=$11, photo_base64=$12, storefront_photo_base64=$13, address=$14, outcome=$15,
+				activity_at=$16, updated_at=NOW()
+			  WHERE id=$17 RETURNING updated_at`
 
 	err := r.db.QueryRow(ctx, query,
-		a.LeadID, a.CustomerID, a.DealID, a.Type,
-		a.Title, a.Notes, a.Latitude, a.Longitude, a.ActivityAt, a.ID,
+		a.LeadID, a.CustomerID, a.DealID, a.TaskDestinationID, a.Type,
+		a.Title, a.Notes, a.Latitude, a.Longitude,
+		a.CheckInTime, a.CheckOutTime, a.PhotoBase64, a.StorefrontPhotoBase64, a.Address, a.Outcome,
+		a.ActivityAt, a.ID,
 	).Scan(&a.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dberrors.ErrNotFound

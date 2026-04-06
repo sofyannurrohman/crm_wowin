@@ -25,6 +25,7 @@ func SetupRouter(
 	taskHandler *handlers.TaskHandler,
 	settingsHandler *handlers.SettingsHandler,
 	salesActivityHandler *handlers.SalesActivityHandler,
+	warehouseHandler *handlers.WarehouseHandler,
 ) {
 
 	v1 := r.Group("/api/v1")
@@ -138,6 +139,7 @@ func SetupRouter(
 		notifGroup := protected.Group("/notifications")
 		notifGroup.GET("", notificationHandler.List)
 		notifGroup.GET("/unread-count", notificationHandler.GetUnreadCount)
+		notifGroup.GET("/ws", notificationHandler.ServeWS)
 		notifGroup.PATCH("/:id/read", notificationHandler.MarkAsRead)
 		notifGroup.PATCH("/read-all", notificationHandler.MarkAllAsRead)
 		
@@ -165,6 +167,9 @@ func SetupRouter(
 		activityGroup.GET("", salesActivityHandler.List)
 		activityGroup.PUT("/:id", salesActivityHandler.Update)
 		activityGroup.DELETE("/:id", salesActivityHandler.Delete)
+		
+		// Warehouses
+		warehouseHandler.RegisterRoutes(protected)
 		
 		// Example of RBAC implementation
 		// managerOnly := protected.Group("/admin")

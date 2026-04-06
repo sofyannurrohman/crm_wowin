@@ -139,6 +139,12 @@ export const routes: RouteRecordRaw[] = [
         name: 'target-setting',
         component: () => import('@/views/settings/TargetSettingView.vue'),
         meta: { roles: ['super_admin', 'manager'] }
+      },
+      {
+        path: 'settings/warehouses',
+        name: 'warehouse-management',
+        component: () => import('@/views/settings/WarehouseManagementView.vue'),
+        meta: { roles: ['super_admin', 'manager'] }
       }
     ]
   },

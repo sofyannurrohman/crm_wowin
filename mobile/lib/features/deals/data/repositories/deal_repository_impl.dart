@@ -19,7 +19,7 @@ class DealRepositoryImpl implements DealRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal mengambil data deals'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -31,7 +31,7 @@ class DealRepositoryImpl implements DealRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal mengambil detail deal'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -43,7 +43,7 @@ class DealRepositoryImpl implements DealRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal membuat deal baru'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -55,7 +55,7 @@ class DealRepositoryImpl implements DealRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal memperbarui deal'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -67,7 +67,7 @@ class DealRepositoryImpl implements DealRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal menghapus deal'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -79,7 +79,7 @@ class DealRepositoryImpl implements DealRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal memperbarui tahapan deal'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -91,7 +91,7 @@ class DealRepositoryImpl implements DealRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal mengambil item deal'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -121,7 +121,7 @@ class DealRepositoryImpl implements DealRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal menambahkan item ke deal'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 
@@ -133,7 +133,7 @@ class DealRepositoryImpl implements DealRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
-      return const Left(ServerFailure('Gagal menghapus item deal'));
+      return Left(ServerFailure(e.toString()));
     }
   }
 }

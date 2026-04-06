@@ -1,9 +1,11 @@
 import 'package:dartz/dartz.dart' hide Task;
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/task.dart';
+import '../../domain/entities/warehouse.dart';
 import '../../domain/repositories/task_repository.dart';
 import '../datasources/task_remote_data_source.dart';
 import '../models/task_model.dart';
+import '../models/warehouse_model.dart';
 
 class TaskRepositoryImpl implements TaskRepository {
   final TaskRemoteDataSource remoteDataSource;
@@ -28,6 +30,14 @@ class TaskRepositoryImpl implements TaskRepository {
         salesId: task.salesId,
         customerId: task.customerId,
         customerName: task.customerName,
+        warehouseId: task.warehouseId,
+        warehouse: task.warehouse != null ? WarehouseModel(
+          id: task.warehouse!.id,
+          name: task.warehouse!.name,
+          address: task.warehouse!.address,
+          latitude: task.warehouse!.latitude,
+          longitude: task.warehouse!.longitude,
+        ) : null,
         title: task.title,
         description: task.description,
         priority: task.priority,
@@ -52,6 +62,14 @@ class TaskRepositoryImpl implements TaskRepository {
         salesId: task.salesId,
         customerId: task.customerId,
         customerName: task.customerName,
+        warehouseId: task.warehouseId,
+        warehouse: task.warehouse != null ? WarehouseModel(
+          id: task.warehouse!.id,
+          name: task.warehouse!.name,
+          address: task.warehouse!.address,
+          latitude: task.warehouse!.latitude,
+          longitude: task.warehouse!.longitude,
+        ) : null,
         title: task.title,
         description: task.description,
         priority: task.priority,
@@ -83,6 +101,16 @@ class TaskRepositoryImpl implements TaskRepository {
     try {
       await remoteDataSource.deleteTask(id);
       return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Warehouse>>> getWarehouses() async {
+    try {
+      final result = await remoteDataSource.getWarehouses();
+      return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

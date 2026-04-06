@@ -8,4 +8,7 @@ abstract class ProductRepository {
     String? query,
   });
   Future<Either<Failure, Product>> getProductDetail(String id);
+  Future<Either<Failure, Product>> createProduct(Product product);
+  Future<Either<Failure, Product>> updateProduct(Product product);
+  Future<Either<Failure, void>> deleteProduct(String id);
 }

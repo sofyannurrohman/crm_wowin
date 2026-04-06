@@ -12,6 +12,8 @@ class ProductInitial extends ProductState {}
 
 class ProductLoading extends ProductState {}
 
+class ProductOperationLoading extends ProductState {}
+
 class ProductsLoaded extends ProductState {
   final List<Product> products;
 
@@ -30,6 +32,15 @@ class ProductDetailLoaded extends ProductState {
   List<Object?> get props => [product];
 }
 
+class ProductOperationSuccess extends ProductState {
+  final String message;
+
+  const ProductOperationSuccess(this.message);
+
+  @override
+  List<Object?> get props => [message];
+}
+
 class ProductError extends ProductState {
   final String message;
 
@@ -38,3 +49,4 @@ class ProductError extends ProductState {
   @override
   List<Object?> get props => [message];
 }
+

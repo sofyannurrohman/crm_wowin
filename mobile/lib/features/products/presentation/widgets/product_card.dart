@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:wowin_crm/l10n/app_localizations.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../domain/entities/product.dart';
 
@@ -17,7 +18,7 @@ class ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final currencyFormatter = NumberFormat.currency(
       locale: 'id_ID',
-      symbol: 'Rp ',
+      symbol: '${AppLocalizations.of(context)!.currencySymbol} ',
       decimalDigits: 0,
     );
 

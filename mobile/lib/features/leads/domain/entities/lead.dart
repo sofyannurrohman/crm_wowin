@@ -19,6 +19,8 @@ abstract class Lead with _$Lead {
     @JsonKey(name: 'potential_products') List<String>? potentialProducts,
     String? notes,
     @JsonKey(name: 'converted_at') DateTime? convertedAt,
+    double? latitude,
+    double? longitude,
   }) = _Lead;
 
   factory Lead.fromJson(Map<String, dynamic> json) => _$LeadFromJson(json);

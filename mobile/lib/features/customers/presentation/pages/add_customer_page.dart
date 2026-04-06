@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:uuid/uuid.dart';
 
 import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
@@ -88,7 +89,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       final customer = Customer(
-        id: widget.initialCustomer?.id ?? '', // Backend will generate if empty
+        id: widget.initialCustomer?.id ?? const Uuid().v4(),
         name: _nameController.text,
         companyName: _nameController.text,
         industry: _industryController.text,
@@ -168,7 +169,15 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
                 const SizedBox(height: 16),
                 _buildTextField('Company Name', _nameController, 'e.g. Acme Corp'),
                 const SizedBox(height: 16),
-                _buildDropdownField('Industry', _industryController, ['Tech Sector', 'Manufacturing', 'Retail', 'Agribusiness']),
+                _buildDropdownField('Tipe Bisnis / Kategori', _industryController, [
+                  'Warung Makan',
+                  'Toko Kelontong',
+                  'Retail / Minimarket',
+                  'Agen / Distributor',
+                  'Restoran',
+                  'Cafe',
+                  'Lainnya'
+                ]),
 
                 const SizedBox(height: 32),
                 _buildSectionHeader(LucideIcons.user, 'Contact Person'),
@@ -303,7 +312,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
           ),
-          hint: const Text('Select an industry'),
+          hint: const Text('Pilih tipe bisnis'),
           items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(),
           onChanged: (v) => controller.text = v ?? '',
         ),
