@@ -9,6 +9,7 @@ import '../bloc/lead_event.dart';
 import '../bloc/lead_state.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
+import '../../../../core/utils/animation_extensions.dart';
 
 class LeadListPage extends StatefulWidget {
   const LeadListPage({super.key});
@@ -273,7 +274,10 @@ class _LeadListPageState extends State<LeadListPage> {
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final lead = state.leads[index];
-                return _buildLeadCard(lead);
+                return _buildLeadCard(lead).animateEntrance(
+                  delay: Duration(milliseconds: index * 50),
+                  offset: const Offset(0, 10),
+                );
               },
             ),
           );

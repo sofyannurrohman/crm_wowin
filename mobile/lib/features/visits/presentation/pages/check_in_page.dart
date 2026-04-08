@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -21,6 +22,9 @@ import '../../../customers/presentation/bloc/customer_bloc.dart';
 import '../../../customers/presentation/bloc/customer_event.dart';
 import '../../../customers/presentation/bloc/customer_state.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../../core/services/face_detector_service.dart';
+import '../../../../core/widgets/face_validation_overlay.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart' as ml;
 
 class CheckInPage extends StatefulWidget {
   final String scheduleId;
@@ -80,6 +84,10 @@ class _CheckInPageState extends State<CheckInPage> {
 
   // OSRM Route
   List<ll.LatLng> _routePoints = [];
+
+  final FaceDetectorService _faceDetectorService = FaceDetectorService();
+  FaceValidationStatus _faceStatus = FaceValidationStatus.none;
+  bool _isProcessingFrame = false;
 
   static const Color _orange = Color(0xFFEA580C);
   static const Color _bg = Color(0xFFF9FAFB);
@@ -151,9 +159,77 @@ class _CheckInPageState extends State<CheckInPage> {
       await _cameraController?.dispose();
       _cameraController = CameraController(camera, ResolutionPreset.medium, enableAudio: false);
       await _cameraController!.initialize();
-      if (mounted) setState(() => _isCameraInitialized = true);
+      if (mounted) { 
+        setState(() => _isCameraInitialized = true);
+        if (useFront && !kIsWeb) _startImageStream();
+      }
     } catch (e) {
       debugPrint('Camera init error: $e');
+    }
+  }
+
+  void _startImageStream() {
+    if (_cameraController == null || !_cameraController!.value.isInitialized || kIsWeb) return;
+    
+    _cameraController!.startImageStream((image) async {
+      if (_isProcessingFrame || _selfiePhoto != null || !mounted) return;
+
+      _isProcessingFrame = true;
+      try {
+        final inputImage = _faceDetectorService.inputImageFromCameraImage(
+          image,
+          _cameraController!.description,
+        );
+
+        if (inputImage != null) {
+          final faces = await _faceDetectorService.detectFaces(inputImage);
+          _validateFaces(faces);
+        }
+      } catch (e) {
+        debugPrint('Frame processing error: $e');
+      } finally {
+        _isProcessingFrame = false;
+      }
+    });
+  }
+
+  void _validateFaces(List<ml.Face> faces) {
+    if (!mounted) return;
+
+    FaceValidationStatus newStatus;
+    if (faces.isEmpty) {
+      newStatus = FaceValidationStatus.notDetected;
+    } else if (faces.length > 1) {
+      newStatus = FaceValidationStatus.multipleFaces;
+    } else {
+      final face = faces.first;
+      
+      final bool isLookingStraight = (face.headEulerAngleY! < 20 && face.headEulerAngleY! > -20) &&
+                                     (face.headEulerAngleZ! < 15 && face.headEulerAngleZ! > -15);
+      
+      final bool eyesOpen = (face.leftEyeOpenProbability ?? 1.0) > 0.4 &&
+                            (face.rightEyeOpenProbability ?? 1.0) > 0.4;
+
+      if (!isLookingStraight) {
+        newStatus = FaceValidationStatus.lookStraight;
+      } else if (!eyesOpen) {
+        newStatus = FaceValidationStatus.eyesClosed;
+      } else {
+        final faceWidth = face.boundingBox.width;
+        if (faceWidth < 120) {
+          newStatus = FaceValidationStatus.tooFar;
+        } else if (faceWidth > 380) {
+          newStatus = FaceValidationStatus.tooClose;
+        } else {
+          newStatus = FaceValidationStatus.valid;
+        }
+      }
+    }
+
+    if (_faceStatus != newStatus) {
+      setState(() {
+        _faceStatus = newStatus;
+      });
     }
   }
 
@@ -199,6 +275,7 @@ class _CheckInPageState extends State<CheckInPage> {
     _notesController.dispose();
     _mapController.dispose();
     _cameraController?.dispose();
+    _faceDetectorService.dispose();
     super.dispose();
   }
 
@@ -270,8 +347,18 @@ class _CheckInPageState extends State<CheckInPage> {
   Future<void> _takePhoto({required bool isStorefront}) async {
     if (!_isCameraInitialized || _cameraController == null || _isCapturing) return;
 
+    if (!isStorefront && _selfiePhoto == null && _faceStatus != FaceValidationStatus.valid) {
+       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wajah tidak jelas. Cari posisi atau cahaya lebih baik di depan toko.')),
+      );
+      return;
+    }
+
     setState(() => _isCapturing = true);
     try {
+      if (!isStorefront) {
+        await _cameraController!.stopImageStream();
+      }
       final photo = await _cameraController!.takePicture();
       final originalFile = File(photo.path);
       
@@ -693,7 +780,18 @@ class _CheckInPageState extends State<CheckInPage> {
     return Stack(
       children: [
         if (_isCameraInitialized && _cameraController != null)
-          Positioned.fill(child: CameraPreview(_cameraController!))
+          Positioned.fill(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CameraPreview(_cameraController!),
+                if (!isStorefront)
+                  Center(
+                    child: FaceValidationOverlay(status: _faceStatus),
+                  ),
+              ],
+            ),
+          )
         else
           const Center(child: CircularProgressIndicator(color: _orange)),
 
@@ -763,8 +861,13 @@ class _CheckInPageState extends State<CheckInPage> {
                 const SizedBox(height: 12),
                 TextButton.icon(
                   onPressed: () => setState(() {
-                    if (isStorefront) _storefrontPhoto = null;
-                    else _selfiePhoto = null;
+                    if (isStorefront) {
+                      _storefrontPhoto = null;
+                    } else {
+                      _selfiePhoto = null;
+                      _faceStatus = FaceValidationStatus.none; // Fix: use enum directly or helper
+                      _startImageStream();
+                    }
                   }),
                   icon: const Icon(LucideIcons.refreshCw, size: 14, color: Colors.white70),
                   label: const Text('Ambil Ulang', style: TextStyle(color: Colors.white70, fontSize: 12)),

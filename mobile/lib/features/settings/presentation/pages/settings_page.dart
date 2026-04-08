@@ -23,6 +23,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
   String _cacheSize = '124 MB';
 
+  @override
+  void initState() {
+    super.initState();
+    context.read<SettingsBloc>().add(FetchSettings());
+  }
+
   Future<void> _handleClearCache() async {
     showDialog(
       context: context,

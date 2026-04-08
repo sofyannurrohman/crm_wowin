@@ -51,7 +51,14 @@ func (r *settingsRepositoryImpl) GetByKey(ctx context.Context, key string) (*rep
 
 func (r *settingsRepositoryImpl) Update(ctx context.Context, key string, value interface{}, updatedBy string) error {
 	valJSON, _ := json.Marshal(value)
-	query := `UPDATE app_settings SET value = $1, updated_by = $2, updated_at = NOW() WHERE key = $3`
-	_, err := r.db.Exec(ctx, query, valJSON, updatedBy, key)
+	query := `
+		INSERT INTO app_settings (key, value, updated_by, updated_at)
+		VALUES ($1, $2, $3, NOW())
+		ON CONFLICT (key) DO UPDATE SET
+			value = EXCLUDED.value,
+			updated_by = EXCLUDED.updated_by,
+			updated_at = EXCLUDED.updated_at
+	`
+	_, err := r.db.Exec(ctx, query, key, valJSON, updatedBy)
 	return err
 }

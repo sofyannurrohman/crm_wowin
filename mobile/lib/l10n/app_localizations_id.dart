@@ -207,4 +207,7 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get or => 'ATAU';
+
+  @override
+  String get loading => 'Memuat...';
 }

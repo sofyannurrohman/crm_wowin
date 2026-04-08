@@ -48,28 +48,62 @@ import 'route_constants.dart';
 
 export 'route_constants.dart';
 
+CustomTransitionPage _buildPageWithFadeTransition<T>({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+        child: child,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 300),
+  );
+}
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(
       name: kRouteSplash,
       path: '/',
-      builder: (context, state) => const SplashPage(),
+      pageBuilder: (context, state) => _buildPageWithFadeTransition(
+        context: context,
+        state: state,
+        child: const SplashPage(),
+      ),
     ),
     GoRoute(
       name: kRouteLogin,
       path: '/login',
-      builder: (context, state) => const LoginPage(),
+      pageBuilder: (context, state) => _buildPageWithFadeTransition(
+        context: context,
+        state: state,
+        child: const LoginPage(),
+      ),
     ),
     GoRoute(
       name: kRouteRegister,
       path: '/register',
-      builder: (context, state) => const RegisterPage(),
+      pageBuilder: (context, state) => _buildPageWithFadeTransition(
+        context: context,
+        state: state,
+        child: const RegisterPage(),
+      ),
     ),
     GoRoute(
       name: kRouteDashboard,
       path: '/dashboard',
-      builder: (context, state) => const DashboardPage(),
+      pageBuilder: (context, state) => _buildPageWithFadeTransition(
+        context: context,
+        state: state,
+        child: const DashboardPage(),
+      ),
     ),
     GoRoute(
       name: kRouteCheckIn,
@@ -121,7 +155,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       name: kRouteCustomers,
       path: '/customers',
-      builder: (context, state) => const CustomerListPage(),
+      pageBuilder: (context, state) => _buildPageWithFadeTransition(
+        context: context,
+        state: state,
+        child: const CustomerListPage(),
+      ),
     ),
     GoRoute(
       name: kRouteCustomerDetail,
@@ -133,7 +171,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       name: kRouteLeads,
       path: '/leads',
-      builder: (context, state) => const LeadListPage(),
+      pageBuilder: (context, state) => _buildPageWithFadeTransition(
+        context: context,
+        state: state,
+        child: const LeadListPage(),
+      ),
     ),
     GoRoute(
       name: kRouteAddLead,

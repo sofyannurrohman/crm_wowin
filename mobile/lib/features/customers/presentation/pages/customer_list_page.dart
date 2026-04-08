@@ -10,6 +10,7 @@ import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
 import '../../domain/entities/customer.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/utils/animation_extensions.dart';
 
 class CustomerListPage extends StatefulWidget {
   const CustomerListPage({super.key});
@@ -93,7 +94,10 @@ class _CustomerListPageState extends State<CustomerListPage> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: state.customers.length,
                         itemBuilder: (context, index) {
-                          return _CustomerCard(customer: state.customers[index]);
+                          return _CustomerCard(customer: state.customers[index]).animateEntrance(
+                            delay: Duration(milliseconds: index * 50),
+                            offset: const Offset(0, 10),
+                          );
                         },
                       ),
                     );

@@ -65,5 +65,6 @@
   "alreadyHaveAccount": "Already have an account?",
   "agreeTermsError": "You must agree to the terms and conditions",
   "invalidEmail": "Invalid email format",
-  "or": "OR"
+  "or": "OR",
+  "loading": "Loading..."
 }

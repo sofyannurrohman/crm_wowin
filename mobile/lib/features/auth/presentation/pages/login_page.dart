@@ -8,6 +8,8 @@ import '../../../../core/router/route_constants.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
+import '../../../../core/utils/animation_extensions.dart';
+import '../../../../core/widgets/full_loading_overlay.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -52,36 +54,56 @@ class _LoginPageState extends State<LoginPage> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F7),
-      body: BlocListener<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is Authenticated) {
-            context.goNamed(kRouteDashboard);
-          } else if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-                behavior: SnackBarBehavior.floating,
+      body: BlocBuilder<AuthBloc, AuthState>(
+        builder: (context, authState) {
+          final isLoading = authState is AuthLoading;
+          
+          return Stack(
+            children: [
+              BlocListener<AuthBloc, AuthState>(
+                listener: (context, state) {
+                  if (state is Authenticated) {
+                    context.goNamed(kRouteDashboard);
+                  } else if (state is AuthError) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(state.message),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                child: SafeArea(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // ── Orange Header ──────────────────────────────────────
+                        _buildHeader(),
+          
+                        // ── White Card Form ────────────────────────────────────
+                        _buildFormCard(context, l10n).animateEntrance(
+                          delay: const Duration(milliseconds: 200),
+                        ),
+          
+                        // ── Bottom Footer ──────────────────────────────────────
+                        _buildFooter(l10n).animateEntrance(
+                          delay: const Duration(milliseconds: 400),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            );
-          }
+              
+              // Full Screen Loading Overlay
+              FullLoadingOverlay(
+                isLoading: isLoading,
+                message: l10n.loading, // Assuming 'loading' exists in l10n
+              ),
+            ],
+          );
         },
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                // ── Orange Header ──────────────────────────────────────
-                _buildHeader(),
-
-                // ── White Card Form ────────────────────────────────────
-                _buildFormCard(context, l10n),
-
-                // ── Bottom Footer ──────────────────────────────────────
-                _buildFooter(l10n),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -125,7 +147,7 @@ class _LoginPageState extends State<LoginPage> {
                 fit: BoxFit.contain,
               ),
             ),
-          ),
+          ).animateScale(delay: const Duration(milliseconds: 100)),
           const SizedBox(height: 16),
           const Text(
             'Wowin CRM',
@@ -135,7 +157,7 @@ class _LoginPageState extends State<LoginPage> {
               color: Colors.white,
               letterSpacing: 0.2,
             ),
-          ),
+          ).animateEntrance(offset: const Offset(0, 10)),
         ],
       ),
     );

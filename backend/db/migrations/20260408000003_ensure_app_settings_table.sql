@@ -20,7 +20,10 @@ INSERT INTO app_settings (key, value, description) VALUES
 ('storage.upload_base_path', '"/app/uploads"', 'Root folder penyimpanan file di VPS (diakses Gin)'),
 ('storage.visit_photos_path', '"visits/{YYYY}/{MM}/{DD}/{visit_id}"', 'Pola subfolder foto kunjungan'),
 ('storage.attendance_photos_path', '"attendance/{YYYY}/{MM}"', 'Subfolder foto absensi'),
-('storage.base_url', '"http://localhost:8082/uploads"', 'Base URL static file server Gin (/uploads route)')
+('storage.base_url', '"http://localhost:8082/uploads"', 'Base URL static file server Gin (/uploads route)'),
+('mobile.notifications_enabled', 'true', 'Enable/disable push notifications in mobile app'),
+('mobile.dark_mode_enabled', 'false', 'Enable/disable dark mode in mobile app'),
+('mobile.language', '"Indonesian"', 'Active language for mobile app interface')
 ON CONFLICT (key) DO NOTHING;
 -- +goose StatementEnd
 

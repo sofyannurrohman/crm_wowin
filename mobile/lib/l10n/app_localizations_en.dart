@@ -206,4 +206,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get or => 'OR';
+
+  @override
+  String get loading => 'Loading...';
 }

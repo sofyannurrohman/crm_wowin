@@ -65,5 +65,6 @@
   "alreadyHaveAccount": "Sudah punya akun?",
   "agreeTermsError": "Anda harus menyetujui syarat dan ketentuan",
   "invalidEmail": "Format email tidak valid",
-  "or": "ATAU"
+  "or": "ATAU",
+  "loading": "Memuat..."
 }

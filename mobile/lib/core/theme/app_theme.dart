@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 class AppTheme {
+  // Animation Constants
+  static const Duration animationDurationFast = Duration(milliseconds: 200);
+  static const Duration animationDurationMedium = Duration(milliseconds: 400);
+  static const Duration animationDurationSlow = Duration(milliseconds: 600);
+  
+  static const Curve animationCurveDefault = Curves.easeOutCubic;
+  static const Curve animationCurveSmooth = Curves.easeInOutQuart;
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,

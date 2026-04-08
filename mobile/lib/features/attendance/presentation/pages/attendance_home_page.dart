@@ -18,6 +18,9 @@ import '../bloc/attendance_state.dart';
 import '../../../visits/presentation/bloc/visit_bloc.dart';
 import '../../../visits/presentation/bloc/visit_event.dart';
 import '../../../../core/widgets/app_sidebar.dart';
+import '../../../../core/services/face_detector_service.dart';
+import '../../../../core/widgets/face_validation_overlay.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart' as ml;
 
 class AttendanceHomePage extends StatefulWidget {
   const AttendanceHomePage({super.key});
@@ -44,6 +47,10 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
   List<CameraDescription> _cameras = [];
+  
+  final FaceDetectorService _faceDetectorService = FaceDetectorService();
+  FaceValidationStatus _faceStatus = FaceValidationStatus.none;
+  bool _isProcessingFrame = false;
 
   @override
   void initState() {
@@ -106,9 +113,81 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
         setState(() {
           _isCameraInitialized = true;
         });
+        if (!kIsWeb) _startImageStream();
       }
     } catch (e) {
       debugPrint('Camera error: $e');
+    }
+  }
+
+  void _startImageStream() {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+
+    if (kIsWeb) return;
+    _cameraController!.startImageStream((image) async {
+      if (_isProcessingFrame || _imagePath != null || !mounted) return;
+
+      _isProcessingFrame = true;
+      try {
+        final inputImage = _faceDetectorService.inputImageFromCameraImage(
+          image,
+          _cameraController!.description,
+        );
+
+        if (inputImage != null) {
+          final faces = await _faceDetectorService.detectFaces(inputImage);
+          _validateFaces(faces);
+        }
+      } catch (e) {
+        debugPrint('Frame processing error: $e');
+      } finally {
+        _isProcessingFrame = false;
+      }
+    });
+  }
+
+  void _validateFaces(List<ml.Face> faces) {
+    if (!mounted) return;
+
+    FaceValidationStatus newStatus;
+    if (faces.isEmpty) {
+      newStatus = FaceValidationStatus.notDetected;
+    } else if (faces.length > 1) {
+      newStatus = FaceValidationStatus.multipleFaces;
+    } else {
+      final face = faces.first;
+      
+      // Basic "unclear" checks:
+      // 1. Check if looking relatively straight (Euler X/Y/Z)
+      final bool isLookingStraight = (face.headEulerAngleY! < 20 && face.headEulerAngleY! > -20) &&
+                                     (face.headEulerAngleZ! < 15 && face.headEulerAngleZ! > -15);
+      
+      // 2. Check eyes open probability if available
+      final bool eyesOpen = (face.leftEyeOpenProbability ?? 1.0) > 0.4 &&
+                            (face.rightEyeOpenProbability ?? 1.0) > 0.4;
+
+      if (!isLookingStraight) {
+        newStatus = FaceValidationStatus.lookStraight;
+      } else if (!eyesOpen) {
+        newStatus = FaceValidationStatus.eyesClosed;
+      } else {
+        // Check face size relative to frame (rough proximity check)
+        // Camera medium is usually 720x480 or similar.
+        final faceWidth = face.boundingBox.width;
+        if (faceWidth < 100) {
+          newStatus = FaceValidationStatus.tooFar;
+        } else if (faceWidth > 400) {
+          newStatus = FaceValidationStatus.tooClose;
+        } else {
+          newStatus = FaceValidationStatus.valid;
+        }
+      }
+    }
+
+    if (_faceStatus != newStatus) {
+      setState(() {
+        _faceStatus = newStatus;
+      });
     }
   }
 
@@ -140,12 +219,22 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
       return;
     }
 
+    if (_imagePath == null && _faceStatus != FaceValidationStatus.valid) {
+       ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wajah tidak jelas. Cari posisi atau cahaya lebih baik di depan toko.')),
+      );
+      return;
+    }
+
     if (_cameraController!.value.isTakingPicture) {
       debugPrint('Take photo error: Camera is already taking picture');
       return;
     }
 
     try {
+      // Stop image stream during capture
+      await _cameraController!.stopImageStream();
+      
       final image = await _cameraController!.takePicture();
       setState(() {
         _imagePath = image.path;
@@ -155,6 +244,8 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
       });
     } catch (e) {
       debugPrint('Error taking photo: $e');
+      // Restart stream on error if needed
+      _startImageStream();
     }
   }
 
@@ -165,6 +256,7 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
     _isCameraInitialized = false;
     _cameraController?.dispose();
     _cameraController = null;
+    _faceDetectorService.dispose();
     super.dispose();
   }
 
@@ -324,7 +416,15 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
                         },
                       )
                   else if (_isCameraInitialized && _cameraController != null && _cameraController!.value.isInitialized)
-                    CameraPreview(_cameraController!)
+                    Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CameraPreview(_cameraController!),
+                        Center(
+                          child: FaceValidationOverlay(status: _faceStatus),
+                        ),
+                      ],
+                    )
                   else
                     const Center(
                       child: CircularProgressIndicator(color: _orange),
@@ -369,9 +469,11 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
                       right: 10,
                       child: IconButton(
                         icon: const Icon(LucideIcons.refreshCw, color: Colors.white),
-                        onPressed: () => setState(() {
+                      onPressed: () => setState(() {
                           _imageFile = null;
                           _imagePath = null;
+                          _faceStatus = FaceValidationStatus.none;
+                          _startImageStream();
                         }),
                       ),
                     ),

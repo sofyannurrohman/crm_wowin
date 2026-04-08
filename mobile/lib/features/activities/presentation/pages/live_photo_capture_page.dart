@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../../../core/services/face_detector_service.dart';
+import '../../../../core/widgets/face_validation_overlay.dart';
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart' as ml;
 
 class LivePhotoCapturePage extends StatefulWidget {
   const LivePhotoCapturePage({super.key});
@@ -18,6 +21,10 @@ class _LivePhotoCapturePageState extends State<LivePhotoCapturePage> {
 
   String? _selfieBase64;
   String? _storefrontBase64;
+
+  final FaceDetectorService _faceDetectorService = FaceDetectorService();
+  FaceValidationStatus _faceStatus = FaceValidationStatus.none;
+  bool _isProcessingFrame = false;
 
   @override
   void initState() {
@@ -49,19 +56,98 @@ class _LivePhotoCapturePageState extends State<LivePhotoCapturePage> {
       setState(() {
         _isInit = true;
       });
+      if (direction == CameraLensDirection.front) {
+        _startImageStream();
+      }
+    }
+  }
+
+  void _startImageStream() {
+    if (_controller == null || !_controller!.value.isInitialized) return;
+
+    _controller!.startImageStream((image) async {
+      if (_isProcessingFrame || _step != 1 || !mounted) return;
+
+      _isProcessingFrame = true;
+      try {
+        final inputImage = _faceDetectorService.inputImageFromCameraImage(
+          image,
+          _controller!.description,
+        );
+
+        if (inputImage != null) {
+          final faces = await _faceDetectorService.detectFaces(inputImage);
+          _validateFaces(faces);
+        }
+      } catch (e) {
+        debugPrint('Frame processing error: $e');
+      } finally {
+        _isProcessingFrame = false;
+      }
+    });
+  }
+
+  void _validateFaces(List<ml.Face> faces) {
+    if (!mounted) return;
+
+    FaceValidationStatus newStatus;
+    if (faces.isEmpty) {
+      newStatus = FaceValidationStatus.notDetected;
+    } else if (faces.length > 1) {
+      newStatus = FaceValidationStatus.multipleFaces;
+    } else {
+      final face = faces.first;
+      
+      final bool isLookingStraight = (face.headEulerAngleY! < 20 && face.headEulerAngleY! > -20) &&
+                                     (face.headEulerAngleZ! < 15 && face.headEulerAngleZ! > -15);
+      
+      final bool eyesOpen = (face.leftEyeOpenProbability ?? 1.0) > 0.4 &&
+                            (face.rightEyeOpenProbability ?? 1.0) > 0.4;
+
+      if (!isLookingStraight) {
+        newStatus = FaceValidationStatus.lookStraight;
+      } else if (!eyesOpen) {
+        newStatus = FaceValidationStatus.eyesClosed;
+      } else {
+        final faceWidth = face.boundingBox.width;
+        if (faceWidth < 120) {
+          newStatus = FaceValidationStatus.tooFar;
+        } else if (faceWidth > 380) {
+          newStatus = FaceValidationStatus.tooClose;
+        } else {
+          newStatus = FaceValidationStatus.valid;
+        }
+      }
+    }
+
+    if (_faceStatus != newStatus) {
+      setState(() {
+        _faceStatus = newStatus;
+      });
     }
   }
 
   @override
   void dispose() {
     _controller?.dispose();
+    _faceDetectorService.dispose();
     super.dispose();
   }
 
   Future<void> _takePhoto() async {
     if (_controller == null || !_controller!.value.isInitialized) return;
 
+    if (_step == 1 && _faceStatus != FaceValidationStatus.valid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wajah tidak jelas. Cari posisi atau cahaya lebih baik di depan toko.')),
+      );
+      return;
+    }
+
     try {
+      if (_step == 1) {
+        await _controller!.stopImageStream();
+      }
       final image = await _controller!.takePicture();
       final bytes = await image.readAsBytes();
       final base64String = base64Encode(bytes);
@@ -103,7 +189,16 @@ class _LivePhotoCapturePageState extends State<LivePhotoCapturePage> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: CameraPreview(_controller!),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CameraPreview(_controller!),
+                if (_step == 1)
+                  Center(
+                    child: FaceValidationOverlay(status: _faceStatus),
+                  ),
+              ],
+            ),
           ),
           Positioned(
             bottom: 40,

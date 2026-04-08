@@ -23,6 +23,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../tasks/presentation/bloc/task_bloc.dart';
 import '../../../tasks/presentation/bloc/task_state.dart';
+import '../../../../core/utils/animation_extensions.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -214,9 +215,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     customerId: visitState.customerId ?? '',
                     customerName: visitState.customerName ?? 'Pelanggan',
                     startTime: visitState.checkInTime ?? DateTime.now(),
-                  )
+                  ).animateEntrance(delay: const Duration(milliseconds: 100))
                 else if (d.nextStop != null)
-                  NextVisitCard(nextStop: d.nextStop!),
+                  NextVisitCard(nextStop: d.nextStop!).animateEntrance(delay: const Duration(milliseconds: 100)),
               ],
             );
           },
@@ -232,7 +233,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 value: '${d.visitsToday}',
                 badge: '+2 today',
                 badgeColor: const Color(0xFF10B981),
-              ),
+              ).animateEntrance(delay: const Duration(milliseconds: 200)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -242,7 +243,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 value: '${d.newLeads}',
                 badge: '+5 growth',
                 badgeColor: const Color(0xFF10B981),
-              ),
+              ).animateEntrance(delay: const Duration(milliseconds: 300)),
             ),
           ],
         ),
@@ -255,11 +256,11 @@ class _DashboardPageState extends State<DashboardPage> {
           d.targetMetPercentage,
           d.daysLeft,
           l10n,
-        ),
+        ).animateEntrance(delay: const Duration(milliseconds: 400)),
         const SizedBox(height: 24),
-        _buildHotDeals(d.hotDeals),
+        _buildHotDeals(d.hotDeals).animateEntrance(delay: const Duration(milliseconds: 500)),
         const SizedBox(height: 24),
-        _buildRecentActivitySection(d.recentActivities),
+        _buildRecentActivitySection(d.recentActivities).animateEntrance(delay: const Duration(milliseconds: 600)),
         const SizedBox(height: 24),
 
         // Today's Schedule section
@@ -475,8 +476,12 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     return Column(
-      children: recommendations.map((item) {
-        return _buildRecommendationItem(item, l10n);
+      children: recommendations.asMap().entries.map((entry) {
+        final index = entry.key;
+        final item = entry.value;
+        return _buildRecommendationItem(item, l10n).animateEntrance(
+          delay: Duration(milliseconds: 700 + (index * 100)),
+        );
       }).toList(),
     );
   }
