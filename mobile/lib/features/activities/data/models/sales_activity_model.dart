@@ -4,6 +4,26 @@ import '../../domain/entities/sales_activity.dart';
 part 'sales_activity_model.freezed.dart';
 part 'sales_activity_model.g.dart';
 
+class DateTimeUtcConverter implements JsonConverter<DateTime, String> {
+  const DateTimeUtcConverter();
+
+  @override
+  DateTime fromJson(String json) => DateTime.parse(json).toLocal();
+
+  @override
+  String toJson(DateTime date) => date.toUtc().toIso8601String();
+}
+
+class DateTimeUtcNullableConverter implements JsonConverter<DateTime?, String?> {
+  const DateTimeUtcNullableConverter();
+
+  @override
+  DateTime? fromJson(String? json) => json != null ? DateTime.parse(json).toLocal() : null;
+
+  @override
+  String? toJson(DateTime? date) => date?.toUtc().toIso8601String();
+}
+
 @freezed
 abstract class SalesActivityModel with _$SalesActivityModel {
   const SalesActivityModel._();
@@ -18,14 +38,18 @@ abstract class SalesActivityModel with _$SalesActivityModel {
     @JsonKey(name: 'task_destination_id') String? taskDestinationId,
     @JsonKey(name: 'activity_type') required String activityType,
     @JsonKey(name: 'description') required String notes,
-    @JsonKey(name: 'activity_at') required DateTime activityAt,
-    @JsonKey(name: 'created_at') DateTime? createdAt,
-    @JsonKey(name: 'updated_at') DateTime? updatedAt,
+    @DateTimeUtcConverter() @JsonKey(name: 'activity_at') required DateTime activityAt,
+    @DateTimeUtcNullableConverter() @JsonKey(name: 'created_at') DateTime? createdAt,
+    @DateTimeUtcNullableConverter() @JsonKey(name: 'updated_at') DateTime? updatedAt,
     double? latitude,
     double? longitude,
-    @JsonKey(name: 'check_in_time') DateTime? checkInTime,
-    @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-    @JsonKey(name: 'photo_base64') String? photoBase64,
+    @DateTimeUtcNullableConverter() @JsonKey(name: 'check_in_time') DateTime? checkInTime,
+    @DateTimeUtcNullableConverter() @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
+    @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+    @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+    double? distance,
+    @JsonKey(name: 'is_offline') @Default(false) bool isOffline,
+    String? address,
     String? outcome,
   }) = _SalesActivityModel;
 
@@ -50,7 +74,11 @@ abstract class SalesActivityModel with _$SalesActivityModel {
       longitude: entity.longitude,
       checkInTime: entity.checkInTime,
       checkOutTime: entity.checkOutTime,
-      photoBase64: entity.photoBase64,
+      selfiePhotoPath: entity.selfiePhotoPath,
+      placePhotoPath: entity.placePhotoPath,
+      distance: entity.distance,
+      isOffline: entity.isOffline,
+      address: entity.address,
       outcome: entity.outcome,
     );
   }
@@ -73,7 +101,11 @@ abstract class SalesActivityModel with _$SalesActivityModel {
       longitude: longitude,
       checkInTime: checkInTime,
       checkOutTime: checkOutTime,
-      photoBase64: photoBase64,
+      selfiePhotoPath: selfiePhotoPath,
+      placePhotoPath: placePhotoPath,
+      distance: distance,
+      isOffline: isOffline,
+      address: address,
       outcome: outcome,
     );
   }

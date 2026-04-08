@@ -5,6 +5,7 @@ import (
 	"crm_wowin_backend/internal/domain/dberrors"
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
+	"crm_wowin_backend/pkg/utils"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,7 +39,7 @@ func (u *dealUseCaseImpl) CreateDeal(ctx context.Context, d *models.Deal, creato
 	d.CreatedBy = &creatorID
 	
 	if d.Stage == "" {
-		d.Stage = models.DealStageProspecting
+		d.Stage = models.DealStageProspect
 	}
 	if d.Status == "" {
 		d.Status = models.DealStatusOpen
@@ -79,8 +80,7 @@ func (u *dealUseCaseImpl) UpdateDeal(ctx context.Context, d *models.Deal) (*mode
 
 	// Auto compute close states if switched directly bypassing board 
 	if d.Status != models.DealStatusOpen && existing.Status == models.DealStatusOpen {
-		now := time.Now()
-		d.ClosedAt = &now
+		d.ClosedAt = utils.ToFlexTimePtr(time.Now())
 	}
 
 	err = u.dealRepo.Update(ctx, d)
@@ -104,8 +104,7 @@ func (u *dealUseCaseImpl) ChangeDealStage(ctx context.Context, dealID uuid.UUID,
 		} else {
 			existing.Status = models.DealStatusLost
 		}
-		now := time.Now()
-		existing.ClosedAt = &now
+		existing.ClosedAt = utils.ToFlexTimePtr(time.Now())
 		
 		// Update the whole record to capture Status and ClosedAt
 		return u.dealRepo.Update(ctx, existing)
@@ -161,12 +160,54 @@ func (u *leadUseCaseImpl) ListLeads(ctx context.Context, filter repository.LeadF
 }
 
 func (u *leadUseCaseImpl) UpdateLead(ctx context.Context, l *models.Lead) (*models.Lead, error) {
-	_, err := u.leadRepo.GetByID(ctx, l.ID)
+	existing, err := u.leadRepo.GetByID(ctx, l.ID)
 	if err != nil {
 		return nil, err
 	}
-	err = u.leadRepo.Update(ctx, l)
-	return l, err
+
+	// PATCH/Partial Update Support: Only overwrite if fields are provided/non-zero
+	if l.Title != "" {
+		existing.Title = l.Title
+	}
+	if l.Name != "" {
+		existing.Name = l.Name
+	}
+	if l.Company != nil {
+		existing.Company = l.Company
+	}
+	if l.Email != nil {
+		existing.Email = l.Email
+	}
+	if l.Phone != nil {
+		existing.Phone = l.Phone
+	}
+	if l.Source != "" {
+		existing.Source = l.Source
+	}
+	if l.Status != "" {
+		existing.Status = l.Status
+	}
+	if l.AssignedTo != nil {
+		existing.AssignedTo = l.AssignedTo
+	}
+	if l.EstimatedValue != nil {
+		existing.EstimatedValue = l.EstimatedValue
+	}
+	if len(l.PotentialProducts) > 0 {
+		existing.PotentialProducts = l.PotentialProducts
+	}
+	if l.Notes != nil {
+		existing.Notes = l.Notes
+	}
+	if l.Latitude != nil {
+		existing.Latitude = l.Latitude
+	}
+	if l.Longitude != nil {
+		existing.Longitude = l.Longitude
+	}
+
+	err = u.leadRepo.Update(ctx, existing)
+	return existing, err
 }
 
 func (u *leadUseCaseImpl) DeleteLead(ctx context.Context, id uuid.UUID) error {
@@ -190,9 +231,30 @@ func (u *leadUseCaseImpl) ConvertLeadToCustomer(ctx context.Context, leadID uuid
 		customerName = *lead.Company
 	}
 
+	// Map lead.Company text to CustomerType
+	customerType := models.TypeCompany
+	if lead.Company != nil {
+		switch *lead.Company {
+		case "Warung Makan":
+			customerType = models.TypeWarung
+		case "Toko Kelontong":
+			customerType = models.TypeToko
+		case "Retail / Minimarket":
+			customerType = models.TypeRetail
+		case "Agen / Distributor":
+			customerType = models.TypeAgen
+		case "Restoran":
+			customerType = models.TypeRestoran
+		case "Cafe":
+			customerType = models.TypeCafe
+		case "Lainnya":
+			customerType = models.TypeLainnya
+		}
+	}
+
 	// Morphing entity
 	customer := &models.Customer{
-		Type:        models.TypeCompany,
+		Type:        customerType,
 		Name:        customerName,
 		CompanyName: lead.Company,
 		Email:       lead.Email,
@@ -200,6 +262,8 @@ func (u *leadUseCaseImpl) ConvertLeadToCustomer(ctx context.Context, leadID uuid
 		Status:      models.CustomerStatusActive,
 		AssignedTo:  lead.AssignedTo, // inherits assignment
 		CreatedBy:   &operatorID,
+		Latitude:    lead.Latitude,
+		Longitude:   lead.Longitude,
 	}
 
 	// We create the Customer via its own domain
@@ -211,8 +275,7 @@ func (u *leadUseCaseImpl) ConvertLeadToCustomer(ctx context.Context, leadID uuid
 	// Mark Lead as converted safely
 	lead.Status = models.LeadStatusQualified
 	lead.CustomerID = &customer.ID
-	now := time.Now()
-	lead.ConvertedAt = &now
+	lead.ConvertedAt = utils.ToFlexTimePtr(time.Now())
 	
 	_ = u.leadRepo.Update(ctx, lead)
 

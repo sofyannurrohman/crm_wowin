@@ -66,6 +66,7 @@ func SetupRouter(
 		leadGroup.GET("", leadHandler.ListLeads)
 		leadGroup.GET("/:id", leadHandler.GetLead)
 		leadGroup.PUT("/:id", leadHandler.UpdateLead)
+		leadGroup.PATCH("/:id", leadHandler.UpdateLead)
 		leadGroup.DELETE("/:id", leadHandler.DeleteLead)
 		leadGroup.POST("/:id/convert", leadHandler.ConvertLead)
 		

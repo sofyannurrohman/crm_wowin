@@ -173,14 +173,14 @@ func main() {
 	}
 	
 	userUC := usecase.NewUserUseCase(userRepo, jwtSecret, 24, 7) // 24hrs JWT, 7 days Refresh (or taken from Env later)
-	customerUC := usecase.NewCustomerUseCase(customerRepo)
+	customerUC := usecase.NewCustomerUseCase(customerRepo, dealRepo, visitRepo)
 	leadUC := usecase.NewLeadUseCase(leadRepo, customerRepo)
 	dealUC := usecase.NewDealUseCase(dealRepo, customerRepo)
 	productUC := usecase.NewProductUseCase(productRepo, dealItemRepo, dealRepo)
-	visitUC := usecase.NewVisitUseCase(visitRepo, customerRepo)
+	visitUC := usecase.NewVisitUseCase(visitRepo, customerRepo, taskRepo, salesActivityRepo, leadRepo)
 	trackingUC := usecase.NewTrackingUseCase(trackingRepo)
 	territoryUC := usecase.NewTerritoryUseCase(territoryRepo)
-	reportUC := usecase.NewReportUseCase(reportRepo, targetRepo)
+	reportUC := usecase.NewReportUseCase(reportRepo, targetRepo, taskRepo)
 	attendanceUC := usecase.NewAttendanceUseCase(attendanceRepo, territoryRepo)
 	notificationUC := usecase.NewNotificationUseCase(notificationRepo)
 	targetUC := usecase.NewTargetUseCase(targetRepo)

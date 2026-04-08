@@ -287,14 +287,14 @@ func (r *leadRepoImpl) Create(ctx context.Context, l *models.Lead) error {
 		INSERT INTO leads (
 			title, name, company, email, phone, source, status, 
 			assigned_to, estimated_value, potential_products, notes, 
-			latitude, longitude, created_by
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+			address, latitude, longitude, created_by
+		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
 		RETURNING id, created_at, updated_at
 	`
 	err := r.db.QueryRow(ctx, query,
 		l.Title, l.Name, l.Company, l.Email, l.Phone, l.Source, l.Status,
 		l.AssignedTo, l.EstimatedValue, l.PotentialProducts, l.Notes, 
-		l.Latitude, l.Longitude, l.CreatedBy,
+		l.Address, l.Latitude, l.Longitude, l.CreatedBy,
 	).Scan(&l.ID, &l.CreatedAt, &l.UpdatedAt)
 
 	return err
@@ -304,14 +304,14 @@ func (r *leadRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Lead,
 	query := `
 		SELECT id, title, name, company, email, phone, source, status, assigned_to, 
 		customer_id, estimated_value, potential_products, notes, 
-		latitude, longitude, converted_at, created_by, created_at, updated_at
+		address, latitude, longitude, converted_at, created_by, created_at, updated_at
 		FROM leads WHERE id = $1
 	`
 	var l models.Lead
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&l.ID, &l.Title, &l.Name, &l.Company, &l.Email, &l.Phone, &l.Source, &l.Status, &l.AssignedTo,
 		&l.CustomerID, &l.EstimatedValue, &l.PotentialProducts, &l.Notes, 
-		&l.Latitude, &l.Longitude, &l.ConvertedAt, &l.CreatedBy, &l.CreatedAt, &l.UpdatedAt,
+		&l.Address, &l.Latitude, &l.Longitude, &l.ConvertedAt, &l.CreatedBy, &l.CreatedAt, &l.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, dberrors.ErrNotFound
@@ -320,7 +320,7 @@ func (r *leadRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Lead,
 }
 
 func (r *leadRepoImpl) List(ctx context.Context, filter repository.LeadFilter) ([]*models.Lead, error) {
-	baseQuery := `SELECT id, title, name, company, email, phone, status, source, assigned_to, potential_products, latitude, longitude, created_at FROM leads WHERE 1=1 `
+	baseQuery := `SELECT id, title, name, company, email, phone, status, source, assigned_to, potential_products, address, latitude, longitude, created_at FROM leads WHERE 1=1 `
 	args := []interface{}{}
 	argCount := 1
 
@@ -351,7 +351,7 @@ func (r *leadRepoImpl) List(ctx context.Context, filter repository.LeadFilter) (
 	for rows.Next() {
 		var l models.Lead
 		err := rows.Scan(
-			&l.ID, &l.Title, &l.Name, &l.Company, &l.Email, &l.Phone, &l.Status, &l.Source, &l.AssignedTo, &l.PotentialProducts, &l.Latitude, &l.Longitude, &l.CreatedAt,
+			&l.ID, &l.Title, &l.Name, &l.Company, &l.Email, &l.Phone, &l.Status, &l.Source, &l.AssignedTo, &l.PotentialProducts, &l.Address, &l.Latitude, &l.Longitude, &l.CreatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -366,13 +366,13 @@ func (r *leadRepoImpl) Update(ctx context.Context, l *models.Lead) error {
 		UPDATE leads SET
 			title=$1, name=$2, company=$3, email=$4, phone=$5, source=$6, status=$7, 
 			assigned_to=$8, estimated_value=$9, potential_products=$10, notes=$11, 
-			latitude=$12, longitude=$13, updated_at=NOW()
-		WHERE id=$14 RETURNING updated_at
+			address=$12, latitude=$13, longitude=$14, updated_at=NOW()
+		WHERE id=$15 RETURNING updated_at
 	`
 	err := r.db.QueryRow(ctx, query,
 		l.Title, l.Name, l.Company, l.Email, l.Phone, l.Source, l.Status,
 		l.AssignedTo, l.EstimatedValue, l.PotentialProducts, l.Notes, 
-		l.Latitude, l.Longitude, l.ID,
+		l.Address, l.Latitude, l.Longitude, l.ID,
 	).Scan(&l.UpdatedAt)
 	
 	if errors.Is(err, pgx.ErrNoRows) {

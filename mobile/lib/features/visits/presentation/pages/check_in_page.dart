@@ -29,6 +29,7 @@ class CheckInPage extends StatefulWidget {
   final double? targetLng;
   final double targetRadiusMeters;
   final String? dealId;
+  final String? taskDestinationId;
 
   const CheckInPage({
     super.key,
@@ -39,6 +40,7 @@ class CheckInPage extends StatefulWidget {
     this.targetLng,
     this.targetRadiusMeters = 200.0,
     this.dealId,
+    this.taskDestinationId,
   });
 
   @override
@@ -297,6 +299,7 @@ class _CheckInPageState extends State<CheckInPage> {
         dealId: widget.dealId,
         overrideReason: _overrideReason,
         customerName: _selectedCustomer?.name,
+        taskDestinationId: widget.taskDestinationId,
       ),
     );
   }
@@ -338,7 +341,7 @@ class _CheckInPageState extends State<CheckInPage> {
       centerTitle: true,
       title: Column(
         children: [
-          const Text('Check-In Wizard', style: TextStyle(color: Color(0xFF111827), fontSize: 16, fontWeight: FontWeight.w800)),
+          const Text('Verifikasi Kedatangan', style: TextStyle(color: Color(0xFF111827), fontSize: 16, fontWeight: FontWeight.w800)),
           Text(_getStepTitle(), style: const TextStyle(color: _orange, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1)),
         ],
       ),
@@ -546,6 +549,25 @@ class _CheckInPageState extends State<CheckInPage> {
 
           const SizedBox(height: 16),
 
+          if (widget.dealId != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(LucideIcons.briefcase, size: 14, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text('KUNJUNGAN UNTUK DEAL', style: TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          
           Text(_selectedCustomer?.name ?? 'Unknown', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           Row(
@@ -719,13 +741,11 @@ class _CheckInPageState extends State<CheckInPage> {
             ],
           ),
         ),
-
-        // Selfie is mandatory, no Skip button here
       ],
     );
   }
 
-  // ── STEP 4: Summary & Submit ───────────────────────────
+  // ── STEP 4: Summary & Submit
   Widget _buildStepSummary() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -808,7 +828,7 @@ class _CheckInPageState extends State<CheckInPage> {
                 ),
                 child: isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('SUBMIT CHECK-IN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                    : const Text('KONFIRMASI KEDATANGAN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
               );
             },
           ),

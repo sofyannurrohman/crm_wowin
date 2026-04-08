@@ -17,7 +17,7 @@ mixin _$Lead {
   String get id;
   String get title;
   String get name;
-  @JsonKey(name: 'company_name')
+  @JsonKey(name: 'company')
   String? get company;
   String? get email;
   String? get phone;
@@ -32,6 +32,7 @@ mixin _$Lead {
   String? get notes;
   @JsonKey(name: 'converted_at')
   DateTime? get convertedAt;
+  String? get address;
   double? get latitude;
   double? get longitude;
 
@@ -67,6 +68,7 @@ mixin _$Lead {
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.convertedAt, convertedAt) ||
                 other.convertedAt == convertedAt) &&
+            (identical(other.address, address) || other.address == address) &&
             (identical(other.latitude, latitude) ||
                 other.latitude == latitude) &&
             (identical(other.longitude, longitude) ||
@@ -90,12 +92,13 @@ mixin _$Lead {
       const DeepCollectionEquality().hash(potentialProducts),
       notes,
       convertedAt,
+      address,
       latitude,
       longitude);
 
   @override
   String toString() {
-    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt, latitude: $latitude, longitude: $longitude)';
+    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt, address: $address, latitude: $latitude, longitude: $longitude)';
   }
 }
 
@@ -108,7 +111,7 @@ abstract mixin class $LeadCopyWith<$Res> {
       {String id,
       String title,
       String name,
-      @JsonKey(name: 'company_name') String? company,
+      @JsonKey(name: 'company') String? company,
       String? email,
       String? phone,
       String source,
@@ -118,6 +121,7 @@ abstract mixin class $LeadCopyWith<$Res> {
       @JsonKey(name: 'potential_products') List<String>? potentialProducts,
       String? notes,
       @JsonKey(name: 'converted_at') DateTime? convertedAt,
+      String? address,
       double? latitude,
       double? longitude});
 }
@@ -147,6 +151,7 @@ class _$LeadCopyWithImpl<$Res> implements $LeadCopyWith<$Res> {
     Object? potentialProducts = freezed,
     Object? notes = freezed,
     Object? convertedAt = freezed,
+    Object? address = freezed,
     Object? latitude = freezed,
     Object? longitude = freezed,
   }) {
@@ -203,6 +208,10 @@ class _$LeadCopyWithImpl<$Res> implements $LeadCopyWith<$Res> {
           ? _self.convertedAt
           : convertedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      address: freezed == address
+          ? _self.address
+          : address // ignore: cast_nullable_to_non_nullable
+              as String?,
       latitude: freezed == latitude
           ? _self.latitude
           : latitude // ignore: cast_nullable_to_non_nullable
@@ -312,7 +321,7 @@ extension LeadPatterns on Lead {
             String id,
             String title,
             String name,
-            @JsonKey(name: 'company_name') String? company,
+            @JsonKey(name: 'company') String? company,
             String? email,
             String? phone,
             String source,
@@ -323,6 +332,7 @@ extension LeadPatterns on Lead {
             List<String>? potentialProducts,
             String? notes,
             @JsonKey(name: 'converted_at') DateTime? convertedAt,
+            String? address,
             double? latitude,
             double? longitude)?
         $default, {
@@ -345,6 +355,7 @@ extension LeadPatterns on Lead {
             _that.potentialProducts,
             _that.notes,
             _that.convertedAt,
+            _that.address,
             _that.latitude,
             _that.longitude);
       case _:
@@ -371,7 +382,7 @@ extension LeadPatterns on Lead {
             String id,
             String title,
             String name,
-            @JsonKey(name: 'company_name') String? company,
+            @JsonKey(name: 'company') String? company,
             String? email,
             String? phone,
             String source,
@@ -382,6 +393,7 @@ extension LeadPatterns on Lead {
             List<String>? potentialProducts,
             String? notes,
             @JsonKey(name: 'converted_at') DateTime? convertedAt,
+            String? address,
             double? latitude,
             double? longitude)
         $default,
@@ -403,6 +415,7 @@ extension LeadPatterns on Lead {
             _that.potentialProducts,
             _that.notes,
             _that.convertedAt,
+            _that.address,
             _that.latitude,
             _that.longitude);
       case _:
@@ -428,7 +441,7 @@ extension LeadPatterns on Lead {
             String id,
             String title,
             String name,
-            @JsonKey(name: 'company_name') String? company,
+            @JsonKey(name: 'company') String? company,
             String? email,
             String? phone,
             String source,
@@ -439,6 +452,7 @@ extension LeadPatterns on Lead {
             List<String>? potentialProducts,
             String? notes,
             @JsonKey(name: 'converted_at') DateTime? convertedAt,
+            String? address,
             double? latitude,
             double? longitude)?
         $default,
@@ -460,6 +474,7 @@ extension LeadPatterns on Lead {
             _that.potentialProducts,
             _that.notes,
             _that.convertedAt,
+            _that.address,
             _that.latitude,
             _that.longitude);
       case _:
@@ -475,7 +490,7 @@ class _Lead implements Lead {
       {required this.id,
       required this.title,
       required this.name,
-      @JsonKey(name: 'company_name') this.company,
+      @JsonKey(name: 'company') this.company,
       this.email,
       this.phone,
       required this.source,
@@ -486,6 +501,7 @@ class _Lead implements Lead {
       final List<String>? potentialProducts,
       this.notes,
       @JsonKey(name: 'converted_at') this.convertedAt,
+      this.address,
       this.latitude,
       this.longitude})
       : _potentialProducts = potentialProducts;
@@ -498,7 +514,7 @@ class _Lead implements Lead {
   @override
   final String name;
   @override
-  @JsonKey(name: 'company_name')
+  @JsonKey(name: 'company')
   final String? company;
   @override
   final String? email;
@@ -531,6 +547,8 @@ class _Lead implements Lead {
   @override
   @JsonKey(name: 'converted_at')
   final DateTime? convertedAt;
+  @override
+  final String? address;
   @override
   final double? latitude;
   @override
@@ -573,6 +591,7 @@ class _Lead implements Lead {
             (identical(other.notes, notes) || other.notes == notes) &&
             (identical(other.convertedAt, convertedAt) ||
                 other.convertedAt == convertedAt) &&
+            (identical(other.address, address) || other.address == address) &&
             (identical(other.latitude, latitude) ||
                 other.latitude == latitude) &&
             (identical(other.longitude, longitude) ||
@@ -596,12 +615,13 @@ class _Lead implements Lead {
       const DeepCollectionEquality().hash(_potentialProducts),
       notes,
       convertedAt,
+      address,
       latitude,
       longitude);
 
   @override
   String toString() {
-    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt, latitude: $latitude, longitude: $longitude)';
+    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt, address: $address, latitude: $latitude, longitude: $longitude)';
   }
 }
 
@@ -615,7 +635,7 @@ abstract mixin class _$LeadCopyWith<$Res> implements $LeadCopyWith<$Res> {
       {String id,
       String title,
       String name,
-      @JsonKey(name: 'company_name') String? company,
+      @JsonKey(name: 'company') String? company,
       String? email,
       String? phone,
       String source,
@@ -625,6 +645,7 @@ abstract mixin class _$LeadCopyWith<$Res> implements $LeadCopyWith<$Res> {
       @JsonKey(name: 'potential_products') List<String>? potentialProducts,
       String? notes,
       @JsonKey(name: 'converted_at') DateTime? convertedAt,
+      String? address,
       double? latitude,
       double? longitude});
 }
@@ -654,6 +675,7 @@ class __$LeadCopyWithImpl<$Res> implements _$LeadCopyWith<$Res> {
     Object? potentialProducts = freezed,
     Object? notes = freezed,
     Object? convertedAt = freezed,
+    Object? address = freezed,
     Object? latitude = freezed,
     Object? longitude = freezed,
   }) {
@@ -710,6 +732,10 @@ class __$LeadCopyWithImpl<$Res> implements _$LeadCopyWith<$Res> {
           ? _self.convertedAt
           : convertedAt // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      address: freezed == address
+          ? _self.address
+          : address // ignore: cast_nullable_to_non_nullable
+              as String?,
       latitude: freezed == latitude
           ? _self.latitude
           : latitude // ignore: cast_nullable_to_non_nullable

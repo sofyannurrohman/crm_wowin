@@ -48,9 +48,9 @@ func hashPassword(password string) string {
 func seedUsers(ctx context.Context, db *pgxpool.Pool) uuid.UUID {
 	log.Println("  -> Seeding Users...")
 	
-	adminID := uuid.New()
-	salesID1 := uuid.New()
-	salesID2 := uuid.New()
+	adminID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	salesID1 := uuid.MustParse("550e8400-e29b-41d4-a716-446655440001")
+	salesID2 := uuid.MustParse("550e8400-e29b-41d4-a716-446655440002")
 
 	passHash := hashPassword("password123")
 
@@ -68,10 +68,17 @@ func seedUsers(ctx context.Context, db *pgxpool.Pool) uuid.UUID {
 
 	for _, u := range users {
 		query := `INSERT INTO users (id, name, email, password_hash, role, employee_code, status) 
-				  VALUES ($1, $2, $3, $4, $5, $6, 'active') ON CONFLICT (email) DO NOTHING`
-		_, err := db.Exec(ctx, query, u.id, u.name, u.email, passHash, u.role, u.code)
+				  VALUES ($1, $2, $3, $4, $5, $6, 'active') 
+				  ON CONFLICT (email) DO UPDATE SET updated_at = NOW() 
+				  RETURNING id`
+		var actualID uuid.UUID
+		err := db.QueryRow(ctx, query, u.id, u.name, u.email, passHash, u.role, u.code).Scan(&actualID)
 		if err != nil {
 			log.Printf("    warning: failed to seed user %s: %v", u.email, err)
+			continue
+		}
+		if u.email == "admin@wowin.com" {
+			adminID = actualID
 		}
 	}
 
@@ -85,9 +92,9 @@ func seedProducts(ctx context.Context, db *pgxpool.Pool) {
 		id   uuid.UUID
 		name string
 	}{
-		{uuid.New(), "Electronics"},
-		{uuid.New(), "Office Supplies"},
-		{uuid.New(), "Software Services"},
+		{uuid.MustParse("550e8400-e29b-41d4-a716-446655440020"), "Electronics"},
+		{uuid.MustParse("550e8400-e29b-41d4-a716-446655440021"), "Office Supplies"},
+		{uuid.MustParse("550e8400-e29b-41d4-a716-446655440022"), "Software Services"},
 	}
 
 	for _, cat := range categories {
@@ -114,13 +121,15 @@ func seedProducts(ctx context.Context, db *pgxpool.Pool) {
 func seedTerritories(ctx context.Context, db *pgxpool.Pool, adminID uuid.UUID) uuid.UUID {
 	log.Println("  -> Seeding Territories...")
 
-	tID := uuid.New()
+	tID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440010")
 	// A simple polygon around Jakarta (roughly)
 	geom := `{"type":"Polygon","coordinates":[[[106.7,-6.1],[106.9,-6.1],[106.9,-6.3],[106.7,-6.3],[106.7,-6.1]]]}`
 	
 	query := `INSERT INTO territories (id, name, description, geom, color, created_by) 
-			  VALUES ($1, $2, $3, ST_GeomFromGeoJSON($4), $5, $6) ON CONFLICT DO NOTHING`
-	_, err := db.Exec(ctx, query, tID, "Jakarta Central", "Core Jakarta business area", geom, "#FF5733", adminID)
+			  VALUES ($1, $2, $3, ST_GeomFromGeoJSON($4), $5, $6) 
+			  ON CONFLICT (id) DO UPDATE SET updated_at = NOW()
+			  RETURNING id`
+	err := db.QueryRow(ctx, query, tID, "Jakarta Central", "Core Jakarta business area", geom, "#FF5733", adminID).Scan(&tID)
 	if err != nil {
 		log.Printf("    warning: failed to seed territory: %v", err)
 	}
@@ -135,20 +144,23 @@ func seedCustomers(ctx context.Context, db *pgxpool.Pool, adminID, territoryID u
 		name    string
 		company string
 		email   string
+		typeStr string
 		lat     float64
 		lon     float64
 	}{
-		{"Budi Santoso", "PT Maju Terus", "budi@maju.com", -6.2, 106.8},
-		{"Siti Aminah", "Catering Berkah", "siti@berkah.com", -6.21, 106.81},
+		{"Budi Santoso", "Warung Makan Indah", "budi@warungindah.com", "warung", -6.2, 106.8},
+		{"Siti Aminah", "Catering Berkah", "siti@berkah.com", "company", -6.21, 106.81},
+		{"Andi Wijaya", "Cafe Kopi Senja", "andi@kopisenja.com", "cafe", -6.22, 106.82},
+		{"Rina Kartika", "Toko Kelontong Rina", "rina@tokorina.com", "toko", -6.18, 106.85},
 	}
 
 	for _, c := range customers {
 		cID := uuid.New()
 		query := `INSERT INTO customers (id, name, company_name, email, type, status, location, territory_id, created_by) 
-				  VALUES ($1, $2, $3, $4, 'company', 'active', ST_SetSRID(ST_MakePoint($5, $6), 4326), $7, $8) ON CONFLICT DO NOTHING`
-		_, err := db.Exec(ctx, query, cID, c.name, c.company, c.email, c.lon, c.lat, territoryID, adminID)
+				  VALUES ($1, $2, $3, $4, $5, 'active', ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9) ON CONFLICT DO NOTHING`
+		_, err := db.Exec(ctx, query, cID, c.name, c.company, c.email, c.typeStr, c.lon, c.lat, territoryID, adminID)
 		if err != nil {
-			log.Printf("    warning: failed to seed customer %s: %v", c.name, err)
+			log.Printf("    warning: failed to seed customer %s (%s): %v", c.name, c.typeStr, err)
 			continue
 		}
 

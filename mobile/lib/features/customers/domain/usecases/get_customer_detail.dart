@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/customer.dart';
+import '../entities/customer_detail_response.dart';
 import '../repositories/customer_repository.dart';
 
 class GetCustomerDetail {
@@ -8,7 +9,7 @@ class GetCustomerDetail {
 
   GetCustomerDetail(this.repository);
 
-  Future<Either<Failure, Customer>> call(String id) async {
+  Future<Either<Failure, CustomerDetailResponse>> call(String id) async {
     return await repository.getCustomerDetail(id);
   }
 }

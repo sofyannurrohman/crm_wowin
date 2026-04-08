@@ -2,8 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'task_destination.dart';
 import 'warehouse.dart';
 
-enum TaskPriority { LOW, MEDIUM, HIGH }
-enum TaskStatus { TODO, IN_PROGRESS, COMPLETED, CANCELLED }
+enum TaskStatus { pending, in_progress, done, cancelled }
 
 class Task extends Equatable {
   final String id;
@@ -15,7 +14,6 @@ class Task extends Equatable {
   final String title;
   final String description;
   final List<TaskDestination> destinations;
-  final TaskPriority priority;
   final TaskStatus status;
   final DateTime? dueDate;
   final DateTime? completedAt;
@@ -32,7 +30,6 @@ class Task extends Equatable {
     required this.title,
     required this.description,
     this.destinations = const [],
-    required this.priority,
     required this.status,
     this.dueDate,
     this.completedAt,
@@ -51,7 +48,6 @@ class Task extends Equatable {
         title,
         description,
         destinations,
-        priority,
         status,
         dueDate,
         completedAt,

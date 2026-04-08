@@ -88,13 +88,13 @@ class _AddSalesActivityPageState extends State<AddSalesActivityPage> {
     
     // Existing visit data
     if (activity != null) {
-      if (activity.photoBase64 != null) {
-        _selfieBase64 = activity.photoBase64;
-        try { _selfieBytes = base64Decode(activity.photoBase64!); } catch(_) {}
+      if (activity.selfiePhotoPath != null) {
+        _selfieBase64 = activity.selfiePhotoPath;
+        try { _selfieBytes = base64Decode(activity.selfiePhotoPath!); } catch(_) {}
       }
-      if (activity.storefrontPhotoBase64 != null) {
-        _storefrontBase64 = activity.storefrontPhotoBase64;
-        try { _storefrontBytes = base64Decode(activity.storefrontPhotoBase64!); } catch(_) {}
+      if (activity.placePhotoPath != null) {
+        _storefrontBase64 = activity.placePhotoPath;
+        try { _storefrontBytes = base64Decode(activity.placePhotoPath!); } catch(_) {}
       }
       if (activity.latitude != null && activity.longitude != null) {
         _selectedLocation = LatLng(activity.latitude!, activity.longitude!);
@@ -349,8 +349,8 @@ class _AddSalesActivityPageState extends State<AddSalesActivityPage> {
         latitude: _selectedLocation?.latitude ?? widget.initialActivity?.latitude,
         longitude: _selectedLocation?.longitude ?? widget.initialActivity?.longitude,
         address: _address ?? widget.initialActivity?.address,
-        photoBase64: _selfieBase64,
-        storefrontPhotoBase64: _storefrontBase64,
+        selfiePhotoPath: _selfieBase64,
+        placePhotoPath: _storefrontBase64,
         checkInTime: _selectedType == 'visit' ? _checkInTime : null,
         checkOutTime: widget.initialActivity?.checkOutTime,
         activityAt: widget.initialActivity?.activityAt ?? DateTime.now(),

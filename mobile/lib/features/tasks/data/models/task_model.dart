@@ -13,7 +13,6 @@ class TaskModel extends Task {
     required super.title,
     required super.description,
     super.destinations,
-    required super.priority,
     required super.status,
     super.dueDate,
     super.completedAt,
@@ -34,13 +33,9 @@ class TaskModel extends Task {
       destinations: json['destinations'] != null 
           ? (json['destinations'] as List).map((e) => TaskDestinationModel.fromJson(e)).toList() 
           : [],
-      priority: TaskPriority.values.firstWhere(
-        (e) => e.name == (json['priority'] ?? 'MEDIUM'),
-        orElse: () => TaskPriority.MEDIUM,
-      ),
       status: TaskStatus.values.firstWhere(
-        (e) => e.name == (json['status'] ?? 'TODO'),
-        orElse: () => TaskStatus.TODO,
+        (e) => e.name == (json['status'] ?? 'pending'),
+        orElse: () => TaskStatus.pending,
       ),
       dueDate: json['due_date'] != null ? DateTime.tryParse(json['due_date']) : null,
       completedAt: json['completed_at'] != null ? DateTime.tryParse(json['completed_at']) : null,
@@ -63,10 +58,9 @@ class TaskModel extends Task {
       'title': title,
       'description': description,
       'destinations': destinations.map((e) => (e as TaskDestinationModel).toJson()).toList(),
-      'priority': priority.name,
       'status': status.name,
-      'due_date': dueDate?.toIso8601String(),
-      'completed_at': completedAt?.toIso8601String(),
+      'due_date': dueDate?.toUtc().toIso8601String(),
+      'completed_at': completedAt?.toUtc().toIso8601String(),
     };
   }
 }

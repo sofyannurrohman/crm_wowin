@@ -189,7 +189,7 @@ class _CheckOutSheetState extends State<CheckOutSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Check-Out Visit', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                        const Text('Laporan Kunjungan', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                         Text(widget.customerName, style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
                       ],
                     ),

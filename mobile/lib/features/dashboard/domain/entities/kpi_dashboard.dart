@@ -1,4 +1,5 @@
 import 'kpi_summary.dart';
+import '../../domain/entities/visit_recommendation.dart';
 import '../../../deals/domain/entities/deal.dart';
 import '../../../visits/domain/entities/visit_activity.dart';
 
@@ -28,4 +29,5 @@ class KpiDashboard {
   int get activeDeals => summary.activeDeals;
   double get totalSales => summary.totalSales;
   double get targetMetPercentage => summary.targetMetPercentage;
+  VisitRecommendation? get nextStop => summary.nextStop;
 }

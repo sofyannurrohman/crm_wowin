@@ -7,7 +7,20 @@ import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
 import '../../domain/entities/task.dart' as ent;
+import '../../domain/entities/task_destination.dart' as ent;
 import '../../domain/entities/warehouse.dart' as ent;
+import '../../../customers/domain/entities/customer.dart';
+import '../../../customers/presentation/bloc/customer_bloc.dart';
+import '../../../customers/presentation/bloc/customer_event.dart';
+import '../../../customers/presentation/bloc/customer_state.dart' as cust;
+import '../../../leads/domain/entities/lead.dart';
+import '../../../leads/presentation/bloc/lead_bloc.dart';
+import '../../../leads/presentation/bloc/lead_event.dart';
+import '../../../leads/presentation/bloc/lead_state.dart' as lead;
+import '../../../deals/presentation/bloc/deal_bloc.dart';
+import '../../../deals/presentation/bloc/deal_event.dart' as dl;
+import '../../../deals/presentation/bloc/deal_state.dart' as dl;
+import '../../../deals/domain/entities/deal.dart';
 
 class NewTaskPage extends StatefulWidget {
   const NewTaskPage({super.key});
@@ -16,8 +29,7 @@ class NewTaskPage extends StatefulWidget {
   State<NewTaskPage> createState() => _NewTaskPageState();
 }
 
-class _NewTaskPageState extends State<NewTaskPage> {
-  // changed orange -> new green #0D8549
+class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStateMixin {
   static const Color _orange = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
@@ -25,18 +37,78 @@ class _NewTaskPageState extends State<NewTaskPage> {
 
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
-  final _customerSearchController = TextEditingController();
+  final _searchController = TextEditingController();
+  late TabController _tabController;
   
-  ent.TaskPriority _selectedPriority = ent.TaskPriority.MEDIUM;
   DateTime? _selectedDate;
   String? _selectedWarehouseId;
   List<ent.Warehouse> _warehouses = [];
+  List<ent.TaskDestination> _destinations = [];
+  Map<String, List<Deal>> _customerDeals = {}; // Store fetched deals for destinations
   bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     context.read<TaskBloc>().add(const FetchWarehouses());
+    context.read<CustomerBloc>().add(const FetchCustomers());
+    context.read<LeadBloc>().add(const FetchLeads());
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _titleController.dispose();
+    _descController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _addDestination(dynamic target) {
+    final String taskId = 'temp-id'; // Will be set on submit
+    final bool alreadyAdded = _destinations.any((d) => 
+      (target is Customer && d.customerId == target.id) || 
+      (target is Lead && d.leadId == target.id)
+    );
+
+    if (alreadyAdded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tujuan sudah ada dalam daftar')),
+      );
+      return;
+    }
+
+    setState(() {
+      _destinations.add(ent.TaskDestination(
+        id: const Uuid().v4(),
+        taskId: taskId,
+        leadId: target is Lead ? target.id : null,
+        customerId: target is Customer ? target.id : null,
+        sequenceOrder: _destinations.length + 1,
+        status: ent.TaskStatus.pending,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        targetName: target is Lead ? target.name : (target as Customer).name,
+        targetAddress: target is Lead ? (target.address ?? '') : (target as Customer).address,
+        targetLatitude: target is Lead ? target.latitude : (target as Customer).latitude,
+        targetLongitude: target is Lead ? target.longitude : (target as Customer).longitude,
+      ));
+
+      if (target is Customer) {
+        context.read<DealBloc>().add(dl.FetchDeals(customerId: target.id));
+      }
+    });
+  }
+
+  void _removeDestination(int index) {
+    setState(() {
+      _destinations.removeAt(index);
+      // Re-index
+      for (int i = 0; i < _destinations.length; i++) {
+        _destinations[i] = _destinations[i].copyWith(sequenceOrder: i + 1);
+      }
+    });
   }
 
   void _submit() {
@@ -55,14 +127,32 @@ class _NewTaskPageState extends State<NewTaskPage> {
       return;
     }
 
+    if (_destinations.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Daftar tujuan tidak boleh kosong'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final taskId = const Uuid().v4();
     final newTask = ent.Task(
-      id: const Uuid().v4(),
-      salesId: 'CURRENT_USER_ID', // In real app, get from AuthBloc
+      id: taskId,
+      salesId: const Uuid().v4(), 
       warehouseId: _selectedWarehouseId,
       title: title,
       description: _descController.text.trim(),
-      priority: _selectedPriority,
-      status: ent.TaskStatus.TODO,
+      status: ent.TaskStatus.pending,
+      destinations: _destinations.map((d) => ent.TaskDestination(
+        id: d.id,
+        taskId: taskId,
+        leadId: d.leadId,
+        customerId: d.customerId,
+        dealId: d.dealId,
+        sequenceOrder: d.sequenceOrder,
+        status: d.status,
+        createdAt: d.createdAt,
+        updatedAt: d.updatedAt,
+      )).toList(),
       dueDate: _selectedDate,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -73,65 +163,83 @@ class _NewTaskPageState extends State<NewTaskPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<TaskBloc, TaskState>(
-      listener: (context, state) {
-        if (state is TaskLoading) {
-           setState(() => _isSubmitting = true);
-        } else if (state is WarehousesLoaded) {
-           setState(() {
-             _isSubmitting = false;
-             _warehouses = state.warehouses;
-             if (_warehouses.isNotEmpty && _selectedWarehouseId == null) {
-               _selectedWarehouseId = _warehouses.first.id;
-             }
-           });
-        } else if (state is TaskOperationSuccess) {
-           setState(() => _isSubmitting = false);
-           ScaffoldMessenger.of(context).showSnackBar(
-             SnackBar(content: Text(state.message), backgroundColor: Colors.green),
-           );
-           context.pop();
-        } else if (state is TaskError) {
-           setState(() => _isSubmitting = false);
-           ScaffoldMessenger.of(context).showSnackBar(
-             SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-           );
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<TaskBloc, TaskState>(
+          listener: (context, state) {
+            if (state is TaskLoading) {
+               setState(() => _isSubmitting = true);
+            } else if (state is WarehousesLoaded) {
+               setState(() {
+                 _isSubmitting = false;
+                 _warehouses = state.warehouses;
+                 if (_warehouses.isNotEmpty && _selectedWarehouseId == null) {
+                   _selectedWarehouseId = _warehouses.first.id;
+                 }
+               });
+            } else if (state is TaskOperationSuccess) {
+               setState(() => _isSubmitting = false);
+               ScaffoldMessenger.of(context).showSnackBar(
+                 SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+               );
+               context.pop();
+            } else if (state is TaskError) {
+               setState(() => _isSubmitting = false);
+               ScaffoldMessenger.of(context).showSnackBar(
+                 SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+               );
+            }
+          },
+        ),
+        BlocListener<DealBloc, dl.DealState>(
+          listener: (context, state) {
+            if (state is dl.DealsLoaded) {
+               if (state.deals.isNotEmpty) {
+                 final cid = state.deals.first.customerId;
+                 if (cid.isNotEmpty) {
+                   setState(() {
+                     _customerDeals[cid] = state.deals;
+                   });
+                 }
+               }
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         backgroundColor: _bg,
         appBar: _buildAppBar(context),
         body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildLabel('Task Title'),
-            _buildTextField(_titleController, 'What needs to be done?', 1),
-            const SizedBox(height: 24),
-            
-            _buildLabel('Description'),
-            _buildTextField(_descController, 'Add more details about this task...', 4),
-            const SizedBox(height: 24),
-            
-            _buildLabel('Priority'),
-            _buildPriorityToggle(),
-            const SizedBox(height: 24),
-            
-            _buildLabel('Due Date'),
-            _buildDateField(),
-            const SizedBox(height: 24),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildLabel('Task Title / Trip Name'),
+              _buildTextField(_titleController, 'Contoh: Kunjungan Rutin Senin', 1),
+              const SizedBox(height: 24),
+              
+              _buildLabel('Description / Objective'),
+              _buildTextField(_descController, 'Catatan tambahan...', 3),
+              const SizedBox(height: 24),
+              
+              const SizedBox(height: 24),
+              
+              _buildLabel('Trip Date'),
+              _buildDateField(),
+              const SizedBox(height: 24),
 
-            _buildLabel('Starting Warehouse'),
-            _buildWarehouseDropdown(),
-            const SizedBox(height: 24),
-            
-            _buildLabel('Link to Customer'),
-            _buildCustomerSearch(),
-          ],
+              _buildLabel('Starting Warehouse'),
+              _buildWarehouseDropdown(),
+              const SizedBox(height: 24),
+              
+              _buildLabel('Destinations (${_destinations.length})'),
+              _buildDestinationList(),
+              const SizedBox(height: 12),
+              _buildAddDestinationAction(),
+            ],
+          ),
         ),
-      ),
-      bottomNavigationBar: _buildBottomAction(),
+        bottomNavigationBar: _buildBottomAction(),
       ),
     );
   }
@@ -147,12 +255,8 @@ class _NewTaskPageState extends State<NewTaskPage> {
       ),
       centerTitle: true,
       title: const Text(
-        'New Task',
-        style: TextStyle(
-          color: _textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
+        'New Visit Schedule',
+        style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
       ),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1.0),
@@ -166,11 +270,7 @@ class _NewTaskPageState extends State<NewTaskPage> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xFF374151),
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-        ),
+        style: const TextStyle(color: Color(0xFF374151), fontSize: 14, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -187,12 +287,11 @@ class _NewTaskPageState extends State<NewTaskPage> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          // light border from orange -> light green tint
-          borderSide: BorderSide(color: const Color(0xFFCFF1E0) /* light green accent */, width: 1),
+          borderSide: const BorderSide(color: Color(0xFFCFF1E0), width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: const Color(0xFFCFF1E0), width: 1),
+          borderSide: const BorderSide(color: Color(0xFFCFF1E0), width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -202,51 +301,6 @@ class _NewTaskPageState extends State<NewTaskPage> {
     );
   }
 
-  Widget _buildPriorityToggle() {
-    return Container(
-      decoration: BoxDecoration(
-        // soft pale orange -> soft pale green
-        color: const Color(0xFFF3FBF7),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.all(4),
-      child: Row(
-        children: [
-          _buildPriorityOption(ent.TaskPriority.LOW),
-          _buildPriorityOption(ent.TaskPriority.MEDIUM),
-          _buildPriorityOption(ent.TaskPriority.HIGH),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPriorityOption(ent.TaskPriority priority) {
-    final isSelected = _selectedPriority == priority;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedPriority = priority),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: isSelected ? [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
-            ] : null,
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            priority.name,
-            style: TextStyle(
-              color: isSelected ? _orange : const Color(0xFF4B5563),
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              fontSize: 15,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildDateField() {
     return GestureDetector(
@@ -257,32 +311,19 @@ class _NewTaskPageState extends State<NewTaskPage> {
           firstDate: DateTime.now(),
           lastDate: DateTime(2030),
         );
-        if (mounted && picked != null) {
-          setState(() {
-            _selectedDate = picked;
-          });
-        }
+        if (mounted && picked != null) setState(() => _selectedDate = picked);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFFED7AA), width: 1),
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFCFF1E0), width: 1)),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              _selectedDate != null 
-                ? '${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.year}'
-                : 'mm/dd/yyyy',
-              style: TextStyle(
-                color: _selectedDate == null ? _textSecondary : _textPrimary,
-                fontSize: 16,
-              ),
+              _selectedDate != null ? '${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.year}' : 'mm/dd/yyyy',
+              style: TextStyle(color: _selectedDate == null ? _textSecondary : _textPrimary, fontSize: 16),
             ),
-            Icon(LucideIcons.calendar, size: 20, color: const Color(0xFF9CA3AF)),
+            const Icon(LucideIcons.calendar, size: 20, color: Color(0xFF9CA3AF)),
           ],
         ),
       ),
@@ -292,11 +333,7 @@ class _NewTaskPageState extends State<NewTaskPage> {
   Widget _buildWarehouseDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFCFF1E0), width: 1),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFCFF1E0), width: 1)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedWarehouseId,
@@ -304,10 +341,7 @@ class _NewTaskPageState extends State<NewTaskPage> {
           icon: const Icon(LucideIcons.chevronDown, size: 20, color: _textSecondary),
           hint: const Text('Pilih Gudang', style: TextStyle(color: Color(0xFF9CA3AF))),
           items: _warehouses.map<DropdownMenuItem<String>>((w) {
-            return DropdownMenuItem<String>(
-              value: w.id,
-              child: Text(w.name, style: const TextStyle(color: _textPrimary, fontSize: 15)),
-            );
+            return DropdownMenuItem<String>(value: w.id, child: Text(w.name, style: const TextStyle(color: _textPrimary, fontSize: 15)));
           }).toList(),
           onChanged: (val) => setState(() => _selectedWarehouseId = val),
         ),
@@ -315,94 +349,265 @@ class _NewTaskPageState extends State<NewTaskPage> {
     );
   }
 
-  Widget _buildCustomerSearch() {
-    return Column(
-      children: [
-        TextField(
-          controller: _customerSearchController,
-          decoration: InputDecoration(
-            hintText: 'Cari Customer...',
-            hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 16),
-            suffixIcon: const Icon(LucideIcons.search, color: Color(0xFF9CA3AF), size: 20),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: const Color(0xFFCFF1E0), width: 1),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: const Color(0xFFCFF1E0), width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: _orange, width: 1.5),
-            ),
-          ),
+  Widget _buildDestinationList() {
+    if (_destinations.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200, style: BorderStyle.none)),
+        child: Column(
+          children: [
+            Icon(LucideIcons.mapPin, color: Colors.grey.shade300, size: 32),
+            const SizedBox(height: 8),
+            Text('Belum ada tujuan ditambahkan', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+          ],
         ),
-        const SizedBox(height: 12),
-        // Selected Customer Card Mockup
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF3FBF7),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFF3FBF7)),
-          ),
+      );
+    }
+
+    return Column(
+      children: List.generate(_destinations.length, (index) {
+        final dest = _destinations[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFCFF1E0))),
           child: Row(
             children: [
-               Container(
-                 width: 36,
-                 height: 36,
-                 alignment: Alignment.center,
-                 // pale accent -> pale green
-                 decoration: BoxDecoration(color: const Color(0xFFCFF1E0), shape: BoxShape.circle),
-                 child: const Text('JD', style: TextStyle(color: _orange, fontWeight: FontWeight.bold, fontSize: 13)),
-               ),
-               const SizedBox(width: 12),
-               Column(
-                 crossAxisAlignment: CrossAxisAlignment.start,
-                 children: [
-                   const Text('John Doe', style: TextStyle(color: _textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
-                   Text('Acme Corporation', style: TextStyle(color: _textSecondary.withOpacity(0.8), fontSize: 11)),
-                 ],
-               ),
+              CircleAvatar(backgroundColor: _orange.withOpacity(0.1), radius: 14, child: Text('${index + 1}', style: const TextStyle(color: _orange, fontSize: 12, fontWeight: FontWeight.bold))),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(dest.targetName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(dest.targetAddress ?? '', style: TextStyle(color: _textSecondary, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    if (dest.dealTitle != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(LucideIcons.briefcase, size: 12, color: Colors.blue),
+                          const SizedBox(width: 4),
+                          Text(dest.dealTitle!, style: const TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (dest.customerId != null)
+                IconButton(
+                  onPressed: () => _showDealSelectionSheet(index),
+                  icon: Icon(LucideIcons.link, color: dest.dealId != null ? Colors.blue : Colors.grey, size: 18),
+                ),
+              IconButton(onPressed: () => _removeDestination(index), icon: const Icon(LucideIcons.trash2, color: Colors.red, size: 18)),
             ],
           ),
-        )
-      ],
+        );
+      }),
+    );
+  }
+
+  Widget _buildAddDestinationAction() {
+    return ElevatedButton.icon(
+      onPressed: _showAddDestinationSheet,
+      icon: const Icon(LucideIcons.plus, size: 16),
+      label: const Text('Tambah Tujuan (Lead/Customer)'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: _orange,
+        side: const BorderSide(color: _orange),
+        minimumSize: const Size(double.infinity, 48),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  void _showAddDestinationSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) => Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Cari Lead/Customer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) {
+                    context.read<CustomerBloc>().add(FetchCustomers(query: val));
+                    context.read<LeadBloc>().add(FetchLeads(query: val));
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Nama atau alamat...',
+                    prefixIcon: const Icon(LucideIcons.search, size: 20),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TabBar(
+                controller: _tabController,
+                indicatorColor: _orange,
+                labelColor: _orange,
+                unselectedLabelColor: Colors.grey,
+                tabs: const [Tab(text: 'Customers'), Tab(text: 'Leads')],
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [_buildCustomerTab(scrollController), _buildLeadTab(scrollController)],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCustomerTab(ScrollController scrollController) {
+    return BlocBuilder<CustomerBloc, cust.CustomerState>(
+      builder: (context, state) {
+        if (state is cust.CustomerLoading) return const Center(child: CircularProgressIndicator(color: _orange));
+        if (state is cust.CustomersLoaded) {
+          if (state.customers.isEmpty) return const Center(child: Text('Tidak ada pelanggan ditemukan'));
+          return ListView.builder(
+            controller: scrollController,
+            itemCount: state.customers.length,
+            itemBuilder: (context, index) {
+              final c = state.customers[index];
+              return ListTile(
+                leading: CircleAvatar(backgroundColor: const Color(0xFFF3FBF7), child: const Icon(LucideIcons.building, color: _orange, size: 20)),
+                title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(c.address ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                onTap: () {
+                  _addDestination(c);
+                  context.pop();
+                },
+              );
+            },
+          );
+        }
+        return const Center(child: Text('Gagal memuat data'));
+      },
+    );
+  }
+
+  Widget _buildLeadTab(ScrollController scrollController) {
+    return BlocBuilder<LeadBloc, lead.LeadState>(
+      builder: (context, state) {
+        if (state is lead.LeadLoading) return const Center(child: CircularProgressIndicator(color: _orange));
+        if (state is lead.LeadsLoaded) {
+          if (state.leads.isEmpty) return const Center(child: Text('Tidak ada lead ditemukan'));
+          return ListView.builder(
+            controller: scrollController,
+            itemCount: state.leads.length,
+            itemBuilder: (context, index) {
+              final l = state.leads[index];
+              return ListTile(
+                leading: CircleAvatar(backgroundColor: Colors.blue.shade50, child: const Icon(LucideIcons.user, color: Colors.blue, size: 20)),
+                title: Text(l.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('', maxLines: 1, overflow: TextOverflow.ellipsis),
+                onTap: () {
+                  _addDestination(l);
+                  context.pop();
+                },
+              );
+            },
+          );
+        }
+        return const Center(child: Text('Gagal memuat data'));
+      },
     );
   }
 
   Widget _buildBottomAction() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _bg,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1))),
-      ),
-      child: SafeArea( // Keep it above device rounded edges/software bars
+      decoration: BoxDecoration(color: _bg, border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1)))),
+      child: SafeArea(
         child: ElevatedButton(
           onPressed: _isSubmitting ? null : _submit,
           style: ElevatedButton.styleFrom(
             backgroundColor: _orange,
             disabledBackgroundColor: _orange.withOpacity(0.5),
             minimumSize: const Size(double.infinity, 54),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: _isSubmitting 
-              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : const Text(
-                  'Create Task',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+          child: _isSubmitting ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Create Schedule Trip', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+        ),
+      ),
+    );
+  }
+
+  void _showDealSelectionSheet(int destinationIndex) {
+    final dest = _destinations[destinationIndex];
+    final cid = dest.customerId;
+    if (cid == null) return;
+
+    final deals = _customerDeals[cid] ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Pilih Relasi Deal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            if (deals.isEmpty)
+              const Center(child: Text('Tidak ada deal aktif untuk pelanggan ini'))
+            else
+              ...deals.map((deal) => ListTile(
+                    leading: const Icon(LucideIcons.calculator),
+                    title: Text(deal.title),
+                    subtitle: Text('Rp${deal.amount} • ${deal.stage}'),
+                    selected: dest.dealId == deal.id,
+                    onTap: () {
+                      setState(() {
+                        _destinations[destinationIndex] = dest.copyWith(
+                          dealId: deal.id,
+                          dealTitle: deal.title,
+                        );
+                      });
+                      context.pop();
+                    },
+                  )),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(LucideIcons.link2Off, color: Colors.red),
+              title: const Text('Hapus Relasi Deal', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                setState(() {
+                  _destinations[destinationIndex] = dest.copyWith(
+                    dealId: null,
+                    dealTitle: null,
+                  );
+                });
+                context.pop();
+              },
+            ),
+          ],
         ),
       ),
     );

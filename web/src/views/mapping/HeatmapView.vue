@@ -52,7 +52,7 @@ const getStatusColor = (status: string) => {
   switch (status) {
     case 'active': return '#22c55e'
     case 'inactive': return '#6b7280'
-    case 'lead': return '#3b82f6'
+    case 'prospect': return '#3b82f6'
     default: return '#6b7280'
   }
 }
@@ -81,7 +81,7 @@ const getStatusColor = (status: string) => {
                 <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Aktif
               </span>
               <span class="flex items-center gap-1">
-                <span class="w-2 h-2 rounded-full bg-blue-500"></span> Lead
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span> Prospek
               </span>
               <span class="flex items-center gap-1">
                 <span class="w-2 h-2 rounded-full bg-gray-500"></span> Non-Aktif

@@ -35,9 +35,9 @@ class _TaskListPageState extends State<TaskListPage> {
 
   void _fetchTasks() {
     ent.TaskStatus? status;
-    if (_selectedTab == 0) status = ent.TaskStatus.TODO;
-    if (_selectedTab == 1) status = ent.TaskStatus.IN_PROGRESS;
-    if (_selectedTab == 2) status = ent.TaskStatus.COMPLETED;
+    if (_selectedTab == 0) status = ent.TaskStatus.pending;
+    if (_selectedTab == 1) status = ent.TaskStatus.in_progress;
+    if (_selectedTab == 2) status = ent.TaskStatus.done;
     
     context.read<TaskBloc>().add(FetchTasks(status: status));
   }
@@ -278,8 +278,6 @@ class _TaskListPageState extends State<TaskListPage> {
         children: [
           _buildChip('Today', LucideIcons.calendar),
           const SizedBox(width: 8),
-          _buildChip('High Priority', LucideIcons.alertCircle),
-          const SizedBox(width: 8),
           _buildChip('Me', LucideIcons.user),
         ],
       ),
@@ -326,32 +324,23 @@ class _TaskListPageState extends State<TaskListPage> {
   }
 
   Widget _buildTaskCard(ent.Task task, int index) {
-    Color badgeColor;
-    Color badgeBgColor;
-    
-    if (task.priority == ent.TaskPriority.HIGH) {
-      badgeColor = const Color(0xFFDC2626);
-      badgeBgColor = const Color(0xFFFEE2E2);
-    } else if (task.priority == ent.TaskPriority.MEDIUM) {
-      badgeColor = _orange;
-      badgeBgColor = const Color(0xFFFFF7ED);
-    } else {
-      badgeColor = const Color(0xFF2563EB);
-      badgeBgColor = const Color(0xFFDBEAFE);
-    }
-
-    final isCompleted = task.status == ent.TaskStatus.COMPLETED;
+    final isCompleted = task.status == ent.TaskStatus.done;
     final isOverdue = task.dueDate != null && task.dueDate!.isBefore(DateTime.now()) && !isCompleted;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      onTap: () => context.pushNamed(kRouteRoutePlanner, extra: task),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.grey.shade100),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
             onTap: () {
@@ -388,22 +377,6 @@ class _TaskListPageState extends State<TaskListPage> {
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                           decoration: isCompleted ? TextDecoration.lineThrough : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: badgeBgColor,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        task.priority.name,
-                        style: TextStyle(
-                          color: badgeColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
@@ -444,13 +417,14 @@ class _TaskListPageState extends State<TaskListPage> {
                       ),
                     ]
                   ],
-                )
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
 }

@@ -10,6 +10,7 @@ import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/customers/presentation/pages/customer_list_page.dart';
 import '../../features/customers/presentation/pages/customer_detail_page.dart';
 import '../../features/leads/presentation/pages/lead_list_page.dart';
+import '../../features/leads/presentation/pages/lead_detail_page.dart';
 import '../../features/deals/presentation/pages/deal_detail_page.dart';
 import '../../features/deals/presentation/pages/deal_kanban_page.dart';
 import '../../features/customers/domain/entities/customer.dart';
@@ -23,6 +24,8 @@ import '../../features/deals/presentation/pages/deal_detail_page.dart';
 import '../../features/visits/presentation/pages/route_history_page.dart';
 import '../../features/tasks/presentation/pages/task_list_page.dart';
 import '../../features/tasks/presentation/pages/new_task_page.dart';
+import '../../features/tasks/presentation/pages/route_planner_page.dart';
+import '../../features/tasks/domain/entities/task.dart' as task_ent;
 import '../../features/activities/presentation/pages/activity_log_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/attendance/presentation/pages/attendance_home_page.dart';
@@ -81,6 +84,7 @@ final GoRouter appRouter = GoRouter(
           targetLng: args?['targetLng'] as double?,
           targetRadiusMeters: args?['targetRadiusMeters'] as double? ?? 200.0,
           dealId: args?['dealId'] as String?,
+          taskDestinationId: args?['taskDestinationId'] as String?,
         );
       },
     ),
@@ -91,6 +95,7 @@ final GoRouter appRouter = GoRouter(
         final args = state.extra as Map<String, dynamic>;
         return CheckOutPage(
           scheduleId: args['scheduleId'] as String,
+          taskDestinationId: args['taskDestinationId'] as String?,
         );
       },
     ),
@@ -128,6 +133,14 @@ final GoRouter appRouter = GoRouter(
       name: kRouteLeads,
       path: '/leads',
       builder: (context, state) => const LeadListPage(),
+    ),
+    GoRoute(
+      name: kRouteLeadDetail,
+      path: '/leads/:id',
+      builder: (context, state) {
+        final lead = state.extra as Lead;
+        return LeadDetailPage(lead: lead);
+      },
     ),
     GoRoute(
       name: kRouteDeals,
@@ -260,6 +273,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => AddSalesActivityPage(
         initialActivity: state.extra as SalesActivity?,
       ),
+    ),
+    GoRoute(
+      name: kRouteRoutePlanner,
+      path: '/route-planner',
+      builder: (context, state) {
+        final task = state.extra as task_ent.Task;
+        return RoutePlannerPage(task: task);
+      },
     ),
   ],
   redirect: (context, state) async {

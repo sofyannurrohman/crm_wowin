@@ -9,6 +9,7 @@ class CheckInRequest {
   final String? dealId;
   final File? selfiePhotoFile;
   final String? overrideReason;
+  final String? taskDestinationId;
 
   CheckInRequest({
     required this.scheduleId,
@@ -19,6 +20,7 @@ class CheckInRequest {
     this.checkInNotes = '',
     this.dealId,
     this.overrideReason,
+    this.taskDestinationId,
   });
 }
 
@@ -32,6 +34,7 @@ class CheckOutRequest {
 
   final String? signaturePath;
   final String? inventoryData; // JSON formatted string for stock check
+  final String? taskDestinationId;
 
   CheckOutRequest({
     required this.scheduleId,
@@ -42,5 +45,6 @@ class CheckOutRequest {
     this.nextVisitDate = '',
     this.signaturePath,
     this.inventoryData,
+    this.taskDestinationId,
   });
 }

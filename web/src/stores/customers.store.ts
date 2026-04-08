@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { fetchCustomers as apiFetchCustomers } from '@/api/customers.api'
+import { 
+  fetchCustomers as apiFetchCustomers, 
+  createCustomer as apiCreateCustomer 
+} from '@/api/customers.api'
 import type { Customer, CustomerFilter } from '@/types/customer.types'
 
 export const useCustomerStore = defineStore('customers', () => {
@@ -27,5 +30,21 @@ export const useCustomerStore = defineStore('customers', () => {
     }
   }
 
-  return { customers, total, loading, error, activeCustomers, fetchAll }
+  async function createCustomer(data: Partial<Customer>) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await apiCreateCustomer(data)
+      customers.value.unshift(res.data.data) // Added to top
+      total.value++
+      return res.data.data
+    } catch (e: any) {
+      error.value = e.response?.data?.error?.message ?? 'Gagal membuat pelanggan'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { customers, total, loading, error, activeCustomers, fetchAll, createCustomer }
 })

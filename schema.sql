@@ -16,7 +16,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 CREATE TYPE user_role AS ENUM ('super_admin', 'manager', 'supervisor', 'sales');
 CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended');
 
-CREATE TYPE customer_type AS ENUM ('individual', 'company');
+CREATE TYPE customer_type AS ENUM ('individual', 'company', 'warung', 'retail', 'toko', 'agen', 'restoran', 'cafe', 'lainnya');
 CREATE TYPE customer_status AS ENUM ('prospect', 'active', 'inactive', 'churned');
 
 CREATE TYPE lead_status AS ENUM ('new', 'contacted', 'qualified', 'unqualified', 'converted');
@@ -209,6 +209,9 @@ CREATE TABLE leads (
     estimated_value NUMERIC(15,2),
     potential_products TEXT[],
     notes           TEXT,
+    address         TEXT,
+    latitude        DOUBLE PRECISION,
+    longitude       DOUBLE PRECISION,
     converted_at    TIMESTAMPTZ,
     created_by      UUID REFERENCES users(id),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -501,23 +504,47 @@ FROM attendances
 GROUP BY user_id, DATE(timestamp_at);
 
 -- ============================================================
--- 10. TASKS & AKTIVITAS
+-- 10. WAREHOUSES (GUDANG ASAL)
+-- ============================================================
+
+CREATE TABLE warehouses (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name        VARCHAR(255) NOT NULL,
+    address     TEXT,
+    latitude    DOUBLE PRECISION,
+    longitude   DOUBLE PRECISION,
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
+-- 11. TASKS & AKTIVITAS
 -- ============================================================
 
 CREATE TABLE tasks (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    warehouse_id UUID REFERENCES warehouses(id) ON DELETE SET NULL,
     title       VARCHAR(255) NOT NULL,
     description TEXT,
     status      task_status NOT NULL DEFAULT 'pending',
     priority    task_priority NOT NULL DEFAULT 'medium',
     assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
     created_by  UUID REFERENCES users(id),
-    customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
-    deal_id     UUID REFERENCES deals(id) ON DELETE SET NULL,
     due_at      TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE task_destinations (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    task_id     UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    lead_id     UUID REFERENCES leads(id) ON DELETE SET NULL,
+    customer_id UUID REFERENCES customers(id) ON DELETE SET NULL,
+    sequence_order INT NOT NULL DEFAULT 0,
+    status      VARCHAR(50) NOT NULL DEFAULT 'TODO',
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX idx_tasks_assigned ON tasks(assigned_to, status);
@@ -542,7 +569,7 @@ CREATE INDEX idx_activities_customer ON activities(customer_id, activity_at DESC
 CREATE INDEX idx_activities_deal     ON activities(deal_id);
 
 -- ============================================================
--- 11. TARGET PENJUALAN
+-- 12. TARGET PENJUALAN
 -- ============================================================
 
 CREATE TABLE sales_targets (
@@ -563,7 +590,7 @@ CREATE TABLE sales_targets (
 CREATE INDEX idx_targets_user ON sales_targets(user_id, period_year, period_month);
 
 -- ============================================================
--- 12. NOTIFIKASI
+-- 13. NOTIFIKASI
 -- ============================================================
 
 CREATE TABLE notifications (
@@ -583,7 +610,7 @@ CREATE TABLE notifications (
 CREATE INDEX idx_notif_user ON notifications(user_id, is_read, created_at DESC);
 
 -- ============================================================
--- 13. KONFIGURASI APLIKASI
+-- 14. KONFIGURASI APLIKASI
 -- ============================================================
 
 CREATE TABLE app_settings (
@@ -609,7 +636,7 @@ INSERT INTO app_settings (key, value, description) VALUES
 ('storage.base_url',               '"https://yourdomain.com/uploads"', 'Base URL static file server Gin (/uploads route)');
 
 -- ============================================================
--- 14. MATERIALIZED VIEW: KPI SALES BULANAN
+-- 15. MATERIALIZED VIEW: KPI SALES BULANAN
 -- ============================================================
 
 CREATE MATERIALIZED VIEW mv_sales_monthly_kpi AS
@@ -636,7 +663,7 @@ CREATE UNIQUE INDEX ON mv_sales_monthly_kpi(sales_id, month);
 -- REFRESH MATERIALIZED VIEW CONCURRENTLY mv_sales_monthly_kpi;
 
 -- ============================================================
--- 15. FUNCTIONS & TRIGGERS
+-- 16. FUNCTIONS & TRIGGERS
 -- ============================================================
 
 -- Auto-update kolom updated_at
@@ -733,7 +760,7 @@ BEFORE INSERT OR UPDATE OF location ON customers
 FOR EACH ROW EXECUTE FUNCTION fn_auto_assign_territory();
 
 -- ============================================================
--- 16. ROW LEVEL SECURITY (RLS)
+-- 17. ROW LEVEL SECURITY (RLS)
 -- ============================================================
 -- Aktifkan di production.
 -- Set sebelum query: SET LOCAL app.current_user_id = '...';
@@ -759,10 +786,10 @@ CREATE POLICY policy_gps_points ON gps_points FOR SELECT USING (
 );
 
 -- ============================================================
--- RINGKASAN SCHEMA v1.1
+-- RINGKASAN SCHEMA v1.2
 -- ============================================================
 --
--- Tabel           : 26 tabel
+-- Tabel           : 28 tabel
 -- View            :  1 (daily_attendance)
 -- Materialized    :  1 (mv_sales_monthly_kpi)
 -- Functions       :  4 (updated_at, validate_checkin, rebuild_route, auto_territory)

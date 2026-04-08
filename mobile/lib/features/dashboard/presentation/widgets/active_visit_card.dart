@@ -180,7 +180,7 @@ class _ActiveVisitCardState extends State<ActiveVisitCard> {
                             );
                           },
                           icon: const Icon(LucideIcons.logOut, size: 18),
-                          label: const Text('CHECK-OUT SEKARANG'),
+                          label: const Text('CATAT HASIL & SELESAI'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: const Color(0xFF1A237E),

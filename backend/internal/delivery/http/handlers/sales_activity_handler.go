@@ -3,8 +3,8 @@ package handlers
 import (
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
+	"crm_wowin_backend/pkg/utils"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -37,7 +37,7 @@ func (h *SalesActivityHandler) Create(c *gin.Context) {
 	}
 
 	if a.ActivityAt.IsZero() {
-		a.ActivityAt = time.Now()
+		a.ActivityAt = utils.Now()
 	}
 
 	if err := h.repo.Create(c.Request.Context(), &a); err != nil {

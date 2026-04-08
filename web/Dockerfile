@@ -9,7 +9,7 @@ COPY package*.json ./
 # Use default npm registry, npmmirror is often slow outside of China
 # Install dependencies with BuildKit cache mount
 RUN --mount=type=cache,target=/root/.npm \
-    npm install
+    npm ci
 
 # Copy source code and build
 COPY . .

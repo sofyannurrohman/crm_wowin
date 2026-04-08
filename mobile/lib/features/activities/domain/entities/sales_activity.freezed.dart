@@ -41,10 +41,13 @@ mixin _$SalesActivity {
   DateTime? get checkInTime;
   @JsonKey(name: 'check_out_time')
   DateTime? get checkOutTime;
-  @JsonKey(name: 'photo_base64')
-  String? get photoBase64;
-  @JsonKey(name: 'storefront_photo_base64')
-  String? get storefrontPhotoBase64;
+  @JsonKey(name: 'selfie_photo_path')
+  String? get selfiePhotoPath;
+  @JsonKey(name: 'place_photo_path')
+  String? get placePhotoPath;
+  double? get distance;
+  @JsonKey(name: 'is_offline')
+  bool get isOffline;
   String? get address;
   String? get outcome;
   Lead? get lead;
@@ -93,10 +96,14 @@ mixin _$SalesActivity {
                 other.checkInTime == checkInTime) &&
             (identical(other.checkOutTime, checkOutTime) ||
                 other.checkOutTime == checkOutTime) &&
-            (identical(other.photoBase64, photoBase64) ||
-                other.photoBase64 == photoBase64) &&
-            (identical(other.storefrontPhotoBase64, storefrontPhotoBase64) ||
-                other.storefrontPhotoBase64 == storefrontPhotoBase64) &&
+            (identical(other.selfiePhotoPath, selfiePhotoPath) ||
+                other.selfiePhotoPath == selfiePhotoPath) &&
+            (identical(other.placePhotoPath, placePhotoPath) ||
+                other.placePhotoPath == placePhotoPath) &&
+            (identical(other.distance, distance) ||
+                other.distance == distance) &&
+            (identical(other.isOffline, isOffline) ||
+                other.isOffline == isOffline) &&
             (identical(other.address, address) || other.address == address) &&
             (identical(other.outcome, outcome) || other.outcome == outcome) &&
             (identical(other.lead, lead) || other.lead == lead) &&
@@ -125,8 +132,10 @@ mixin _$SalesActivity {
         longitude,
         checkInTime,
         checkOutTime,
-        photoBase64,
-        storefrontPhotoBase64,
+        selfiePhotoPath,
+        placePhotoPath,
+        distance,
+        isOffline,
         address,
         outcome,
         lead,
@@ -136,7 +145,7 @@ mixin _$SalesActivity {
 
   @override
   String toString() {
-    return 'SalesActivity(id: $id, title: $title, userId: $userId, leadId: $leadId, customerId: $customerId, dealId: $dealId, taskDestinationId: $taskDestinationId, activityType: $activityType, notes: $notes, activityAt: $activityAt, createdAt: $createdAt, updatedAt: $updatedAt, latitude: $latitude, longitude: $longitude, checkInTime: $checkInTime, checkOutTime: $checkOutTime, photoBase64: $photoBase64, storefrontPhotoBase64: $storefrontPhotoBase64, address: $address, outcome: $outcome, lead: $lead, customer: $customer, deal: $deal)';
+    return 'SalesActivity(id: $id, title: $title, userId: $userId, leadId: $leadId, customerId: $customerId, dealId: $dealId, taskDestinationId: $taskDestinationId, activityType: $activityType, notes: $notes, activityAt: $activityAt, createdAt: $createdAt, updatedAt: $updatedAt, latitude: $latitude, longitude: $longitude, checkInTime: $checkInTime, checkOutTime: $checkOutTime, selfiePhotoPath: $selfiePhotoPath, placePhotoPath: $placePhotoPath, distance: $distance, isOffline: $isOffline, address: $address, outcome: $outcome, lead: $lead, customer: $customer, deal: $deal)';
   }
 }
 
@@ -163,8 +172,10 @@ abstract mixin class $SalesActivityCopyWith<$Res> {
       double? longitude,
       @JsonKey(name: 'check_in_time') DateTime? checkInTime,
       @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-      @JsonKey(name: 'photo_base64') String? photoBase64,
-      @JsonKey(name: 'storefront_photo_base64') String? storefrontPhotoBase64,
+      @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+      @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+      double? distance,
+      @JsonKey(name: 'is_offline') bool isOffline,
       String? address,
       String? outcome,
       Lead? lead,
@@ -205,8 +216,10 @@ class _$SalesActivityCopyWithImpl<$Res>
     Object? longitude = freezed,
     Object? checkInTime = freezed,
     Object? checkOutTime = freezed,
-    Object? photoBase64 = freezed,
-    Object? storefrontPhotoBase64 = freezed,
+    Object? selfiePhotoPath = freezed,
+    Object? placePhotoPath = freezed,
+    Object? distance = freezed,
+    Object? isOffline = null,
     Object? address = freezed,
     Object? outcome = freezed,
     Object? lead = freezed,
@@ -278,14 +291,22 @@ class _$SalesActivityCopyWithImpl<$Res>
           ? _self.checkOutTime
           : checkOutTime // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      photoBase64: freezed == photoBase64
-          ? _self.photoBase64
-          : photoBase64 // ignore: cast_nullable_to_non_nullable
+      selfiePhotoPath: freezed == selfiePhotoPath
+          ? _self.selfiePhotoPath
+          : selfiePhotoPath // ignore: cast_nullable_to_non_nullable
               as String?,
-      storefrontPhotoBase64: freezed == storefrontPhotoBase64
-          ? _self.storefrontPhotoBase64
-          : storefrontPhotoBase64 // ignore: cast_nullable_to_non_nullable
+      placePhotoPath: freezed == placePhotoPath
+          ? _self.placePhotoPath
+          : placePhotoPath // ignore: cast_nullable_to_non_nullable
               as String?,
+      distance: freezed == distance
+          ? _self.distance
+          : distance // ignore: cast_nullable_to_non_nullable
+              as double?,
+      isOffline: null == isOffline
+          ? _self.isOffline
+          : isOffline // ignore: cast_nullable_to_non_nullable
+              as bool,
       address: freezed == address
           ? _self.address
           : address // ignore: cast_nullable_to_non_nullable
@@ -462,9 +483,10 @@ extension SalesActivityPatterns on SalesActivity {
             double? longitude,
             @JsonKey(name: 'check_in_time') DateTime? checkInTime,
             @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-            @JsonKey(name: 'photo_base64') String? photoBase64,
-            @JsonKey(name: 'storefront_photo_base64')
-            String? storefrontPhotoBase64,
+            @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+            @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+            double? distance,
+            @JsonKey(name: 'is_offline') bool isOffline,
             String? address,
             String? outcome,
             Lead? lead,
@@ -493,8 +515,10 @@ extension SalesActivityPatterns on SalesActivity {
             _that.longitude,
             _that.checkInTime,
             _that.checkOutTime,
-            _that.photoBase64,
-            _that.storefrontPhotoBase64,
+            _that.selfiePhotoPath,
+            _that.placePhotoPath,
+            _that.distance,
+            _that.isOffline,
             _that.address,
             _that.outcome,
             _that.lead,
@@ -537,9 +561,10 @@ extension SalesActivityPatterns on SalesActivity {
             double? longitude,
             @JsonKey(name: 'check_in_time') DateTime? checkInTime,
             @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-            @JsonKey(name: 'photo_base64') String? photoBase64,
-            @JsonKey(name: 'storefront_photo_base64')
-            String? storefrontPhotoBase64,
+            @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+            @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+            double? distance,
+            @JsonKey(name: 'is_offline') bool isOffline,
             String? address,
             String? outcome,
             Lead? lead,
@@ -567,8 +592,10 @@ extension SalesActivityPatterns on SalesActivity {
             _that.longitude,
             _that.checkInTime,
             _that.checkOutTime,
-            _that.photoBase64,
-            _that.storefrontPhotoBase64,
+            _that.selfiePhotoPath,
+            _that.placePhotoPath,
+            _that.distance,
+            _that.isOffline,
             _that.address,
             _that.outcome,
             _that.lead,
@@ -610,9 +637,10 @@ extension SalesActivityPatterns on SalesActivity {
             double? longitude,
             @JsonKey(name: 'check_in_time') DateTime? checkInTime,
             @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-            @JsonKey(name: 'photo_base64') String? photoBase64,
-            @JsonKey(name: 'storefront_photo_base64')
-            String? storefrontPhotoBase64,
+            @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+            @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+            double? distance,
+            @JsonKey(name: 'is_offline') bool isOffline,
             String? address,
             String? outcome,
             Lead? lead,
@@ -640,8 +668,10 @@ extension SalesActivityPatterns on SalesActivity {
             _that.longitude,
             _that.checkInTime,
             _that.checkOutTime,
-            _that.photoBase64,
-            _that.storefrontPhotoBase64,
+            _that.selfiePhotoPath,
+            _that.placePhotoPath,
+            _that.distance,
+            _that.isOffline,
             _that.address,
             _that.outcome,
             _that.lead,
@@ -673,8 +703,10 @@ class _SalesActivity extends SalesActivity {
       this.longitude,
       @JsonKey(name: 'check_in_time') this.checkInTime,
       @JsonKey(name: 'check_out_time') this.checkOutTime,
-      @JsonKey(name: 'photo_base64') this.photoBase64,
-      @JsonKey(name: 'storefront_photo_base64') this.storefrontPhotoBase64,
+      @JsonKey(name: 'selfie_photo_path') this.selfiePhotoPath,
+      @JsonKey(name: 'place_photo_path') this.placePhotoPath,
+      this.distance,
+      @JsonKey(name: 'is_offline') this.isOffline = false,
       this.address,
       this.outcome,
       this.lead,
@@ -728,11 +760,16 @@ class _SalesActivity extends SalesActivity {
   @JsonKey(name: 'check_out_time')
   final DateTime? checkOutTime;
   @override
-  @JsonKey(name: 'photo_base64')
-  final String? photoBase64;
+  @JsonKey(name: 'selfie_photo_path')
+  final String? selfiePhotoPath;
   @override
-  @JsonKey(name: 'storefront_photo_base64')
-  final String? storefrontPhotoBase64;
+  @JsonKey(name: 'place_photo_path')
+  final String? placePhotoPath;
+  @override
+  final double? distance;
+  @override
+  @JsonKey(name: 'is_offline')
+  final bool isOffline;
   @override
   final String? address;
   @override
@@ -790,10 +827,14 @@ class _SalesActivity extends SalesActivity {
                 other.checkInTime == checkInTime) &&
             (identical(other.checkOutTime, checkOutTime) ||
                 other.checkOutTime == checkOutTime) &&
-            (identical(other.photoBase64, photoBase64) ||
-                other.photoBase64 == photoBase64) &&
-            (identical(other.storefrontPhotoBase64, storefrontPhotoBase64) ||
-                other.storefrontPhotoBase64 == storefrontPhotoBase64) &&
+            (identical(other.selfiePhotoPath, selfiePhotoPath) ||
+                other.selfiePhotoPath == selfiePhotoPath) &&
+            (identical(other.placePhotoPath, placePhotoPath) ||
+                other.placePhotoPath == placePhotoPath) &&
+            (identical(other.distance, distance) ||
+                other.distance == distance) &&
+            (identical(other.isOffline, isOffline) ||
+                other.isOffline == isOffline) &&
             (identical(other.address, address) || other.address == address) &&
             (identical(other.outcome, outcome) || other.outcome == outcome) &&
             (identical(other.lead, lead) || other.lead == lead) &&
@@ -822,8 +863,10 @@ class _SalesActivity extends SalesActivity {
         longitude,
         checkInTime,
         checkOutTime,
-        photoBase64,
-        storefrontPhotoBase64,
+        selfiePhotoPath,
+        placePhotoPath,
+        distance,
+        isOffline,
         address,
         outcome,
         lead,
@@ -833,7 +876,7 @@ class _SalesActivity extends SalesActivity {
 
   @override
   String toString() {
-    return 'SalesActivity(id: $id, title: $title, userId: $userId, leadId: $leadId, customerId: $customerId, dealId: $dealId, taskDestinationId: $taskDestinationId, activityType: $activityType, notes: $notes, activityAt: $activityAt, createdAt: $createdAt, updatedAt: $updatedAt, latitude: $latitude, longitude: $longitude, checkInTime: $checkInTime, checkOutTime: $checkOutTime, photoBase64: $photoBase64, storefrontPhotoBase64: $storefrontPhotoBase64, address: $address, outcome: $outcome, lead: $lead, customer: $customer, deal: $deal)';
+    return 'SalesActivity(id: $id, title: $title, userId: $userId, leadId: $leadId, customerId: $customerId, dealId: $dealId, taskDestinationId: $taskDestinationId, activityType: $activityType, notes: $notes, activityAt: $activityAt, createdAt: $createdAt, updatedAt: $updatedAt, latitude: $latitude, longitude: $longitude, checkInTime: $checkInTime, checkOutTime: $checkOutTime, selfiePhotoPath: $selfiePhotoPath, placePhotoPath: $placePhotoPath, distance: $distance, isOffline: $isOffline, address: $address, outcome: $outcome, lead: $lead, customer: $customer, deal: $deal)';
   }
 }
 
@@ -862,8 +905,10 @@ abstract mixin class _$SalesActivityCopyWith<$Res>
       double? longitude,
       @JsonKey(name: 'check_in_time') DateTime? checkInTime,
       @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-      @JsonKey(name: 'photo_base64') String? photoBase64,
-      @JsonKey(name: 'storefront_photo_base64') String? storefrontPhotoBase64,
+      @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+      @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+      double? distance,
+      @JsonKey(name: 'is_offline') bool isOffline,
       String? address,
       String? outcome,
       Lead? lead,
@@ -907,8 +952,10 @@ class __$SalesActivityCopyWithImpl<$Res>
     Object? longitude = freezed,
     Object? checkInTime = freezed,
     Object? checkOutTime = freezed,
-    Object? photoBase64 = freezed,
-    Object? storefrontPhotoBase64 = freezed,
+    Object? selfiePhotoPath = freezed,
+    Object? placePhotoPath = freezed,
+    Object? distance = freezed,
+    Object? isOffline = null,
     Object? address = freezed,
     Object? outcome = freezed,
     Object? lead = freezed,
@@ -980,14 +1027,22 @@ class __$SalesActivityCopyWithImpl<$Res>
           ? _self.checkOutTime
           : checkOutTime // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      photoBase64: freezed == photoBase64
-          ? _self.photoBase64
-          : photoBase64 // ignore: cast_nullable_to_non_nullable
+      selfiePhotoPath: freezed == selfiePhotoPath
+          ? _self.selfiePhotoPath
+          : selfiePhotoPath // ignore: cast_nullable_to_non_nullable
               as String?,
-      storefrontPhotoBase64: freezed == storefrontPhotoBase64
-          ? _self.storefrontPhotoBase64
-          : storefrontPhotoBase64 // ignore: cast_nullable_to_non_nullable
+      placePhotoPath: freezed == placePhotoPath
+          ? _self.placePhotoPath
+          : placePhotoPath // ignore: cast_nullable_to_non_nullable
               as String?,
+      distance: freezed == distance
+          ? _self.distance
+          : distance // ignore: cast_nullable_to_non_nullable
+              as double?,
+      isOffline: null == isOffline
+          ? _self.isOffline
+          : isOffline // ignore: cast_nullable_to_non_nullable
+              as bool,
       address: freezed == address
           ? _self.address
           : address // ignore: cast_nullable_to_non_nullable

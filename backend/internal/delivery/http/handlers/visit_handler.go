@@ -70,6 +70,11 @@ func (h *VisitHandler) ListSchedules(c *gin.Context) {
 			filter.CustomerID = &u
 		}
 	}
+	if lID := c.Query("lead_id"); lID != "" {
+		if u, err := uuid.Parse(lID); err == nil {
+			filter.LeadID = &u
+		}
+	}
 
 	if startStr := c.Query("start_date"); startStr != "" {
 		if t, err := time.Parse("2006-01-02", startStr); err == nil {
@@ -179,9 +184,21 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	salesIDStr := c.GetString("user_id")
 	salesID, _ := uuid.Parse(salesIDStr)
 
-	customerID, err := uuid.Parse(c.Request.FormValue("customer_id"))
-	if err != nil {
-		response.Fail(c, http.StatusBadRequest, "invalid customer_id")
+	var customerID, leadID *uuid.UUID
+	
+	if cID := c.Request.FormValue("customer_id"); cID != "" {
+		if u, err := uuid.Parse(cID); err == nil {
+			customerID = &u
+		}
+	}
+	if lID := c.Request.FormValue("lead_id"); lID != "" {
+		if u, err := uuid.Parse(lID); err == nil {
+			leadID = &u
+		}
+	}
+
+	if customerID == nil && leadID == nil {
+		response.Fail(c, http.StatusBadRequest, "customer_id or lead_id is required")
 		return
 	}
 
@@ -194,6 +211,7 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 
 	activity.SalesID = salesID
 	activity.CustomerID = customerID
+	activity.LeadID = leadID
 	activity.Latitude = lat
 	activity.Longitude = lon
 	activity.SelfiePhotoPath = selfiePath
@@ -263,6 +281,11 @@ func (h *VisitHandler) ListActivities(c *gin.Context) {
 	if cID := c.Query("customer_id"); cID != "" {
 		if u, err := uuid.Parse(cID); err == nil {
 			filter.CustomerID = &u
+		}
+	}
+	if lID := c.Query("lead_id"); lID != "" {
+		if u, err := uuid.Parse(lID); err == nil {
+			filter.LeadID = &u
 		}
 	}
 

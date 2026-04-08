@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
 
 import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
@@ -27,12 +29,13 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
+  final _addressController = TextEditingController();
 
   LatLng? _selectedLocation;
   final MapController _mapController = MapController();
   bool _isGettingLocation = false;
 
-  static const Color _orange = Color(0xFFE8622A);
+  static const Color _green = Color(0xFF0D8549);
   static const Color _navy = Color(0xFF1A237E);
   static const Color _bg = Color(0xFFF9FAFB);
 
@@ -45,6 +48,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
       _fullNameController.text = widget.initialCustomer!.name;
       _phoneController.text = widget.initialCustomer!.phone ?? '';
       _emailController.text = widget.initialCustomer!.email ?? '';
+      _addressController.text = widget.initialCustomer!.address ?? '';
       if (widget.initialCustomer!.latitude != null &&
           widget.initialCustomer!.longitude != null) {
         _selectedLocation = LatLng(widget.initialCustomer!.latitude!,
@@ -60,6 +64,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
     _fullNameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _addressController.dispose();
     _mapController?.dispose();
     super.dispose();
   }
@@ -74,6 +79,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
         _isGettingLocation = false;
       });
       _mapController.move(latLng, 15.0);
+      _reverseGeocode(latLng);
     } catch (e) {
       setState(() => _isGettingLocation = false);
       if (mounted) {
@@ -86,16 +92,49 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
     }
   }
 
+  Future<void> _reverseGeocode(LatLng latLng) async {
+    try {
+      final url = Uri.parse(
+          'https://nominatim.openstreetmap.org/reverse?format=json&lat=${latLng.latitude}&lon=${latLng.longitude}&zoom=18&addressdetails=1');
+      final response = await http.get(url, headers: {'User-Agent': 'WowinCRM/1.0'});
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (mounted) {
+          setState(() {
+            _addressController.text = data['display_name'] ?? '';
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Geocoding error: $e');
+    }
+  }
+
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
+      // Map industry dropdown value to backend enum type
+      String typeValue = 'company'; // Default
+      final industryValue = _industryController.text;
+      
+      if (industryValue == 'Warung Makan') typeValue = 'warung';
+      else if (industryValue == 'Toko Kelontong') typeValue = 'toko';
+      else if (industryValue == 'Retail / Minimarket') typeValue = 'retail';
+      else if (industryValue == 'Agen / Distributor') typeValue = 'agen';
+      else if (industryValue == 'Restoran') typeValue = 'restoran';
+      else if (industryValue == 'Cafe') typeValue = 'cafe';
+      else if (industryValue == 'Lainnya') typeValue = 'lainnya';
+
       final customer = Customer(
         id: widget.initialCustomer?.id ?? const Uuid().v4(),
         name: _nameController.text,
         companyName: _nameController.text,
+        type: typeValue, // Added mapping
         industry: _industryController.text,
         email: _emailController.text,
         phone: _phoneController.text,
         status: widget.initialCustomer?.status ?? 'prospect',
+        address: _addressController.text,
         latitude: _selectedLocation?.latitude,
         longitude: _selectedLocation?.longitude,
       );
@@ -133,7 +172,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
             child: ElevatedButton(
               onPressed: _submitForm,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _orange,
+                backgroundColor: _green,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -187,6 +226,8 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
                 _buildIconTextField('Phone Number', _phoneController, '+1 (555) 000-0000', LucideIcons.phone),
                 const SizedBox(height: 16),
                 _buildIconTextField('Email Address', _emailController, 'john@company.com', LucideIcons.mail),
+                const SizedBox(height: 16),
+                _buildIconTextField('Full Address', _addressController, 'e.g. 123 Business St, Jakarta', LucideIcons.mapPin, maxLines: 2),
 
                 const SizedBox(height: 24),
                 _buildTipsCard(),
@@ -218,7 +259,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
                       child: ElevatedButton(
                         onPressed: _submitForm,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _orange,
+                          backgroundColor: _green,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: Text(
@@ -252,7 +293,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
   Widget _buildSectionHeader(IconData icon, String title) {
     return Row(
       children: [
-        Icon(icon, color: _orange, size: 20),
+        Icon(icon, color: _green, size: 20),
         const SizedBox(width: 10),
         Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))),
       ],
@@ -273,7 +314,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _orange, width: 2)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _green, width: 2)),
           ),
           validator: (v) => v!.isEmpty ? 'Field required' : null,
         ),
@@ -281,7 +322,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
     );
   }
 
-  Widget _buildIconTextField(String label, TextEditingController controller, String hint, IconData icon) {
+  Widget _buildIconTextField(String label, TextEditingController controller, String hint, IconData icon, {int maxLines = 1}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -289,6 +330,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          maxLines: maxLines,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 18),
             hintText: hint,
@@ -331,7 +373,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Registration Tips', style: TextStyle(color: _orange, fontWeight: FontWeight.w800, fontSize: 15)),
+          const Text('Registration Tips', style: TextStyle(color: _green, fontWeight: FontWeight.w800, fontSize: 15)),
           const SizedBox(height: 12),
           _buildTip(LucideIcons.info, 'Ensure company name matches legal documents.'),
           const SizedBox(height: 8),
@@ -347,7 +389,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 14, color: _orange),
+        Icon(icon, size: 14, color: _green),
         const SizedBox(width: 8),
         Expanded(child: Text(text, style: const TextStyle(color: Color(0xFF9A3412), fontSize: 13, height: 1.4))),
       ],
@@ -357,7 +399,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
   Widget _buildLocationHeader() {
     return Row(
       children: [
-        const Icon(LucideIcons.map, color: _orange, size: 20),
+        const Icon(LucideIcons.map, color: _green, size: 20),
         const SizedBox(width: 10),
         const Text('Customer Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))),
         const Spacer(),
@@ -367,7 +409,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
             decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(20)),
             child: Text(
               'GPS: ${_selectedLocation!.latitude.toStringAsFixed(4)}° N, ${_selectedLocation!.longitude.toStringAsFixed(4)}° W',
-              style: const TextStyle(color: _orange, fontSize: 10, fontWeight: FontWeight.w800),
+              style: const TextStyle(color: _green, fontSize: 10, fontWeight: FontWeight.w800),
             ),
           ),
       ],
@@ -392,7 +434,10 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
               options: MapOptions(
                 initialCenter: const LatLng(-6.200000, 106.816666),
                 initialZoom: 10.0,
-                onTap: (tapPosition, latLng) => setState(() => _selectedLocation = latLng),
+                onTap: (tapPosition, latLng) {
+                  setState(() => _selectedLocation = latLng);
+                  _reverseGeocode(latLng);
+                },
               ),
               children: [
                 TileLayer(
@@ -404,7 +449,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
                     markers: [
                       Marker(
                         point: _selectedLocation!,
-                        child: const Icon(LucideIcons.mapPin, color: _orange, size: 40),
+                        child: const Icon(LucideIcons.mapPin, color: _green, size: 40),
                       ),
                     ],
                   ),
@@ -415,7 +460,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(LucideIcons.mapPin, color: _orange, size: 40),
+                    const Icon(LucideIcons.mapPin, color: _green, size: 40),
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

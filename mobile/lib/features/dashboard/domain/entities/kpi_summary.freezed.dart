@@ -24,6 +24,8 @@ mixin _$KpiSummary {
   int get visitsToday;
   @JsonKey(name: 'target_met_percentage')
   double get targetMetPercentage;
+  @JsonKey(name: 'next_stop')
+  VisitRecommendation? get nextStop;
 
   /// Create a copy of KpiSummary
   /// with the given fields replaced by the non-null parameter values.
@@ -49,17 +51,19 @@ mixin _$KpiSummary {
             (identical(other.visitsToday, visitsToday) ||
                 other.visitsToday == visitsToday) &&
             (identical(other.targetMetPercentage, targetMetPercentage) ||
-                other.targetMetPercentage == targetMetPercentage));
+                other.targetMetPercentage == targetMetPercentage) &&
+            (identical(other.nextStop, nextStop) ||
+                other.nextStop == nextStop));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, totalSales, newLeads,
-      activeDeals, visitsToday, targetMetPercentage);
+      activeDeals, visitsToday, targetMetPercentage, nextStop);
 
   @override
   String toString() {
-    return 'KpiSummary(totalSales: $totalSales, newLeads: $newLeads, activeDeals: $activeDeals, visitsToday: $visitsToday, targetMetPercentage: $targetMetPercentage)';
+    return 'KpiSummary(totalSales: $totalSales, newLeads: $newLeads, activeDeals: $activeDeals, visitsToday: $visitsToday, targetMetPercentage: $targetMetPercentage, nextStop: $nextStop)';
   }
 }
 
@@ -74,7 +78,10 @@ abstract mixin class $KpiSummaryCopyWith<$Res> {
       @JsonKey(name: 'new_leads') int newLeads,
       @JsonKey(name: 'active_deals') int activeDeals,
       @JsonKey(name: 'visits_today') int visitsToday,
-      @JsonKey(name: 'target_met_percentage') double targetMetPercentage});
+      @JsonKey(name: 'target_met_percentage') double targetMetPercentage,
+      @JsonKey(name: 'next_stop') VisitRecommendation? nextStop});
+
+  $VisitRecommendationCopyWith<$Res>? get nextStop;
 }
 
 /// @nodoc
@@ -94,6 +101,7 @@ class _$KpiSummaryCopyWithImpl<$Res> implements $KpiSummaryCopyWith<$Res> {
     Object? activeDeals = null,
     Object? visitsToday = null,
     Object? targetMetPercentage = null,
+    Object? nextStop = freezed,
   }) {
     return _then(_self.copyWith(
       totalSales: null == totalSales
@@ -116,7 +124,25 @@ class _$KpiSummaryCopyWithImpl<$Res> implements $KpiSummaryCopyWith<$Res> {
           ? _self.targetMetPercentage
           : targetMetPercentage // ignore: cast_nullable_to_non_nullable
               as double,
+      nextStop: freezed == nextStop
+          ? _self.nextStop
+          : nextStop // ignore: cast_nullable_to_non_nullable
+              as VisitRecommendation?,
     ));
+  }
+
+  /// Create a copy of KpiSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $VisitRecommendationCopyWith<$Res>? get nextStop {
+    if (_self.nextStop == null) {
+      return null;
+    }
+
+    return $VisitRecommendationCopyWith<$Res>(_self.nextStop!, (value) {
+      return _then(_self.copyWith(nextStop: value));
+    });
   }
 }
 
@@ -218,7 +244,8 @@ extension KpiSummaryPatterns on KpiSummary {
             @JsonKey(name: 'new_leads') int newLeads,
             @JsonKey(name: 'active_deals') int activeDeals,
             @JsonKey(name: 'visits_today') int visitsToday,
-            @JsonKey(name: 'target_met_percentage') double targetMetPercentage)?
+            @JsonKey(name: 'target_met_percentage') double targetMetPercentage,
+            @JsonKey(name: 'next_stop') VisitRecommendation? nextStop)?
         $default, {
     required TResult orElse(),
   }) {
@@ -226,7 +253,7 @@ extension KpiSummaryPatterns on KpiSummary {
     switch (_that) {
       case _KpiSummary() when $default != null:
         return $default(_that.totalSales, _that.newLeads, _that.activeDeals,
-            _that.visitsToday, _that.targetMetPercentage);
+            _that.visitsToday, _that.targetMetPercentage, _that.nextStop);
       case _:
         return orElse();
     }
@@ -252,14 +279,15 @@ extension KpiSummaryPatterns on KpiSummary {
             @JsonKey(name: 'new_leads') int newLeads,
             @JsonKey(name: 'active_deals') int activeDeals,
             @JsonKey(name: 'visits_today') int visitsToday,
-            @JsonKey(name: 'target_met_percentage') double targetMetPercentage)
+            @JsonKey(name: 'target_met_percentage') double targetMetPercentage,
+            @JsonKey(name: 'next_stop') VisitRecommendation? nextStop)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _KpiSummary():
         return $default(_that.totalSales, _that.newLeads, _that.activeDeals,
-            _that.visitsToday, _that.targetMetPercentage);
+            _that.visitsToday, _that.targetMetPercentage, _that.nextStop);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -284,14 +312,15 @@ extension KpiSummaryPatterns on KpiSummary {
             @JsonKey(name: 'new_leads') int newLeads,
             @JsonKey(name: 'active_deals') int activeDeals,
             @JsonKey(name: 'visits_today') int visitsToday,
-            @JsonKey(name: 'target_met_percentage') double targetMetPercentage)?
+            @JsonKey(name: 'target_met_percentage') double targetMetPercentage,
+            @JsonKey(name: 'next_stop') VisitRecommendation? nextStop)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _KpiSummary() when $default != null:
         return $default(_that.totalSales, _that.newLeads, _that.activeDeals,
-            _that.visitsToday, _that.targetMetPercentage);
+            _that.visitsToday, _that.targetMetPercentage, _that.nextStop);
       case _:
         return null;
     }
@@ -306,8 +335,8 @@ class _KpiSummary implements KpiSummary {
       @JsonKey(name: 'new_leads') required this.newLeads,
       @JsonKey(name: 'active_deals') required this.activeDeals,
       @JsonKey(name: 'visits_today') required this.visitsToday,
-      @JsonKey(name: 'target_met_percentage')
-      required this.targetMetPercentage});
+      @JsonKey(name: 'target_met_percentage') required this.targetMetPercentage,
+      @JsonKey(name: 'next_stop') this.nextStop});
   factory _KpiSummary.fromJson(Map<String, dynamic> json) =>
       _$KpiSummaryFromJson(json);
 
@@ -326,6 +355,9 @@ class _KpiSummary implements KpiSummary {
   @override
   @JsonKey(name: 'target_met_percentage')
   final double targetMetPercentage;
+  @override
+  @JsonKey(name: 'next_stop')
+  final VisitRecommendation? nextStop;
 
   /// Create a copy of KpiSummary
   /// with the given fields replaced by the non-null parameter values.
@@ -356,17 +388,19 @@ class _KpiSummary implements KpiSummary {
             (identical(other.visitsToday, visitsToday) ||
                 other.visitsToday == visitsToday) &&
             (identical(other.targetMetPercentage, targetMetPercentage) ||
-                other.targetMetPercentage == targetMetPercentage));
+                other.targetMetPercentage == targetMetPercentage) &&
+            (identical(other.nextStop, nextStop) ||
+                other.nextStop == nextStop));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, totalSales, newLeads,
-      activeDeals, visitsToday, targetMetPercentage);
+      activeDeals, visitsToday, targetMetPercentage, nextStop);
 
   @override
   String toString() {
-    return 'KpiSummary(totalSales: $totalSales, newLeads: $newLeads, activeDeals: $activeDeals, visitsToday: $visitsToday, targetMetPercentage: $targetMetPercentage)';
+    return 'KpiSummary(totalSales: $totalSales, newLeads: $newLeads, activeDeals: $activeDeals, visitsToday: $visitsToday, targetMetPercentage: $targetMetPercentage, nextStop: $nextStop)';
   }
 }
 
@@ -383,7 +417,11 @@ abstract mixin class _$KpiSummaryCopyWith<$Res>
       @JsonKey(name: 'new_leads') int newLeads,
       @JsonKey(name: 'active_deals') int activeDeals,
       @JsonKey(name: 'visits_today') int visitsToday,
-      @JsonKey(name: 'target_met_percentage') double targetMetPercentage});
+      @JsonKey(name: 'target_met_percentage') double targetMetPercentage,
+      @JsonKey(name: 'next_stop') VisitRecommendation? nextStop});
+
+  @override
+  $VisitRecommendationCopyWith<$Res>? get nextStop;
 }
 
 /// @nodoc
@@ -403,6 +441,7 @@ class __$KpiSummaryCopyWithImpl<$Res> implements _$KpiSummaryCopyWith<$Res> {
     Object? activeDeals = null,
     Object? visitsToday = null,
     Object? targetMetPercentage = null,
+    Object? nextStop = freezed,
   }) {
     return _then(_KpiSummary(
       totalSales: null == totalSales
@@ -425,7 +464,25 @@ class __$KpiSummaryCopyWithImpl<$Res> implements _$KpiSummaryCopyWith<$Res> {
           ? _self.targetMetPercentage
           : targetMetPercentage // ignore: cast_nullable_to_non_nullable
               as double,
+      nextStop: freezed == nextStop
+          ? _self.nextStop
+          : nextStop // ignore: cast_nullable_to_non_nullable
+              as VisitRecommendation?,
     ));
+  }
+
+  /// Create a copy of KpiSummary
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $VisitRecommendationCopyWith<$Res>? get nextStop {
+    if (_self.nextStop == null) {
+      return null;
+    }
+
+    return $VisitRecommendationCopyWith<$Res>(_self.nextStop!, (value) {
+      return _then(_self.copyWith(nextStop: value));
+    });
   }
 }
 

@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/widgets/app_sidebar.dart';
-
+import '../../domain/entities/visit_activity.dart';
 import '../bloc/visit_bloc.dart';
+import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
 
 class RouteHistoryPage extends StatefulWidget {
@@ -17,46 +19,13 @@ class RouteHistoryPage extends StatefulWidget {
 }
 
 class _RouteHistoryPageState extends State<RouteHistoryPage> {
-  // changed orange -> new green #0D8549
-  static const Color _orange = Color(0xFF0D8549);
-  // light orange -> light green tint
-  static const Color _lightOrange = Color(0xFFEFFBF5);
+  static const Color _green = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
 
-  DateTime _selectedDate = DateTime(2023, 10, 5); // October 5, 2023 as default
-  
-  // Mock Data mimicking backend payload
-  final List<Map<String, dynamic>> _mockTimeline = [
-    {
-      'name': 'Supermercado El Sol',
-      'address': 'Calle Central, Av. 4, San José',
-      'status': 'DELIVERED',
-      'stay': '15 MIN STAY',
-      'time': '09:15 AM',
-      'type': 'store',
-      'icon': LucideIcons.store,
-    },
-    {
-      'name': 'Soda Tapia Sabana',
-      'address': 'Frente al Estadio Nacional, San José',
-      'status': 'DELIVERED',
-      'stay': '12 MIN STAY',
-      'time': '10:45 AM',
-      'type': 'restaurant',
-      'icon': Icons.restaurant,
-    },
-    {
-      'name': 'Pulpería La Amistad',
-      'address': '100m Este de la Iglesia, Guadalupe',
-      'status': 'SKIPPED',
-      'stay': null,
-      'time': '11:30 AM',
-      'type': 'skipped',
-      'icon': LucideIcons.xCircle,
-    },
-  ];
+  DateTime _selectedDate = DateTime.now();
+  List<LatLng> _polylinePoints = [];
 
   @override
   void initState() {
@@ -65,8 +34,7 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
   }
 
   void _fetchRouteHistory() {
-    // Expected backend linkage: 
-    // context.read<VisitBloc>().add(FetchRouteHistory(date: _selectedDate));
+    context.read<VisitBloc>().add(const FetchActivities());
   }
 
   @override
@@ -75,40 +43,70 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
       backgroundColor: _bg,
       appBar: _buildAppBar(context),
       drawer: const AppSidebar(),
-      body: BlocBuilder<VisitBloc, VisitState>(
+      body: BlocConsumer<VisitBloc, VisitState>(
+        listener: (context, state) {
+          if (state is ActivitiesLoaded) {
+            _calculatePolyline(state.activities);
+          }
+        },
         builder: (context, state) {
-          // Wrap in state loading logic once implemented back end side
-          // if (state is VisitLoading) return const Center(child: CircularProgressIndicator(color: _orange));
+          if (state is VisitLoading) {
+            return const Center(child: CircularProgressIndicator(color: _green));
+          }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildCalendarCard(),
-                const SizedBox(height: 20),
-                _buildMapPreview(),
-                const SizedBox(height: 16),
-                _buildMetricsRow(),
-                const SizedBox(height: 24),
-                const Text(
-                  'VISITS TIMELINE',
-                  style: TextStyle(
-                    color: _orange,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.0,
+          List<VisitActivity> activities = [];
+          if (state is ActivitiesLoaded) {
+            activities = state.activities;
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async => _fetchRouteHistory(),
+            color: _green,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCalendarCard(),
+                  const SizedBox(height: 20),
+                  _buildMapPreview(activities),
+                  const SizedBox(height: 16),
+                  _buildMetricsRow(activities),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'VISITS TIMELINE',
+                    style: TextStyle(
+                      color: _green,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.0,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                _buildTimelineList(),
-                const SizedBox(height: 40),
-              ],
+                  const SizedBox(height: 20),
+                  activities.isEmpty 
+                      ? _buildEmptyState()
+                      : _buildTimelineList(activities),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           );
         },
       ),
     );
+  }
+
+  void _calculatePolyline(List<VisitActivity> activities) {
+    // Filter activities with coordinates and sort by time
+    final points = activities
+        .where((a) => a.latitude != 0 && a.longitude != 0)
+        .map((a) => LatLng(a.latitude, a.longitude))
+        .toList();
+    
+    setState(() {
+      _polylinePoints = points;
+    });
   }
 
   AppBar _buildAppBar(BuildContext context) {
@@ -118,7 +116,7 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
       scrolledUnderElevation: 0,
       leading: Builder(
         builder: (context) => IconButton(
-          icon: const Icon(LucideIcons.menu, color: _orange),
+          icon: const Icon(LucideIcons.menu, color: _green),
           onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
@@ -134,195 +132,127 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
     );
   }
 
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        children: [
+          Icon(LucideIcons.mapPin, size: 48, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            'Tidak ada aktivitas kunjungan',
+            style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Silakan lakukan check-in terlebih dahulu.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCalendarCard() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Icon(LucideIcons.chevronLeft, color: _orange, size: 20),
-              Text(
-                'October 2023',
-                style: TextStyle(
-                  color: _orange,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              Icon(LucideIcons.chevronRight, color: _orange, size: 20),
-            ],
+          const Icon(LucideIcons.calendar, color: _green, size: 20),
+          Text(
+            DateFormat('MMMM dd, yyyy').format(_selectedDate),
+            style: const TextStyle(color: _green, fontSize: 15, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 16),
-          // Mocking the week layout for UI perfection
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day) => 
-               SizedBox(
-                 width: 32,
-                 child: Text(
-                   day, 
-                   textAlign: TextAlign.center,
-                   style: const TextStyle(color: Color(0xFF9CA3AF), fontWeight: FontWeight.bold, fontSize: 13),
-                 ),
-               )
-            ).toList(),
-          ),
-          const SizedBox(height: 12),
-          // Week 1 mocking visually
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildDayCircle('', false),
-              _buildDayCircle('', false),
-              _buildDayCircle('', false),
-              _buildDayCircle('1', false),
-              _buildDayCircle('2', false),
-              _buildDayCircle('3', false),
-              _buildDayCircle('4', false),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Week 2 highlighting the 5th
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildDayCircle('5', true), // October 5, Selected
-              _buildDayCircle('6', false),
-              _buildDayCircle('7', false),
-              _buildDayCircle('8', false),
-              _buildDayCircle('9', false),
-              _buildDayCircle('10', false),
-              _buildDayCircle('11', false),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Week 3
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildDayCircle('12', false),
-              _buildDayCircle('13', false),
-              _buildDayCircle('14', false),
-              _buildDayCircle('', false),
-              _buildDayCircle('', false),
-              _buildDayCircle('', false),
-              _buildDayCircle('', false),
-            ],
+          IconButton(
+            icon: const Icon(LucideIcons.chevronDown, color: _green, size: 18),
+            onPressed: () {}, // Date picker could go here
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDayCircle(String day, bool isSelected) {
-    if (day.isEmpty) return const SizedBox(width: 36);
-    return GestureDetector(
-      onTap: () {
-        // Update date state logic here.
-      },
-      child: Container(
-        width: 36,
-        height: 36,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isSelected ? _orange : Colors.transparent,
-          shape: BoxShape.circle,
-          boxShadow: isSelected ? [
-            BoxShadow(color: _orange.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
-          ] : null,
-        ),
-        child: Text(
-          day,
-          style: TextStyle(
-            color: isSelected ? Colors.white : _textPrimary,
-            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-            fontSize: 14,
+  Widget _buildMapPreview(List<VisitActivity> activities) {
+    LatLng center = const LatLng(-6.1754, 106.8272); // Default Jakarta
+    if (_polylinePoints.isNotEmpty) {
+      center = _polylinePoints.first;
+    }
+
+    return Container(
+      height: 220,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: FlutterMap(
+          options: MapOptions(
+            initialCenter: center,
+            initialZoom: 13.0,
           ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.wowin.crm',
+            ),
+            if (_polylinePoints.isNotEmpty)
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: _polylinePoints,
+                    strokeWidth: 4.0,
+                    color: _green.withOpacity(0.7),
+                  ),
+                ],
+              ),
+            MarkerLayer(
+              markers: activities.map((a) {
+                if (a.latitude == 0 || a.longitude == 0) return null;
+                return Marker(
+                  point: LatLng(a.latitude, a.longitude),
+                  width: 30,
+                  height: 30,
+                  child: Icon(
+                    a.type == 'check-in' ? LucideIcons.mapPin : LucideIcons.circle,
+                    color: a.type == 'check-in' ? Colors.red : Colors.blue,
+                    size: 20,
+                  ),
+                );
+              }).whereType<Marker>().toList(),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildMapPreview() {
-    const double lat = 9.9281; // San Jose
-    const double lng = -84.0907;
-
-    return Stack(
-      children: [
-        Container(
-          height: 180,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: FlutterMap(
-              options: const MapOptions(
-                initialCenter: LatLng(lat, lng),
-                initialZoom: 12.0,
-                interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.wowin.crm',
-                ),
-              ],
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 12,
-          left: 12,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2))
-              ],
-            ),
-            child: const Text(
-              'Route Preview',
-              style: TextStyle(
-                color: _textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMetricsRow() {
+  Widget _buildMetricsRow(List<VisitActivity> activities) {
+    int totalVisits = activities.where((a) => a.type == 'check-in').length;
     return Row(
       children: [
         Expanded(
-          child: _buildMetricCard(LucideIcons.map, 'DISTANCE', '42.5 km'),
+          child: _buildMetricCard(LucideIcons.target, 'TOTAL VISITS', '$totalVisits Points'),
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _buildMetricCard(LucideIcons.clock, 'TIME ON ROAD', '3h 15m'),
+          child: _buildMetricCard(LucideIcons.calendarCheck, 'DATE', DateFormat('dd/MM').format(_selectedDate)),
         ),
       ],
     );
@@ -341,13 +271,13 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 14, color: _orange.withOpacity(0.8)),
+              Icon(icon, size: 14, color: _green.withOpacity(0.8)),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  color: _orange.withOpacity(0.9),
-                  fontSize: 11,
+                  color: _green.withOpacity(0.9),
+                  fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.5,
                 ),
@@ -357,59 +287,54 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              color: _textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
+            style: const TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.w800),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTimelineList() {
+  Widget _buildTimelineList(List<VisitActivity> activities) {
     return Column(
-      children: List.generate(_mockTimeline.length, (index) {
-        final item = _mockTimeline[index];
-        final isLast = index == _mockTimeline.length - 1;
+      children: List.generate(activities.length, (index) {
+        final item = activities[index];
+        final isLast = index == activities.length - 1;
         return _buildTimelineNode(item, isLast);
       }),
     );
   }
 
-  Widget _buildTimelineNode(Map<String, dynamic> item, bool isLast) {
-    bool isSkipped = item['type'] == 'skipped';
+  Widget _buildTimelineNode(VisitActivity item, bool isLast) {
+    bool isCheckIn = item.type == 'check-in';
+    String timeStr = DateFormat('hh:mm a').format(item.createdAt);
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Left track column
           Column(
             children: [
               Container(
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: isSkipped ? const Color(0xFFD1D5DB) : _orange,
+                  color: isCheckIn ? _green : Colors.blue.shade600,
                   shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: (isCheckIn ? _green : Colors.blue).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
                 ),
-                child: Icon(item['icon'], color: Colors.white, size: 20),
+                child: Icon(isCheckIn ? LucideIcons.logIn : LucideIcons.logOut, color: Colors.white, size: 18),
               ),
               if (!isLast)
                 Expanded(
                   child: Container(
                     width: 2,
-                    decoration: BoxDecoration(
-                      color: isSkipped ? const Color(0xFFE5E7EB) : const Color(0xFFFED7AA),
-                    ),
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    decoration: BoxDecoration(color: Colors.grey.shade200),
                   ),
                 ),
             ],
           ),
           const SizedBox(width: 16),
-          // Content column
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 24.0),
@@ -421,77 +346,32 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          item['name'],
-                          style: TextStyle(
-                            color: isSkipped ? _textSecondary : _textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          isCheckIn ? 'Check-In' : 'Check-Out',
+                          style: const TextStyle(color: _textPrimary, fontSize: 15, fontWeight: FontWeight.w800),
                         ),
                       ),
                       Text(
-                        item['time'],
-                        style: TextStyle(
-                          color: _textSecondary.withOpacity(0.8),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        timeStr,
+                        style: TextStyle(color: _textSecondary.withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    item['address'],
-                    style: TextStyle(
-                      color: _textSecondary.withOpacity(0.9),
-                      fontSize: 13,
+                  if (item.notes != null && item.notes!.isNotEmpty)
+                    Text(
+                      item.notes!,
+                      style: TextStyle(color: _textSecondary.withOpacity(0.9), fontSize: 13),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      // Status Badge
+                  if (!isCheckIn && item.notes != null)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isSkipped ? const Color(0xFFF3F4F6) : const Color(0xFFDCFCE7),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: Colors.blue.withOpacity(0.05), borderRadius: BorderRadius.circular(8)),
                         child: Text(
-                          item['status'],
-                          style: TextStyle(
-                            color: isSkipped ? const Color(0xFF4B5563) : const Color(0xFF16A34A),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                          ),
+                          item.notes!,
+                          style: const TextStyle(fontSize: 12, color: Colors.blueGrey, fontStyle: FontStyle.italic),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      // Stay Duration Badge (if any)
-                      if (item['stay'] != null)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF7ED),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            item['stay'],
-                            style: const TextStyle(
-                              color: _orange,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -500,5 +380,4 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
       ),
     );
   }
-
 }

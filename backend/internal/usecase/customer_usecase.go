@@ -5,7 +5,7 @@ import (
 	"crm_wowin_backend/internal/domain/dberrors"
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
-	"time"
+	"crm_wowin_backend/pkg/utils"
 
 	"github.com/google/uuid"
 )
@@ -13,7 +13,7 @@ import (
 // CustomerUseCase handles core logic for Customer CRUD and assignment
 type CustomerUseCase interface {
 	CreateCustomer(ctx context.Context, c *models.Customer, requestingUserID uuid.UUID) (*models.Customer, error)
-	GetCustomerDetail(ctx context.Context, id uuid.UUID) (*models.Customer, []*models.Contact, error)
+	GetCustomerDetail(ctx context.Context, id uuid.UUID) (*models.Customer, []*models.Contact, []*models.VisitActivity, []*models.Deal, []*models.VisitSchedule, error)
 	ListCustomers(ctx context.Context, filter repository.CustomerFilter) ([]*models.Customer, int, error)
 	UpdateCustomer(ctx context.Context, c *models.Customer) (*models.Customer, error)
 	DeleteCustomer(ctx context.Context, id uuid.UUID) error
@@ -23,12 +23,18 @@ type CustomerUseCase interface {
 }
 
 type customerUseCaseImpl struct {
-	repo repository.CustomerRepository
+	repo     repository.CustomerRepository
+	dealRepo repository.DealRepository
+	visitRepo repository.VisitRepository
 }
 
 // NewCustomerUseCase wiring
-func NewCustomerUseCase(r repository.CustomerRepository) CustomerUseCase {
-	return &customerUseCaseImpl{repo: r}
+func NewCustomerUseCase(r repository.CustomerRepository, dr repository.DealRepository, vr repository.VisitRepository) CustomerUseCase {
+	return &customerUseCaseImpl{
+		repo:     r,
+		dealRepo: dr,
+		visitRepo: vr,
+	}
 }
 
 func (u *customerUseCaseImpl) CreateCustomer(ctx context.Context, c *models.Customer, reqUser uuid.UUID) (*models.Customer, error) {
@@ -51,19 +57,36 @@ func (u *customerUseCaseImpl) CreateCustomer(ctx context.Context, c *models.Cust
 	return c, nil
 }
 
-func (u *customerUseCaseImpl) GetCustomerDetail(ctx context.Context, id uuid.UUID) (*models.Customer, []*models.Contact, error) {
+func (u *customerUseCaseImpl) GetCustomerDetail(ctx context.Context, id uuid.UUID) (*models.Customer, []*models.Contact, []*models.VisitActivity, []*models.Deal, []*models.VisitSchedule, error) {
 	customer, err := u.repo.GetByID(ctx, id)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
 
 	contacts, err := u.repo.GetContactsByCustomer(ctx, id)
 	if err != nil {
-		// Non-blocking approach, logging omitted
-		contacts = []*models.Contact{} 
+		contacts = []*models.Contact{}
 	}
 
-	return customer, contacts, nil
+	// Fetch Activities
+	activities, err := u.visitRepo.GetActivitiesByCustomer(ctx, id)
+	if err != nil {
+		activities = []*models.VisitActivity{}
+	}
+
+	// Fetch Deals
+	deals, err := u.dealRepo.List(ctx, repository.DealFilter{CustomerID: &id})
+	if err != nil {
+		deals = []*models.Deal{}
+	}
+
+	// Fetch Schedules
+	schedules, err := u.visitRepo.ListSchedules(ctx, repository.ScheduleFilter{CustomerID: &id})
+	if err != nil {
+		schedules = []*models.VisitSchedule{}
+	}
+
+	return customer, contacts, activities, deals, schedules, nil
 }
 
 func (u *customerUseCaseImpl) ListCustomers(ctx context.Context, filter repository.CustomerFilter) ([]*models.Customer, int, error) {
@@ -104,9 +127,8 @@ func (u *customerUseCaseImpl) AddContact(ctx context.Context, contact *models.Co
 		return nil, dberrors.ErrInvalidInput
 	}
 	
-	now := time.Now()
-	contact.CreatedAt = now
-	contact.UpdatedAt = now
+	contact.CreatedAt = utils.Now()
+	contact.UpdatedAt = utils.Now()
 
 	if err := u.repo.AddContact(ctx, contact); err != nil {
 		return nil, err

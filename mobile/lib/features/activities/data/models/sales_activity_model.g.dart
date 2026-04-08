@@ -17,22 +17,23 @@ _SalesActivityModel _$SalesActivityModelFromJson(Map<String, dynamic> json) =>
       taskDestinationId: json['task_destination_id'] as String?,
       activityType: json['activity_type'] as String,
       notes: json['description'] as String,
-      activityAt: DateTime.parse(json['activity_at'] as String),
-      createdAt: json['created_at'] == null
-          ? null
-          : DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] == null
-          ? null
-          : DateTime.parse(json['updated_at'] as String),
+      activityAt:
+          const DateTimeUtcConverter().fromJson(json['activity_at'] as String),
+      createdAt: const DateTimeUtcNullableConverter()
+          .fromJson(json['created_at'] as String?),
+      updatedAt: const DateTimeUtcNullableConverter()
+          .fromJson(json['updated_at'] as String?),
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
-      checkInTime: json['check_in_time'] == null
-          ? null
-          : DateTime.parse(json['check_in_time'] as String),
-      checkOutTime: json['check_out_time'] == null
-          ? null
-          : DateTime.parse(json['check_out_time'] as String),
-      photoBase64: json['photo_base64'] as String?,
+      checkInTime: const DateTimeUtcNullableConverter()
+          .fromJson(json['check_in_time'] as String?),
+      checkOutTime: const DateTimeUtcNullableConverter()
+          .fromJson(json['check_out_time'] as String?),
+      selfiePhotoPath: json['selfie_photo_path'] as String?,
+      placePhotoPath: json['place_photo_path'] as String?,
+      distance: (json['distance'] as num?)?.toDouble(),
+      isOffline: json['is_offline'] as bool? ?? false,
+      address: json['address'] as String?,
       outcome: json['outcome'] as String?,
     );
 
@@ -47,13 +48,21 @@ Map<String, dynamic> _$SalesActivityModelToJson(_SalesActivityModel instance) =>
       'task_destination_id': instance.taskDestinationId,
       'activity_type': instance.activityType,
       'description': instance.notes,
-      'activity_at': instance.activityAt.toIso8601String(),
-      'created_at': instance.createdAt?.toIso8601String(),
-      'updated_at': instance.updatedAt?.toIso8601String(),
+      'activity_at': const DateTimeUtcConverter().toJson(instance.activityAt),
+      'created_at':
+          const DateTimeUtcNullableConverter().toJson(instance.createdAt),
+      'updated_at':
+          const DateTimeUtcNullableConverter().toJson(instance.updatedAt),
       'latitude': instance.latitude,
       'longitude': instance.longitude,
-      'check_in_time': instance.checkInTime?.toIso8601String(),
-      'check_out_time': instance.checkOutTime?.toIso8601String(),
-      'photo_base64': instance.photoBase64,
+      'check_in_time':
+          const DateTimeUtcNullableConverter().toJson(instance.checkInTime),
+      'check_out_time':
+          const DateTimeUtcNullableConverter().toJson(instance.checkOutTime),
+      'selfie_photo_path': instance.selfiePhotoPath,
+      'place_photo_path': instance.placePhotoPath,
+      'distance': instance.distance,
+      'is_offline': instance.isOffline,
+      'address': instance.address,
       'outcome': instance.outcome,
     };

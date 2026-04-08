@@ -11,6 +11,10 @@ import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
 import '../bloc/customer_state.dart';
 import '../../domain/entities/customer.dart';
+import 'package:wowin_crm/features/deals/domain/entities/deal.dart';
+import 'package:wowin_crm/features/visits/domain/entities/visit_activity.dart';
+import 'package:wowin_crm/features/visits/domain/entities/visit_schedule.dart';
+import 'package:intl/intl.dart';
 
 class CustomerDetailPage extends StatefulWidget {
   final String id;
@@ -122,7 +126,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                       }
                     }
                   },
-                  child: _buildContent(customer),
+                  child: _buildContent(customer, state),
                 ),
               );
             } else if (state is CustomerError) {
@@ -161,7 +165,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     );
   }
 
-  Widget _buildContent(Customer customer) {
+  Widget _buildContent(Customer customer, CustomerDetailLoaded state) {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       children: [
@@ -174,7 +178,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
         const SizedBox(height: 32),
         _buildTabs(),
         const SizedBox(height: 16),
-        _buildTabContent(customer),
+        _buildTabContent(customer, state),
         const SizedBox(height: 40),
       ],
     );
@@ -223,8 +227,8 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
           children: [
             _buildTag(
               customer.industry ?? 'Food',
-              const Color(0xFFFFF7ED),
-              const Color(0xFFF97316),
+              const Color(0xFFF0FDF4),
+              const Color(0xFF0D8549),
             ),
             const SizedBox(width: 8),
             _buildTag(
@@ -276,7 +280,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
             LucideIcons.user,
             'Contact Person',
             customer.name,
-            iconColor: const Color(0xFFF97316),
+            iconColor: const Color(0xFF0D8549),
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
@@ -286,8 +290,8 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
             LucideIcons.phone,
             'Phone',
             customer.phone ?? '-',
-            iconColor: const Color(0xFFF97316),
-            valueColor: const Color(0xFFF97316),
+            iconColor: const Color(0xFF0D8549),
+            valueColor: const Color(0xFF0D8549),
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
@@ -297,8 +301,8 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
             LucideIcons.mail,
             'Email',
             customer.email ?? '-',
-            iconColor: const Color(0xFFF97316),
-            valueColor: const Color(0xFFF97316),
+            iconColor: const Color(0xFF0D8549),
+            valueColor: const Color(0xFF0D8549),
           ),
         ],
       ),
@@ -427,9 +431,9 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
       ),
       child: TabBar(
         controller: _tabController,
-        labelColor: const Color(0xFFF97316),
+        labelColor: const Color(0xFF0D8549),
         unselectedLabelColor: AppColors.textSecondary,
-        indicatorColor: const Color(0xFFF97316),
+        indicatorColor: const Color(0xFF0D8549),
         indicatorWeight: 3,
         dividerColor: Colors.transparent,
         labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
@@ -445,49 +449,28 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     );
   }
 
-  Widget _buildTabContent(Customer customer) {
+  Widget _buildTabContent(Customer customer, CustomerDetailLoaded state) {
     switch (_tabController.index) {
       case 0:
-        return _buildActivityLog();
+        return _buildActivityLog(state.activities);
       case 1:
-        return _buildDealsList(customer);
+        return _buildDealsList(state.deals);
       case 2:
-        return _buildVisitHistory(customer);
+        return _buildVisitHistory(state.schedules);
       default:
         return const SizedBox();
     }
   }
 
-  Widget _buildActivityLog() {
-    final activities = [
-      {
-        'type': 'call',
-        'title': 'Outgoing Call',
-        'description': 'Discussed annual maintenance contract renewal. Follow up next Tuesday.',
-        'time': 'TODAY, 10:30 AM',
-        'icon': LucideIcons.phone,
-        'iconBg': const Color(0xFFFFF7ED),
-        'iconColor': const Color(0xFFF97316),
-      },
-      {
-        'type': 'email',
-        'title': 'Email Received',
-        'description': 'Requested quotation for new assembly line components.',
-        'time': 'YESTERDAY, 4:15 PM',
-        'icon': LucideIcons.mail,
-        'iconBg': const Color(0xFFEFF6FF),
-        'iconColor': const Color(0xFF3B82F6),
-      },
-      {
-        'type': 'deal',
-        'title': 'Deal Won: Q3 Supplies',
-        'description': 'Contract signed for \$12,400. Delivery scheduled for Oct 1st.',
-        'time': 'SEP 12, 2023',
-        'icon': LucideIcons.badgeCheck,
-        'iconBg': const Color(0xFFF0FDF4),
-        'iconColor': const Color(0xFF22C55E),
-      },
-    ];
+  Widget _buildActivityLog(List<VisitActivity> activities) {
+    if (activities.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 40),
+          child: Text('Belum ada log aktivitas', style: TextStyle(color: Color(0xFF6B7280))),
+        ),
+      );
+    }
 
     return ListView.builder(
       shrinkWrap: true,
@@ -495,6 +478,8 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
       itemCount: activities.length,
       itemBuilder: (context, index) {
         final activity = activities[index];
+        final isCheckIn = activity.type == 'check-in';
+        
         return IntrinsicHeight(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,13 +490,13 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: activity['iconBg'] as Color,
+                      color: isCheckIn ? const Color(0xFFF0FDF4) : const Color(0xFFF0FDF4),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      activity['icon'] as IconData,
+                      isCheckIn ? LucideIcons.mapPin : LucideIcons.logOut,
                       size: 18,
-                      color: activity['iconColor'] as Color,
+                      color: isCheckIn ? const Color(0xFF22C55E) : const Color(0xFF0D8549),
                     ),
                   ),
                   if (index != activities.length - 1)
@@ -530,7 +515,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      activity['title'] as String,
+                      isCheckIn ? 'Check-in Kunjungan' : 'Check-out Kunjungan',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
@@ -539,7 +524,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      activity['description'] as String,
+                      activity.notes ?? 'Tidak ada catatan.',
                       style: const TextStyle(
                         color: Color(0xFF6B7280),
                         fontSize: 13,
@@ -548,7 +533,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      activity['time'] as String,
+                      DateFormat('dd MMM yyyy, HH:mm').format(activity.createdAt),
                       style: const TextStyle(
                         color: Color(0xFF9CA3AF),
                         fontSize: 11,
@@ -566,29 +551,132 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     );
   }
 
-  Widget _buildDealsList(Customer customer) {
-    // This should ideally use a Bloc to fetch deals for this customer
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Text(
-          'No active deals found',
-          style: TextStyle(color: AppColors.textSecondary),
+  Widget _buildDealsList(List<Deal> deals) {
+    if (deals.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 40),
+          child: Text('Tidak ada deal aktif', style: TextStyle(color: Color(0xFF6B7280))),
         ),
-      ),
+      );
+    }
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: deals.length,
+      itemBuilder: (context, index) {
+        final deal = deals[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFF3F4F6)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: const BoxDecoration(color: Color(0xFFF0FDF4), shape: BoxShape.circle),
+                child: const Icon(LucideIcons.dollarSign, color: Color(0xFF22C55E), size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(deal.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(height: 4),
+                    Text(deal.stage.toUpperCase(), style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+              Text(
+                'Rp${NumberFormat("#,###").format(deal.amount ?? 0)}',
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildVisitHistory(Customer customer) {
-    // This should ideally use a Bloc to fetch visit history
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Text(
-          'No visit history available',
-          style: TextStyle(color: AppColors.textSecondary),
+  Widget _buildVisitHistory(List<VisitSchedule> schedules) {
+    if (schedules.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 40),
+          child: Text('Tidak ada jadwal kunjungan', style: TextStyle(color: Color(0xFF6B7280))),
         ),
-      ),
+      );
+    }
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: schedules.length,
+      itemBuilder: (context, index) {
+        final schedule = schedules[index];
+        final isUpcoming = schedule.date.isAfter(DateTime.now());
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFF3F4F6)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isUpcoming ? const Color(0xFFEFF6FF) : const Color(0xFFF3F4F6),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  LucideIcons.calendar,
+                  color: isUpcoming ? const Color(0xFF3B82F6) : const Color(0xFF6B7280),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(schedule.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(height: 4),
+                    Text(
+                      DateFormat('dd MMM yyyy').format(schedule.date),
+                      style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: schedule.status == 'completed' ? const Color(0xFFF0FDF4) : const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  schedule.status.toUpperCase(),
+                  style: TextStyle(
+                    color: schedule.status == 'completed' ? const Color(0xFF22C55E) : const Color(0xFF0D8549),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

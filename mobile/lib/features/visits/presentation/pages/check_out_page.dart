@@ -11,8 +11,9 @@ import '../bloc/visit_state.dart';
 
 class CheckOutPage extends StatefulWidget {
   final String scheduleId;
+  final String? taskDestinationId;
 
-  const CheckOutPage({super.key, required this.scheduleId});
+  const CheckOutPage({super.key, required this.scheduleId, this.taskDestinationId});
 
   @override
   State<CheckOutPage> createState() => _CheckOutPageState();
@@ -113,6 +114,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
               visitResult: _visitResultController.text,
               nextAction: _selectedNextStep ?? '',
               nextVisitDate: formattedDate,
+              taskDestinationId: widget.taskDestinationId,
             ),
           );
     }

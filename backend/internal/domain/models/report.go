@@ -21,6 +21,8 @@ type KpiSummary struct {
 	MonthlyTarget       float64 `json:"monthly_target"`        // monthly target amount
 	MonthlyRevenue      float64 `json:"monthly_revenue"`       // won deals this month
 	DaysLeft            int     `json:"days_left"`             // days left in month
+	
+	NextStop *VisitRecommendation `json:"next_stop"`
 }
 
 type ChartData struct {

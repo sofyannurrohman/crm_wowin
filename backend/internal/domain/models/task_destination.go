@@ -11,6 +11,7 @@ type TaskDestination struct {
 	TaskID        uuid.UUID   `json:"task_id"`
 	LeadID        *uuid.UUID  `json:"lead_id,omitempty"`
 	CustomerID    *uuid.UUID  `json:"customer_id,omitempty"`
+	DealID        *uuid.UUID  `json:"deal_id,omitempty"`
 	SequenceOrder int         `json:"sequence_order"`
 	Status        TaskStatus  `json:"status"` // Reuse TaskStatus string constants
 	CreatedAt     time.Time   `json:"created_at"`

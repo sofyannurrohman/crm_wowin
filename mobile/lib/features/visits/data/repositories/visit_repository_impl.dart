@@ -50,9 +50,9 @@ class VisitRepositoryImpl implements VisitRepository {
   }
 
   @override
-  Future<Either<Failure, List<VisitActivity>>> getActivities({String? salesId, String? customerId}) async {
+  Future<Either<Failure, List<VisitActivity>>> getActivities({String? salesId, String? customerId, String? leadId}) async {
     try {
-      final result = await remoteDataSource.getActivities(salesId: salesId, customerId: customerId);
+      final result = await remoteDataSource.getActivities(salesId: salesId, customerId: customerId, leadId: leadId);
       return Right(result);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

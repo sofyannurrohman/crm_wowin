@@ -1,9 +1,13 @@
 import 'package:dio/dio.dart';
 import '../../domain/entities/customer.dart';
+import '../../domain/entities/customer_detail_response.dart';
+import 'package:wowin_crm/features/deals/domain/entities/deal.dart';
+import 'package:wowin_crm/features/visits/domain/entities/visit_activity.dart';
+import 'package:wowin_crm/features/visits/domain/entities/visit_schedule.dart';
 
 abstract class CustomerRemoteDataSource {
   Future<List<Customer>> getCustomers({String? query, String? status});
-  Future<Customer> getCustomerDetail(String id);
+  Future<CustomerDetailResponse> getCustomerDetail(String id);
   Future<Customer> createCustomer(Customer customer);
   Future<Customer> updateCustomer(Customer customer);
   Future<void> deleteCustomer(String id);
@@ -39,22 +43,35 @@ class CustomerRemoteDataSourceImpl implements CustomerRemoteDataSource {
   }
 
   @override
-  Future<Customer> getCustomerDetail(String id) async {
+  Future<CustomerDetailResponse> getCustomerDetail(String id) async {
     final response = await _dio.get('/customers/$id');
-    final dynamic dataRaw = response.data['data'] ?? response.data;
+    final dynamic data = response.data['data'] ?? response.data;
     
-    if (dataRaw == null) {
+    if (data == null) {
       throw Exception('Data pelanggan tidak ditemukan dalam respon API');
     }
 
-    Map<String, dynamic> data;
-    if (dataRaw is Map<String, dynamic> && dataRaw.containsKey('customer')) {
-      data = dataRaw['customer'] as Map<String, dynamic>;
-    } else {
-      data = dataRaw as Map<String, dynamic>;
-    }
-    
-    return _mapToCustomer(data);
+    final customerJson = data['customer'] as Map<String, dynamic>;
+    final customer = _mapToCustomer(customerJson);
+
+    final List<VisitActivity> activities = (data['activities'] as List? ?? [])
+        .map((e) => VisitActivity.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    final List<Deal> deals = (data['deals'] as List? ?? [])
+        .map((e) => Deal.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    final List<VisitSchedule> schedules = (data['schedules'] as List? ?? [])
+        .map((e) => VisitSchedule.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    return CustomerDetailResponse(
+      customer: customer,
+      activities: activities,
+      deals: deals,
+      schedules: schedules,
+    );
   }
 
   @override

@@ -4,7 +4,7 @@ FROM golang:1.25-alpine AS builder
 WORKDIR /app
 
 # Install dependencies needed for fetching modules and building
-RUN apk add --no-cache git ca-certificates build-base
+RUN apk add --no-cache git ca-certificates
 
 # Set Go proxy to default (direct or proxy.golang.org)
 ENV GOPROXY=https://proxy.golang.org,direct
@@ -25,12 +25,12 @@ COPY . .
 # Build the main application with BuildKit cache mounts
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server/main.go
+    CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o main ./cmd/server/main.go
 
 # Build the seeder tool with BuildKit cache mounts
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o seeder ./cmd/seeder/main.go
+    CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o seeder ./cmd/seeder/main.go
 
 # Final stage
 FROM alpine:latest

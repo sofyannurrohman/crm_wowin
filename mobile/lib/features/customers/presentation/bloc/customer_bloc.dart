@@ -48,7 +48,12 @@ class CustomerBloc extends Bloc<CustomerEvent, CustomerState> {
     final result = await getCustomerDetail(event.id);
     result.fold(
       (failure) => emit(CustomerError(failure.message)),
-      (customer) => emit(CustomerDetailLoaded(customer)),
+      (response) => emit(CustomerDetailLoaded(
+        customer: response.customer,
+        activities: response.activities,
+        deals: response.deals,
+        schedules: response.schedules,
+      )),
     );
   }
 

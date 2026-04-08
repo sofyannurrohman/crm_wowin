@@ -4,6 +4,7 @@ import (
 	"context"
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
+	"crm_wowin_backend/pkg/utils"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,13 +31,10 @@ func (u *taskUC) Create(ctx context.Context, t *models.Task) (*models.Task, erro
 	if t.Status == "" {
 		t.Status = models.TaskStatusTodo
 	}
-	if t.Priority == "" {
-		t.Priority = models.TaskPriorityMedium
-	}
 	if err := u.repo.Create(ctx, t); err != nil {
 		return nil, err
 	}
-	return t, nil
+	return u.repo.GetByID(ctx, t.ID)
 }
 
 func (u *taskUC) GetByID(ctx context.Context, id uuid.UUID) (*models.Task, error) {
@@ -49,13 +47,12 @@ func (u *taskUC) List(ctx context.Context, filter repository.TaskFilter) ([]*mod
 
 func (u *taskUC) Update(ctx context.Context, t *models.Task) (*models.Task, error) {
 	if t.Status == models.TaskStatusCompleted && t.CompletedAt == nil {
-		now := time.Now()
-		t.CompletedAt = &now
+		t.CompletedAt = utils.ToFlexTimePtr(time.Now())
 	}
 	if err := u.repo.Update(ctx, t); err != nil {
 		return nil, err
 	}
-	return t, nil
+	return u.repo.GetByID(ctx, t.ID)
 }
 
 func (u *taskUC) Delete(ctx context.Context, id uuid.UUID) error {
@@ -67,8 +64,7 @@ func (u *taskUC) Complete(ctx context.Context, id uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	now := time.Now()
 	t.Status = models.TaskStatusCompleted
-	t.CompletedAt = &now
+	t.CompletedAt = utils.ToFlexTimePtr(time.Now())
 	return u.repo.Update(ctx, t)
 }

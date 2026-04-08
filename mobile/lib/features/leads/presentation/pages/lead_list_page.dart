@@ -306,19 +306,19 @@ class _LeadListPageState extends State<LeadListPage> {
     Color badgeColor;
     Color badgeBgColor;
     Color badgeTextColor;
-    String statusStr = (lead.status ?? 'BARU').toUpperCase();
+    String statusStr = (lead.status ?? 'new').toLowerCase();
 
-    if (statusStr == 'NEW' || statusStr == 'BARU') {
+    if (statusStr == 'new' || statusStr == 'baru') {
       badgeColor = const Color(0xFF3B82F6);
       badgeBgColor = const Color(0xFFDBEAFE);
       badgeTextColor = const Color(0xFF1D4ED8);
       statusStr = 'BARU';
-    } else if (statusStr == 'CONTACTED' || statusStr == 'DIHUBUNGI') {
+    } else if (statusStr == 'contacted' || statusStr == 'dihubungi') {
       badgeColor = const Color(0xFFF59E0B);
       badgeBgColor = const Color(0xFFFEF3C7);
       badgeTextColor = const Color(0xFFB45309);
       statusStr = 'DIHUBUNGI';
-    } else if (statusStr == 'QUALIFIED' || statusStr == 'MEMENUHI SYARAT') {
+    } else if (statusStr == 'qualified' || statusStr == 'memenuhi syarat') {
       badgeColor = const Color(0xFF10B981);
       badgeBgColor = const Color(0xFFD1FAE5);
       badgeTextColor = const Color(0xFF047857);
@@ -341,7 +341,7 @@ class _LeadListPageState extends State<LeadListPage> {
     }
 
     return InkWell(
-      onTap: () => context.pushNamed(kRouteConvertLead, extra: lead),
+      onTap: () => context.pushNamed(kRouteLeadDetail, pathParameters: {'id': lead.id}, extra: lead),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -523,6 +523,31 @@ class _LeadListPageState extends State<LeadListPage> {
                     ),
                   ],
                 ),
+                if (lead.status == 'new' || lead.status == 'contacted') ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      if (lead.status == 'new')
+                        Expanded(
+                          child: _buildQuickActionBtn(
+                            label: 'Hubungi Sekarang',
+                            icon: LucideIcons.phoneCall,
+                            color: const Color(0xFFF59E0B),
+                            onTap: () => _updateStatus(lead.id, 'contacted'),
+                          ),
+                        ),
+                      if (lead.status == 'contacted')
+                        Expanded(
+                          child: _buildQuickActionBtn(
+                            label: 'Qualify Prospek',
+                            icon: LucideIcons.checkCircle,
+                            color: const Color(0xFF10B981),
+                            onTap: () => _updateStatus(lead.id, 'qualified'),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -568,6 +593,40 @@ class _LeadListPageState extends State<LeadListPage> {
   Color _getInitialsTextColor(String initials) {
     if (initials == 'MK') return _orange;
     return const Color(0xFF4B5563); // For EP
+  }
+
+  Widget _buildQuickActionBtn({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _updateStatus(String id, String status) {
+    context.read<LeadBloc>().add(UpdateLeadStatusSubmitted(id: id, status: status));
   }
 
 }

@@ -1,7 +1,7 @@
 package models
 
 import (
-	"time"
+	"crm_wowin_backend/pkg/utils"
 
 	"github.com/google/uuid"
 )
@@ -39,22 +39,22 @@ type User struct {
 	AvatarPath   *string     `json:"avatar_path,omitempty"`
 	ManagerID    *uuid.UUID  `json:"manager_id,omitempty"`
 	EmployeeCode *string     `json:"employee_code,omitempty"`
-	JoinedAt     *time.Time  `json:"joined_at,omitempty"`
-	LastLoginAt  *time.Time  `json:"last_login_at,omitempty"`
-	CreatedAt    time.Time   `json:"created_at"`
-	UpdatedAt    time.Time   `json:"updated_at"`
+	JoinedAt     *utils.FlexTime `json:"joined_at,omitempty"`
+	LastLoginAt  *utils.FlexTime `json:"last_login_at,omitempty"`
+	CreatedAt    utils.FlexTime   `json:"created_at"`
+	UpdatedAt    utils.FlexTime   `json:"updated_at"`
 }
 
 // RefreshToken maps the active JWT refresh sessions
 type RefreshToken struct {
 	ID        uuid.UUID  `json:"id"`
-	UserID    uuid.UUID  `json:"user_id"`
-	TokenHash string     `json:"-"`
-	ExpiresAt time.Time  `json:"expires_at"`
-	Revoked   bool       `json:"revoked"`
-	IPAddress *string    `json:"ip_address,omitempty"`
-	UserAgent *string    `json:"user_agent,omitempty"`
-	CreatedAt time.Time  `json:"created_at"`
+	UserID    uuid.UUID      `json:"user_id"`
+	TokenHash string         `json:"-"`
+	ExpiresAt utils.FlexTime  `json:"expires_at"`
+	Revoked   bool           `json:"revoked"`
+	IPAddress *string        `json:"ip_address,omitempty"`
+	UserAgent *string        `json:"user_agent,omitempty"`
+	CreatedAt utils.FlexTime  `json:"created_at"`
 }
 
 // LoginRequest defines the expected payload for user login

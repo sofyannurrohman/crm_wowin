@@ -8,7 +8,7 @@ class GetActivities {
 
   GetActivities(this.repository);
 
-  Future<Either<Failure, List<VisitActivity>>> call({String? salesId, String? customerId}) {
-    return repository.getActivities(salesId: salesId, customerId: customerId);
+  Future<Either<Failure, List<VisitActivity>>> call({String? salesId, String? customerId, String? leadId}) {
+    return repository.getActivities(salesId: salesId, customerId: customerId, leadId: leadId);
   }
 }

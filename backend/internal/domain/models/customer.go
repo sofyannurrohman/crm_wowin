@@ -1,7 +1,7 @@
 package models
 
 import (
-	"time"
+	"crm_wowin_backend/pkg/utils"
 
 	"github.com/google/uuid"
 )
@@ -11,6 +11,13 @@ type CustomerType string
 const (
 	TypeIndividual CustomerType = "individual"
 	TypeCompany    CustomerType = "company"
+	TypeWarung     CustomerType = "warung"
+	TypeRetail     CustomerType = "retail"
+	TypeToko       CustomerType = "toko"
+	TypeAgen       CustomerType = "agen"
+	TypeRestoran   CustomerType = "restoran"
+	TypeCafe       CustomerType = "cafe"
+	TypeLainnya    CustomerType = "lainnya"
 )
 
 type CustomerStatus string
@@ -59,9 +66,9 @@ type Customer struct {
 
 	Notes *string `json:"notes,omitempty"`
 
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `json:"deleted_at,omitempty"`
+	CreatedAt utils.FlexTime   `json:"created_at"`
+	UpdatedAt utils.FlexTime   `json:"updated_at"`
+	DeletedAt *utils.FlexTime `json:"deleted_at,omitempty"`
 }
 
 // Contact represents the customer_contacts table
@@ -76,6 +83,6 @@ type Contact struct {
 	PhoneAlt   *string    `json:"phone_alt,omitempty"`
 	IsPrimary  bool       `json:"is_primary"`
 	Notes      *string    `json:"notes,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+	CreatedAt  utils.FlexTime  `json:"created_at"`
+	UpdatedAt  utils.FlexTime  `json:"updated_at"`
 }

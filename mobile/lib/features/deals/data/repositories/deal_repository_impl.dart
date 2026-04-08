@@ -12,9 +12,9 @@ class DealRepositoryImpl implements DealRepository {
   DealRepositoryImpl(this.remoteDataSource);
 
   @override
-  Future<Either<Failure, List<Deal>>> getDeals() async {
+  Future<Either<Failure, List<Deal>>> getDeals({String? customerId}) async {
     try {
-      final deals = await remoteDataSource.getDeals();
+      final deals = await remoteDataSource.getDeals(customerId: customerId);
       return Right(deals);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

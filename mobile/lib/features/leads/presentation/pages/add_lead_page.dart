@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:uuid/uuid.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../domain/entities/lead.dart';
 import '../bloc/lead_bloc.dart';
 import '../bloc/lead_event.dart';
@@ -25,16 +29,22 @@ class _AddLeadPageState extends State<AddLeadPage> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _nameController = TextEditingController();
-  final _companyController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _valueController = TextEditingController();
   final _notesController = TextEditingController();
+  final _addressController = TextEditingController();
+  String? _selectedBusinessType;
+  final List<String> _businessTypes = ['Warung Makan', 'Toko Kelontong', 'Retail / Minimarket', 'Agen / Distributor', 'Restoran', 'Cafe', 'Lainnya'];
   String _selectedSource = 'Survey';
+  String _selectedStatus = 'new';
   List<Product> _selectedProducts = [];
   
-  Position? _currentPosition;
+  LatLng? _selectedLocation;
+  final MapController _mapController = MapController();
   bool _isGettingLocation = false;
+
+  static const Color _green = Color(0xFF0D8549);
 
   @override
   void initState() {
@@ -43,30 +53,25 @@ class _AddLeadPageState extends State<AddLeadPage> {
     if (lead != null) {
       _titleController.text = lead.title;
       _nameController.text = lead.name;
-      _companyController.text = lead.company ?? '';
+      _selectedBusinessType = _businessTypes.cast<String?>().firstWhere(
+        (t) => t?.toLowerCase() == lead.company?.toLowerCase(),
+        orElse: () => _businessTypes.contains(lead.company) ? lead.company : null,
+      );
       _emailController.text = lead.email ?? '';
       _phoneController.text = lead.phone ?? '';
       _valueController.text = lead.estimatedValue?.toString() ?? '';
       _notesController.text = lead.notes ?? '';
-      _selectedSource = lead.source;
       
-      // We will need to fetch actual product objects if we have IDs
-      // For now, let's trigger production fetch
+      _selectedSource = _sources.firstWhere(
+        (s) => s.toLowerCase() == lead.source.toLowerCase(),
+        orElse: () => _sources.first,
+      );
+      
       if (lead.latitude != null && lead.longitude != null) {
-        // Mocking Position since geolocator doesn't have a simple constructor for this
-        _currentPosition = Position(
-          latitude: lead.latitude!,
-          longitude: lead.longitude!,
-          timestamp: DateTime.now(),
-          accuracy: 0,
-          altitude: 0,
-          heading: 0,
-          speed: 0,
-          speedAccuracy: 0,
-          altitudeAccuracy: 0,
-          headingAccuracy: 0,
-        );
+        _selectedLocation = LatLng(lead.latitude!, lead.longitude!);
       }
+      _addressController.text = lead.address ?? '';
+      _selectedStatus = lead.status;
     }
     context.read<ProductBloc>().add(const FetchProducts());
   }
@@ -77,42 +82,56 @@ class _AddLeadPageState extends State<AddLeadPage> {
   void dispose() {
     _titleController.dispose();
     _nameController.dispose();
-    _companyController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _valueController.dispose();
     _notesController.dispose();
+    _addressController.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
-  Future<void> _getLocation() async {
+  Future<void> _getCurrentLocation() async {
     setState(() => _isGettingLocation = true);
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        throw 'Location services are disabled.';
+      final position = await Geolocator.getCurrentPosition();
+      final latLng = LatLng(position.latitude, position.longitude);
+      setState(() {
+        _selectedLocation = latLng;
+        _isGettingLocation = false;
+      });
+      _mapController.move(latLng, 15.0);
+      _reverseGeocode(latLng);
+    } catch (e) {
+      setState(() => _isGettingLocation = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error getting location: $e'),
+              backgroundColor: Colors.red),
+        );
       }
+    }
+  }
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          throw 'Location permissions are denied';
+  Future<void> _reverseGeocode(LatLng location) async {
+    try {
+      final url = Uri.parse('https://nominatim.openstreetmap.org/reverse?format=json&lat=${location.latitude}&lon=${location.longitude}&zoom=18&addressdetails=1');
+      final response = await http.get(url, headers: {
+        'User-Agent': 'WowinCRM/1.0',
+      });
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final String? displayName = data['display_name'];
+        if (displayName != null) {
+          setState(() {
+            _addressController.text = displayName;
+          });
         }
       }
-
-      if (permission == LocationPermission.deniedForever) {
-        throw 'Location permissions are permanently denied';
-      }
-
-      final position = await Geolocator.getCurrentPosition();
-      setState(() => _currentPosition = position);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    } finally {
-      setState(() => _isGettingLocation = false);
+      debugPrint('Error reverse geocoding: $e');
     }
   }
 
@@ -122,16 +141,17 @@ class _AddLeadPageState extends State<AddLeadPage> {
         id: widget.initialLead?.id ?? const Uuid().v4(),
         title: _titleController.text,
         name: _nameController.text,
-        company: _companyController.text,
+        company: _selectedBusinessType,
         email: _emailController.text,
         phone: _phoneController.text,
         source: _selectedSource.toLowerCase(),
-        status: widget.initialLead?.status ?? 'NEW',
+        status: _selectedStatus,
         estimatedValue: double.tryParse(_valueController.text) ?? 0.0,
         potentialProducts: _selectedProducts.map((p) => p.name).toList(), // Using names for now as per "berpotensi menjual produk apa"
         notes: _notesController.text,
-        latitude: _currentPosition?.latitude,
-        longitude: _currentPosition?.longitude,
+        address: _addressController.text,
+        latitude: _selectedLocation?.latitude,
+        longitude: _selectedLocation?.longitude,
       );
       
       if (widget.initialLead == null) {
@@ -149,7 +169,7 @@ class _AddLeadPageState extends State<AddLeadPage> {
       appBar: AppBar(
         title: Text(widget.initialLead == null ? 'Add New Lead' : 'Edit Lead Data', 
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFFE8622A),
+        backgroundColor: const Color(0xFF0D8549),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: BlocListener<LeadBloc, LeadState>(
@@ -190,11 +210,19 @@ class _AddLeadPageState extends State<AddLeadPage> {
                   validator: (v) => v!.isEmpty ? 'Nama PIC wajib diisi' : null,
                 ),
                 const SizedBox(height: 16),
-                _buildTextField(
-                  controller: _companyController,
-                  label: 'Tipe Bisnis / Cabang',
-                  hint: 'Contoh: Warung Makan, Toko Kelontong, Agen',
-                  icon: LucideIcons.building,
+                DropdownButtonFormField<String>(
+                  value: _selectedBusinessType,
+                  decoration: InputDecoration(
+                    labelText: 'Tipe Bisnis / Cabang',
+                    prefixIcon: const Icon(LucideIcons.building, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF0D8549), width: 2),
+                    ),
+                  ),
+                  items: _businessTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                  onChanged: (v) => setState(() => _selectedBusinessType = v),
                 ),
                 const SizedBox(height: 24),
                 _buildSectionHeader('Contact Details', LucideIcons.phone),
@@ -239,63 +267,46 @@ class _AddLeadPageState extends State<AddLeadPage> {
                         onChanged: (v) => setState(() => _selectedSource = v!),
                       ),
                     ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _selectedStatus,
+                        decoration: InputDecoration(
+                          labelText: 'Status',
+                          prefixIcon: const Icon(LucideIcons.activity, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'new', child: Text('Baru')),
+                          DropdownMenuItem(value: 'contacted', child: Text('Dihubungi')),
+                          DropdownMenuItem(value: 'qualified', child: Text('Qualified')),
+                          DropdownMenuItem(value: 'unqualified', child: Text('Unqualified')),
+                        ],
+                        onChanged: (v) => setState(() => _selectedStatus = v!),
+                      ),
+                    ),
                   ],
                 ),
                 if (_selectedSource == 'Survey') ...[
                   const SizedBox(height: 24),
-                  _buildSectionHeader('Survey Location', LucideIcons.mapPin),
+                  _buildLocationHeader(),
                   const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (_currentPosition != null) ...[
-                          Row(
-                            children: [
-                              const Icon(LucideIcons.checkCircle, color: Colors.green, size: 18),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Lat: ${_currentPosition!.latitude.toStringAsFixed(6)}, Lon: ${_currentPosition!.longitude.toStringAsFixed(6)}',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: _getLocation,
-                                child: const Text('Refresh', style: TextStyle(fontSize: 12)),
-                              ),
-                            ],
-                          ),
-                        ] else ...[
-                          const Text(
-                            'Lokasi survey sangat disarankan untuk validasi.',
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: OutlinedButton.icon(
-                              onPressed: _isGettingLocation ? null : _getLocation,
-                              icon: _isGettingLocation 
-                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
-                                : const Icon(LucideIcons.mapPin, size: 16),
-                              label: Text(_isGettingLocation ? 'Mengambil Lokasi...' : 'Ambil Titik Lokasi Survey'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: const Color(0xFFE8622A),
-                                side: const BorderSide(color: Color(0xFFE8622A)),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                  _buildMapPreview(),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _addressController,
+                    label: 'Alamat / Lokasi (Auto-Geocode)',
+                    hint: 'Pilih lokasi di peta atau gunakan GPS untuk mengisi alamat',
+                    icon: LucideIcons.mapPin,
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(child: _buildLocationBtn(LucideIcons.mapPin, 'Use My Current Location', _getCurrentLocation)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _buildLocationBtn(LucideIcons.search, 'Search Address', () {})),
+                    ],
                   ),
                 ],
                 const SizedBox(height: 24),
@@ -440,7 +451,7 @@ class _AddLeadPageState extends State<AddLeadPage> {
                                 subtitle: Text('Rp ${product.price.toStringAsFixed(0)}', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                                 trailing: Icon(
                                   isSelected ? LucideIcons.checkCircle2 : LucideIcons.plusCircle,
-                                  color: isSelected ? const Color(0xFF0D8549) : const Color(0xFFE8622A),
+                                  color: isSelected ? const Color(0xFF0D8549) : const Color(0xFF0D8549),
                                   size: 22,
                                 ),
                                 onTap: () {
@@ -499,7 +510,7 @@ class _AddLeadPageState extends State<AddLeadPage> {
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: const Color(0xFFE8622A)),
+        Icon(icon, size: 18, color: _green),
         const SizedBox(width: 8),
         Text(
           title.toUpperCase(),
@@ -540,7 +551,116 @@ class _AddLeadPageState extends State<AddLeadPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFE8622A), width: 2),
+          borderSide: const BorderSide(color: _green, width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationHeader() {
+    return Row(
+      children: [
+        const Icon(LucideIcons.map, color: _green, size: 20),
+        const SizedBox(width: 10),
+        const Text('Survey Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))),
+        const Spacer(),
+        if (_selectedLocation != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(color: _green.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+            child: Text(
+              'GPS: ${_selectedLocation!.latitude.toStringAsFixed(4)}° N, ${_selectedLocation!.longitude.toStringAsFixed(4)}° E',
+              style: const TextStyle(color: _green, fontSize: 10, fontWeight: FontWeight.w800),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMapPreview() {
+    return Container(
+      height: 200,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _selectedLocation ?? const LatLng(-6.200000, 106.816666),
+                initialZoom: 14.0,
+                onTap: (tapPosition, latLng) {
+                   setState(() => _selectedLocation = latLng);
+                   _reverseGeocode(latLng);
+                },
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.wowin.crm',
+                ),
+                if (_selectedLocation != null)
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: _selectedLocation!,
+                        child: const Icon(LucideIcons.mapPin, color: _green, size: 40),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+            if (_selectedLocation == null)
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(LucideIcons.mapPin, color: _green, size: 40),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
+                      child: const Text('Pin Location Here', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationBtn(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: const Color(0xFF4B5563)),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
+              ),
+            ),
+          ],
         ),
       ),
     );

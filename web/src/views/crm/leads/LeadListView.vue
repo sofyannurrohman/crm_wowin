@@ -58,6 +58,7 @@ const formData = ref({
 const showDeleteDialog = ref(false)
 const deletingLead = ref<Lead | null>(null)
 const deleting = ref(false)
+const businessTypes = ['Warung Makan', 'Toko Kelontong', 'Retail / Minimarket', 'Agen / Distributor', 'Restoran', 'Cafe', 'Lainnya']
 
 const isEditing = computed(() => !!editingLead.value)
 
@@ -350,8 +351,17 @@ const formatCurrency = (val: number) => {
               <Input id="name" v-model="formData.name" placeholder="Budi Santoso" required />
             </div>
             <div class="space-y-2">
-              <Label for="company">Perusahaan</Label>
-              <Input id="company" v-model="formData.company" placeholder="PT ABC" />
+              <Label>Tipe Bisnis / Perusahaan</Label>
+              <Select v-model="formData.company">
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih tipe bisnis" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="type in businessTypes" :key="type" :value="type">
+                    {{ type }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div class="space-y-2">
               <Label for="email">Email</Label>

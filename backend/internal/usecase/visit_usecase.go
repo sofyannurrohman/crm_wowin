@@ -25,19 +25,31 @@ type VisitUseCase interface {
 }
 
 type visitUseCaseImpl struct {
-	visitRepo repository.VisitRepository
-	custRepo  repository.CustomerRepository
+	visitRepo    repository.VisitRepository
+	custRepo     repository.CustomerRepository
+	taskRepo     repository.TaskRepository
+	activityRepo repository.SalesActivityRepository
+	leadRepo     repository.LeadRepository
 }
 
-func NewVisitUseCase(vr repository.VisitRepository, cr repository.CustomerRepository) VisitUseCase {
-	return &visitUseCaseImpl{visitRepo: vr, custRepo: cr}
+func NewVisitUseCase(vr repository.VisitRepository, cr repository.CustomerRepository, tr repository.TaskRepository, ar repository.SalesActivityRepository, lr repository.LeadRepository) VisitUseCase {
+	return &visitUseCaseImpl{visitRepo: vr, custRepo: cr, taskRepo: tr, activityRepo: ar, leadRepo: lr}
 }
 
 func (u *visitUseCaseImpl) CreateSchedule(ctx context.Context, s *models.VisitSchedule) (*models.VisitSchedule, error) {
-	// Assure target customer existing
-	_, err := u.custRepo.GetByID(ctx, s.CustomerID)
-	if err != nil {
-		return nil, dberrors.ErrInvalidInput
+	// Assure target existing
+	if s.CustomerID != nil {
+		_, err := u.custRepo.GetByID(ctx, *s.CustomerID)
+		if err != nil {
+			return nil, dberrors.ErrInvalidInput
+		}
+	} else if s.LeadID != nil {
+		_, err := u.leadRepo.GetByID(ctx, *s.LeadID)
+		if err != nil {
+			return nil, dberrors.ErrInvalidInput
+		}
+	} else {
+		return nil, errors.New("customer_id or lead_id is required")
 	}
 	
 	if s.Status == "" {
@@ -74,47 +86,167 @@ func (u *visitUseCaseImpl) UpdateSchedule(ctx context.Context, s *models.VisitSc
 
 // LogActivity validates proximity for checkins and registers photo path proofs.
 func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.VisitActivity) (*models.VisitActivity, error) {
-	customer, err := u.custRepo.GetByID(ctx, activity.CustomerID)
-	if err != nil {
-		return nil, errors.New("invalid customer target for activity")
-	}
+	var targetLat, targetLng *float64
+	var targetName string
+	var targetRadius float64 = 100.0 // Default
 
-	// If it's linked to a schedule, enforce integrity
-	if activity.ScheduleID != nil {
-		sched, err := u.visitRepo.GetScheduleByID(ctx, *activity.ScheduleID)
-		if err != nil || sched.CustomerID != activity.CustomerID {
-			return nil, errors.New("schedule does not match customer target")
+	if activity.CustomerID != nil {
+		customer, err := u.custRepo.GetByID(ctx, *activity.CustomerID)
+		if err != nil {
+			return nil, errors.New("invalid customer target for activity")
 		}
+		targetLat = customer.Latitude
+		targetLng = customer.Longitude
+		targetName = customer.Name
+		targetRadius = float64(customer.CheckinRadius)
+		
+		// If it's linked to a schedule, enforce integrity
+		if activity.ScheduleID != nil {
+			sched, err := u.visitRepo.GetScheduleByID(ctx, *activity.ScheduleID)
+			if err != nil || (sched.CustomerID != nil && *sched.CustomerID != *activity.CustomerID) {
+				return nil, errors.New("schedule does not match customer target")
+			}
+		}
+	} else if activity.LeadID != nil {
+		lead, err := u.leadRepo.GetByID(ctx, *activity.LeadID)
+		if err != nil {
+			return nil, errors.New("invalid lead target for activity")
+		}
+		targetLat = lead.Latitude
+		targetLng = lead.Longitude
+		targetName = lead.Name
+		targetRadius = 200.0 // Default for leads
+		
+		// If it's linked to a schedule, enforce integrity
+		if activity.ScheduleID != nil {
+			sched, err := u.visitRepo.GetScheduleByID(ctx, *activity.ScheduleID)
+			if err != nil || (sched.LeadID != nil && *sched.LeadID != *activity.LeadID) {
+				return nil, errors.New("schedule does not match lead target")
+			}
+		}
+	} else {
+		return nil, errors.New("customer_id or lead_id is required for activity")
 	}
 
 	// PROXIMITY VALIDATION! 
-	// We calculate distance if the target customer has set coordinates
-	if customer.Latitude != nil && customer.Longitude != nil {
-		distMeters := distanceBetween(activity.Latitude, activity.Longitude, *customer.Latitude, *customer.Longitude)
+	// We calculate distance if the target has set coordinates
+	if targetLat != nil && targetLng != nil {
+		distMeters := distanceBetween(activity.Latitude, activity.Longitude, *targetLat, *targetLng)
 		activity.Distance = &distMeters
 		
-		// Optional: We can reject checkin here if `distMeters` > `customer.CheckinRadius`, 
-		// but usually in enterprise CRMs, we allow storing the "far" checkin, yet marking it as "violation notes" 
-		// or rejecting strictly based on client SOP.
-		// For Phase 1 strictness:
 		if activity.Type == models.VisitTypeCheckIn && !activity.IsOffline {
-			if distMeters > float64(customer.CheckinRadius) {
-				return nil, errors.New("lokasi check-in berada di luar radius pelanggan yang diizinkan")
+			if distMeters > targetRadius {
+				return nil, errors.New("lokasi check-in berada di luar radius yang diizinkan")
 			}
 		}
 	}
 
-	err = u.visitRepo.LogActivity(ctx, activity)
+	err := u.visitRepo.LogActivity(ctx, activity)
 	if err != nil {
 		return nil, err
 	}
 
-	// Mark Schedule as completed if checkout happens
-	if activity.Type == models.VisitTypeCheckOut && activity.ScheduleID != nil {
-		sched, _ := u.visitRepo.GetScheduleByID(ctx, *activity.ScheduleID)
-		if sched != nil {
-			sched.Status = models.ScheduleStatusCompleted
-			_ = u.visitRepo.UpdateSchedule(ctx, sched)
+	// === UNIFICATION LOGIC: Sync with SalesActivity ===
+	if activity.Type == models.VisitTypeCheckIn {
+		// Start a new SalesActivity session
+		salesAct := &models.SalesActivity{
+			UserID:            activity.SalesID,
+			LeadID:            activity.LeadID,
+			CustomerID:        activity.CustomerID,
+			DealID:            activity.DealID,
+			TaskDestinationID: activity.TaskDestinationID,
+			Type:              models.ActivityTypeVisit,
+			Title:             "Visit to " + targetName,
+			Latitude:          &activity.Latitude,
+			Longitude:         &activity.Longitude,
+			CheckInTime:       &activity.CreatedAt,
+			SelfiePhotoPath:   &activity.SelfiePhotoPath,
+			PlacePhotoPath:    &activity.PlacePhotoPath,
+			Distance:          activity.Distance,
+			IsOffline:         activity.IsOffline,
+			ActivityAt:        activity.CreatedAt,
+		}
+		if activity.Notes != nil {
+			salesAct.Notes = activity.Notes
+		}
+		
+		_ = u.activityRepo.Create(ctx, salesAct)
+	} else if activity.Type == models.VisitTypeCheckOut {
+		// Find the active session to close
+		// We look for an open activity for this user and customer (and task destination if present)
+		filter := repository.SalesActivityFilter{
+			SalesID:    &activity.SalesID,
+			LeadID:     activity.LeadID,
+			CustomerID: activity.CustomerID,
+		}
+		
+		activities, err := u.activityRepo.List(ctx, filter)
+		if err == nil && len(activities) > 0 {
+			var activeSession *models.SalesActivity
+			for _, a := range activities {
+				// Match logic: Open visit (CheckIn exists, CheckOut is nil)
+				// If task-based, must match taskDestinationID
+				if a.Type == models.ActivityTypeVisit && a.CheckOutTime == nil {
+					if activity.TaskDestinationID != nil {
+						if a.TaskDestinationID != nil && *a.TaskDestinationID == *activity.TaskDestinationID {
+							activeSession = a
+							break
+						}
+					} else {
+						activeSession = a
+						break
+					}
+				}
+			}
+			
+			if activeSession != nil {
+				activeSession.CheckOutTime = &activity.CreatedAt
+				if activity.Notes != nil {
+					activeSession.Outcome = activity.Notes // Checkout notes usually represent the outcome
+					activeSession.Notes = activity.Notes
+				}
+				_ = u.activityRepo.Update(ctx, activeSession)
+			}
+		}
+
+		// Mark Schedule as completed if checkout happens
+		if activity.ScheduleID != nil {
+			sched, _ := u.visitRepo.GetScheduleByID(ctx, *activity.ScheduleID)
+			if sched != nil {
+				sched.Status = models.ScheduleStatusCompleted
+				_ = u.visitRepo.UpdateSchedule(ctx, sched)
+			}
+		}
+
+		if activity.TaskDestinationID != nil {
+			destID := *activity.TaskDestinationID
+			// Mark Destination as Completed
+			task, err := u.taskRepo.GetByDestinationID(ctx, destID)
+			if err == nil && task != nil {
+				for i := range task.Destinations {
+					if task.Destinations[i].ID == destID {
+						task.Destinations[i].Status = models.TaskStatusCompleted
+						break
+					}
+				}
+				
+				// Check if all destinations are completed
+				allDone := true
+				for _, d := range task.Destinations {
+					if d.Status != models.TaskStatusCompleted {
+						allDone = false
+						break
+					}
+				}
+				
+				if allDone {
+					task.Status = models.TaskStatusCompleted
+				} else {
+					task.Status = models.TaskStatusInProgress
+				}
+				
+				_ = u.taskRepo.Update(ctx, task)
+			}
 		}
 	}
 
@@ -126,7 +258,68 @@ func (u *visitUseCaseImpl) GetActivitiesBySchedule(ctx context.Context, schedule
 }
 
 func (u *visitUseCaseImpl) ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error) {
-	return u.visitRepo.ListActivities(ctx, filter)
+	// Transition to Unified View: Fetch from sales_activities
+	saFilter := repository.SalesActivityFilter{
+		SalesID:    filter.SalesID,
+		CustomerID: filter.CustomerID,
+		StartDate:  filter.StartDate,
+		EndDate:    filter.EndDate,
+	}
+	
+	salesActivities, err := u.activityRepo.List(ctx, saFilter)
+	if err != nil {
+		return nil, err
+	}
+	
+	var results []*models.VisitActivity
+	for _, sa := range salesActivities {
+		if sa.Type != models.ActivityTypeVisit {
+			continue
+		}
+		
+		// Map Check-In to VisitActivity
+		if sa.CheckInTime != nil {
+			checkIn := &models.VisitActivity{
+				ID:                sa.ID,
+				TaskDestinationID: sa.TaskDestinationID,
+				SalesID:           sa.UserID,
+				LeadID:            sa.LeadID,
+				CustomerID:        sa.CustomerID,
+				Type:              models.VisitTypeCheckIn,
+				CreatedAt:         *sa.CheckInTime,
+			}
+			if sa.Latitude != nil { checkIn.Latitude = *sa.Latitude }
+			if sa.Longitude != nil { checkIn.Longitude = *sa.Longitude }
+			if sa.SelfiePhotoPath != nil { checkIn.SelfiePhotoPath = *sa.SelfiePhotoPath }
+			if sa.PlacePhotoPath != nil { checkIn.PlacePhotoPath = *sa.PlacePhotoPath }
+			if sa.Distance != nil { checkIn.Distance = sa.Distance }
+			checkIn.IsOffline = sa.IsOffline
+			checkIn.Notes = sa.Notes
+			
+			results = append(results, checkIn)
+		}
+		
+		// Map Check-Out to VisitActivity
+		if sa.CheckOutTime != nil {
+			checkOut := &models.VisitActivity{
+				ID:                sa.ID, // Use same session ID but different type
+				TaskDestinationID: sa.TaskDestinationID,
+				SalesID:           sa.UserID,
+				LeadID:            sa.LeadID,
+				CustomerID:        sa.CustomerID,
+				Type:              models.VisitTypeCheckOut,
+				CreatedAt:         *sa.CheckOutTime,
+			}
+			if sa.Latitude != nil { checkOut.Latitude = *sa.Latitude }
+			if sa.Longitude != nil { checkOut.Longitude = *sa.Longitude }
+			checkOut.IsOffline = sa.IsOffline
+			checkOut.Notes = sa.Outcome // Use outcome for checkout notes
+			
+			results = append(results, checkOut)
+		}
+	}
+	
+	return results, nil
 }
 
 // ==============

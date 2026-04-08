@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'visit_recommendation.dart';
 
 part 'kpi_summary.freezed.dart';
 part 'kpi_summary.g.dart';
@@ -11,6 +12,7 @@ abstract class KpiSummary with _$KpiSummary {
     @JsonKey(name: 'active_deals') required int activeDeals,
     @JsonKey(name: 'visits_today') required int visitsToday,
     @JsonKey(name: 'target_met_percentage') required double targetMetPercentage,
+    @JsonKey(name: 'next_stop') VisitRecommendation? nextStop,
   }) = _KpiSummary;
 
   factory KpiSummary.fromJson(Map<String, dynamic> json) =>

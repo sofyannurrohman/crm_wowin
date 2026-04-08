@@ -18,7 +18,13 @@ func NewReportHandler(uc usecase.ReportUseCase) *ReportHandler {
 }
 
 func (h *ReportHandler) GetKpiSummary(c *gin.Context) {
-	kpi, err := h.uc.GetDashboardSummary(c.Request.Context())
+	salesID := c.GetString("user_id")
+	if salesID == "" {
+		response.Fail(c, http.StatusUnauthorized, "missing user session")
+		return
+	}
+
+	kpi, err := h.uc.GetDashboardSummary(c.Request.Context(), salesID)
 	if err != nil {
 		response.Fail(c, http.StatusInternalServerError, err.Error())
 		return

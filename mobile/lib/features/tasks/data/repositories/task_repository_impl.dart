@@ -5,6 +5,7 @@ import '../../domain/entities/warehouse.dart';
 import '../../domain/repositories/task_repository.dart';
 import '../datasources/task_remote_data_source.dart';
 import '../models/task_model.dart';
+import '../models/task_destination_model.dart';
 import '../models/warehouse_model.dart';
 
 class TaskRepositoryImpl implements TaskRepository {
@@ -40,7 +41,16 @@ class TaskRepositoryImpl implements TaskRepository {
         ) : null,
         title: task.title,
         description: task.description,
-        priority: task.priority,
+        destinations: task.destinations.map((e) => TaskDestinationModel(
+          id: e.id,
+          taskId: e.taskId,
+          leadId: e.leadId,
+          customerId: e.customerId,
+          sequenceOrder: e.sequenceOrder,
+          status: e.status,
+          createdAt: e.createdAt,
+          updatedAt: e.updatedAt,
+        )).toList(),
         status: task.status,
         dueDate: task.dueDate,
         completedAt: task.completedAt,
@@ -72,7 +82,16 @@ class TaskRepositoryImpl implements TaskRepository {
         ) : null,
         title: task.title,
         description: task.description,
-        priority: task.priority,
+        destinations: task.destinations.map((e) => TaskDestinationModel(
+          id: e.id,
+          taskId: e.taskId,
+          leadId: e.leadId,
+          customerId: e.customerId,
+          sequenceOrder: e.sequenceOrder,
+          status: e.status,
+          createdAt: e.createdAt,
+          updatedAt: e.updatedAt,
+        )).toList(),
         status: task.status,
         dueDate: task.dueDate,
         completedAt: task.completedAt,

@@ -30,20 +30,31 @@ mixin _$SalesActivityModel {
   String get activityType;
   @JsonKey(name: 'description')
   String get notes;
+  @DateTimeUtcConverter()
   @JsonKey(name: 'activity_at')
   DateTime get activityAt;
+  @DateTimeUtcNullableConverter()
   @JsonKey(name: 'created_at')
   DateTime? get createdAt;
+  @DateTimeUtcNullableConverter()
   @JsonKey(name: 'updated_at')
   DateTime? get updatedAt;
   double? get latitude;
   double? get longitude;
+  @DateTimeUtcNullableConverter()
   @JsonKey(name: 'check_in_time')
   DateTime? get checkInTime;
+  @DateTimeUtcNullableConverter()
   @JsonKey(name: 'check_out_time')
   DateTime? get checkOutTime;
-  @JsonKey(name: 'photo_base64')
-  String? get photoBase64;
+  @JsonKey(name: 'selfie_photo_path')
+  String? get selfiePhotoPath;
+  @JsonKey(name: 'place_photo_path')
+  String? get placePhotoPath;
+  double? get distance;
+  @JsonKey(name: 'is_offline')
+  bool get isOffline;
+  String? get address;
   String? get outcome;
 
   /// Create a copy of SalesActivityModel
@@ -88,37 +99,49 @@ mixin _$SalesActivityModel {
                 other.checkInTime == checkInTime) &&
             (identical(other.checkOutTime, checkOutTime) ||
                 other.checkOutTime == checkOutTime) &&
-            (identical(other.photoBase64, photoBase64) ||
-                other.photoBase64 == photoBase64) &&
+            (identical(other.selfiePhotoPath, selfiePhotoPath) ||
+                other.selfiePhotoPath == selfiePhotoPath) &&
+            (identical(other.placePhotoPath, placePhotoPath) ||
+                other.placePhotoPath == placePhotoPath) &&
+            (identical(other.distance, distance) ||
+                other.distance == distance) &&
+            (identical(other.isOffline, isOffline) ||
+                other.isOffline == isOffline) &&
+            (identical(other.address, address) || other.address == address) &&
             (identical(other.outcome, outcome) || other.outcome == outcome));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      title,
-      userId,
-      leadId,
-      customerId,
-      dealId,
-      taskDestinationId,
-      activityType,
-      notes,
-      activityAt,
-      createdAt,
-      updatedAt,
-      latitude,
-      longitude,
-      checkInTime,
-      checkOutTime,
-      photoBase64,
-      outcome);
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        title,
+        userId,
+        leadId,
+        customerId,
+        dealId,
+        taskDestinationId,
+        activityType,
+        notes,
+        activityAt,
+        createdAt,
+        updatedAt,
+        latitude,
+        longitude,
+        checkInTime,
+        checkOutTime,
+        selfiePhotoPath,
+        placePhotoPath,
+        distance,
+        isOffline,
+        address,
+        outcome
+      ]);
 
   @override
   String toString() {
-    return 'SalesActivityModel(id: $id, title: $title, userId: $userId, leadId: $leadId, customerId: $customerId, dealId: $dealId, taskDestinationId: $taskDestinationId, activityType: $activityType, notes: $notes, activityAt: $activityAt, createdAt: $createdAt, updatedAt: $updatedAt, latitude: $latitude, longitude: $longitude, checkInTime: $checkInTime, checkOutTime: $checkOutTime, photoBase64: $photoBase64, outcome: $outcome)';
+    return 'SalesActivityModel(id: $id, title: $title, userId: $userId, leadId: $leadId, customerId: $customerId, dealId: $dealId, taskDestinationId: $taskDestinationId, activityType: $activityType, notes: $notes, activityAt: $activityAt, createdAt: $createdAt, updatedAt: $updatedAt, latitude: $latitude, longitude: $longitude, checkInTime: $checkInTime, checkOutTime: $checkOutTime, selfiePhotoPath: $selfiePhotoPath, placePhotoPath: $placePhotoPath, distance: $distance, isOffline: $isOffline, address: $address, outcome: $outcome)';
   }
 }
 
@@ -138,14 +161,26 @@ abstract mixin class $SalesActivityModelCopyWith<$Res> {
       @JsonKey(name: 'task_destination_id') String? taskDestinationId,
       @JsonKey(name: 'activity_type') String activityType,
       @JsonKey(name: 'description') String notes,
-      @JsonKey(name: 'activity_at') DateTime activityAt,
-      @JsonKey(name: 'created_at') DateTime? createdAt,
-      @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      @DateTimeUtcConverter() @JsonKey(name: 'activity_at') DateTime activityAt,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'created_at')
+      DateTime? createdAt,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'updated_at')
+      DateTime? updatedAt,
       double? latitude,
       double? longitude,
-      @JsonKey(name: 'check_in_time') DateTime? checkInTime,
-      @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-      @JsonKey(name: 'photo_base64') String? photoBase64,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'check_in_time')
+      DateTime? checkInTime,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'check_out_time')
+      DateTime? checkOutTime,
+      @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+      @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+      double? distance,
+      @JsonKey(name: 'is_offline') bool isOffline,
+      String? address,
       String? outcome});
 }
 
@@ -178,7 +213,11 @@ class _$SalesActivityModelCopyWithImpl<$Res>
     Object? longitude = freezed,
     Object? checkInTime = freezed,
     Object? checkOutTime = freezed,
-    Object? photoBase64 = freezed,
+    Object? selfiePhotoPath = freezed,
+    Object? placePhotoPath = freezed,
+    Object? distance = freezed,
+    Object? isOffline = null,
+    Object? address = freezed,
     Object? outcome = freezed,
   }) {
     return _then(_self.copyWith(
@@ -246,9 +285,25 @@ class _$SalesActivityModelCopyWithImpl<$Res>
           ? _self.checkOutTime
           : checkOutTime // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      photoBase64: freezed == photoBase64
-          ? _self.photoBase64
-          : photoBase64 // ignore: cast_nullable_to_non_nullable
+      selfiePhotoPath: freezed == selfiePhotoPath
+          ? _self.selfiePhotoPath
+          : selfiePhotoPath // ignore: cast_nullable_to_non_nullable
+              as String?,
+      placePhotoPath: freezed == placePhotoPath
+          ? _self.placePhotoPath
+          : placePhotoPath // ignore: cast_nullable_to_non_nullable
+              as String?,
+      distance: freezed == distance
+          ? _self.distance
+          : distance // ignore: cast_nullable_to_non_nullable
+              as double?,
+      isOffline: null == isOffline
+          ? _self.isOffline
+          : isOffline // ignore: cast_nullable_to_non_nullable
+              as bool,
+      address: freezed == address
+          ? _self.address
+          : address // ignore: cast_nullable_to_non_nullable
               as String?,
       outcome: freezed == outcome
           ? _self.outcome
@@ -361,14 +416,28 @@ extension SalesActivityModelPatterns on SalesActivityModel {
             @JsonKey(name: 'task_destination_id') String? taskDestinationId,
             @JsonKey(name: 'activity_type') String activityType,
             @JsonKey(name: 'description') String notes,
-            @JsonKey(name: 'activity_at') DateTime activityAt,
-            @JsonKey(name: 'created_at') DateTime? createdAt,
-            @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            @DateTimeUtcConverter()
+            @JsonKey(name: 'activity_at')
+            DateTime activityAt,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'created_at')
+            DateTime? createdAt,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'updated_at')
+            DateTime? updatedAt,
             double? latitude,
             double? longitude,
-            @JsonKey(name: 'check_in_time') DateTime? checkInTime,
-            @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-            @JsonKey(name: 'photo_base64') String? photoBase64,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'check_in_time')
+            DateTime? checkInTime,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'check_out_time')
+            DateTime? checkOutTime,
+            @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+            @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+            double? distance,
+            @JsonKey(name: 'is_offline') bool isOffline,
+            String? address,
             String? outcome)?
         $default, {
     required TResult orElse(),
@@ -393,7 +462,11 @@ extension SalesActivityModelPatterns on SalesActivityModel {
             _that.longitude,
             _that.checkInTime,
             _that.checkOutTime,
-            _that.photoBase64,
+            _that.selfiePhotoPath,
+            _that.placePhotoPath,
+            _that.distance,
+            _that.isOffline,
+            _that.address,
             _that.outcome);
       case _:
         return orElse();
@@ -425,14 +498,28 @@ extension SalesActivityModelPatterns on SalesActivityModel {
             @JsonKey(name: 'task_destination_id') String? taskDestinationId,
             @JsonKey(name: 'activity_type') String activityType,
             @JsonKey(name: 'description') String notes,
-            @JsonKey(name: 'activity_at') DateTime activityAt,
-            @JsonKey(name: 'created_at') DateTime? createdAt,
-            @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            @DateTimeUtcConverter()
+            @JsonKey(name: 'activity_at')
+            DateTime activityAt,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'created_at')
+            DateTime? createdAt,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'updated_at')
+            DateTime? updatedAt,
             double? latitude,
             double? longitude,
-            @JsonKey(name: 'check_in_time') DateTime? checkInTime,
-            @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-            @JsonKey(name: 'photo_base64') String? photoBase64,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'check_in_time')
+            DateTime? checkInTime,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'check_out_time')
+            DateTime? checkOutTime,
+            @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+            @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+            double? distance,
+            @JsonKey(name: 'is_offline') bool isOffline,
+            String? address,
             String? outcome)
         $default,
   ) {
@@ -456,7 +543,11 @@ extension SalesActivityModelPatterns on SalesActivityModel {
             _that.longitude,
             _that.checkInTime,
             _that.checkOutTime,
-            _that.photoBase64,
+            _that.selfiePhotoPath,
+            _that.placePhotoPath,
+            _that.distance,
+            _that.isOffline,
+            _that.address,
             _that.outcome);
       case _:
         throw StateError('Unexpected subclass');
@@ -487,14 +578,28 @@ extension SalesActivityModelPatterns on SalesActivityModel {
             @JsonKey(name: 'task_destination_id') String? taskDestinationId,
             @JsonKey(name: 'activity_type') String activityType,
             @JsonKey(name: 'description') String notes,
-            @JsonKey(name: 'activity_at') DateTime activityAt,
-            @JsonKey(name: 'created_at') DateTime? createdAt,
-            @JsonKey(name: 'updated_at') DateTime? updatedAt,
+            @DateTimeUtcConverter()
+            @JsonKey(name: 'activity_at')
+            DateTime activityAt,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'created_at')
+            DateTime? createdAt,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'updated_at')
+            DateTime? updatedAt,
             double? latitude,
             double? longitude,
-            @JsonKey(name: 'check_in_time') DateTime? checkInTime,
-            @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-            @JsonKey(name: 'photo_base64') String? photoBase64,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'check_in_time')
+            DateTime? checkInTime,
+            @DateTimeUtcNullableConverter()
+            @JsonKey(name: 'check_out_time')
+            DateTime? checkOutTime,
+            @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+            @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+            double? distance,
+            @JsonKey(name: 'is_offline') bool isOffline,
+            String? address,
             String? outcome)?
         $default,
   ) {
@@ -518,7 +623,11 @@ extension SalesActivityModelPatterns on SalesActivityModel {
             _that.longitude,
             _that.checkInTime,
             _that.checkOutTime,
-            _that.photoBase64,
+            _that.selfiePhotoPath,
+            _that.placePhotoPath,
+            _that.distance,
+            _that.isOffline,
+            _that.address,
             _that.outcome);
       case _:
         return null;
@@ -539,14 +648,28 @@ class _SalesActivityModel extends SalesActivityModel {
       @JsonKey(name: 'task_destination_id') this.taskDestinationId,
       @JsonKey(name: 'activity_type') required this.activityType,
       @JsonKey(name: 'description') required this.notes,
-      @JsonKey(name: 'activity_at') required this.activityAt,
-      @JsonKey(name: 'created_at') this.createdAt,
-      @JsonKey(name: 'updated_at') this.updatedAt,
+      @DateTimeUtcConverter()
+      @JsonKey(name: 'activity_at')
+      required this.activityAt,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'created_at')
+      this.createdAt,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'updated_at')
+      this.updatedAt,
       this.latitude,
       this.longitude,
-      @JsonKey(name: 'check_in_time') this.checkInTime,
-      @JsonKey(name: 'check_out_time') this.checkOutTime,
-      @JsonKey(name: 'photo_base64') this.photoBase64,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'check_in_time')
+      this.checkInTime,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'check_out_time')
+      this.checkOutTime,
+      @JsonKey(name: 'selfie_photo_path') this.selfiePhotoPath,
+      @JsonKey(name: 'place_photo_path') this.placePhotoPath,
+      this.distance,
+      @JsonKey(name: 'is_offline') this.isOffline = false,
+      this.address,
       this.outcome})
       : super._();
   factory _SalesActivityModel.fromJson(Map<String, dynamic> json) =>
@@ -578,12 +701,15 @@ class _SalesActivityModel extends SalesActivityModel {
   @JsonKey(name: 'description')
   final String notes;
   @override
+  @DateTimeUtcConverter()
   @JsonKey(name: 'activity_at')
   final DateTime activityAt;
   @override
+  @DateTimeUtcNullableConverter()
   @JsonKey(name: 'created_at')
   final DateTime? createdAt;
   @override
+  @DateTimeUtcNullableConverter()
   @JsonKey(name: 'updated_at')
   final DateTime? updatedAt;
   @override
@@ -591,14 +717,26 @@ class _SalesActivityModel extends SalesActivityModel {
   @override
   final double? longitude;
   @override
+  @DateTimeUtcNullableConverter()
   @JsonKey(name: 'check_in_time')
   final DateTime? checkInTime;
   @override
+  @DateTimeUtcNullableConverter()
   @JsonKey(name: 'check_out_time')
   final DateTime? checkOutTime;
   @override
-  @JsonKey(name: 'photo_base64')
-  final String? photoBase64;
+  @JsonKey(name: 'selfie_photo_path')
+  final String? selfiePhotoPath;
+  @override
+  @JsonKey(name: 'place_photo_path')
+  final String? placePhotoPath;
+  @override
+  final double? distance;
+  @override
+  @JsonKey(name: 'is_offline')
+  final bool isOffline;
+  @override
+  final String? address;
   @override
   final String? outcome;
 
@@ -648,37 +786,49 @@ class _SalesActivityModel extends SalesActivityModel {
                 other.checkInTime == checkInTime) &&
             (identical(other.checkOutTime, checkOutTime) ||
                 other.checkOutTime == checkOutTime) &&
-            (identical(other.photoBase64, photoBase64) ||
-                other.photoBase64 == photoBase64) &&
+            (identical(other.selfiePhotoPath, selfiePhotoPath) ||
+                other.selfiePhotoPath == selfiePhotoPath) &&
+            (identical(other.placePhotoPath, placePhotoPath) ||
+                other.placePhotoPath == placePhotoPath) &&
+            (identical(other.distance, distance) ||
+                other.distance == distance) &&
+            (identical(other.isOffline, isOffline) ||
+                other.isOffline == isOffline) &&
+            (identical(other.address, address) || other.address == address) &&
             (identical(other.outcome, outcome) || other.outcome == outcome));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      id,
-      title,
-      userId,
-      leadId,
-      customerId,
-      dealId,
-      taskDestinationId,
-      activityType,
-      notes,
-      activityAt,
-      createdAt,
-      updatedAt,
-      latitude,
-      longitude,
-      checkInTime,
-      checkOutTime,
-      photoBase64,
-      outcome);
+  int get hashCode => Object.hashAll([
+        runtimeType,
+        id,
+        title,
+        userId,
+        leadId,
+        customerId,
+        dealId,
+        taskDestinationId,
+        activityType,
+        notes,
+        activityAt,
+        createdAt,
+        updatedAt,
+        latitude,
+        longitude,
+        checkInTime,
+        checkOutTime,
+        selfiePhotoPath,
+        placePhotoPath,
+        distance,
+        isOffline,
+        address,
+        outcome
+      ]);
 
   @override
   String toString() {
-    return 'SalesActivityModel(id: $id, title: $title, userId: $userId, leadId: $leadId, customerId: $customerId, dealId: $dealId, taskDestinationId: $taskDestinationId, activityType: $activityType, notes: $notes, activityAt: $activityAt, createdAt: $createdAt, updatedAt: $updatedAt, latitude: $latitude, longitude: $longitude, checkInTime: $checkInTime, checkOutTime: $checkOutTime, photoBase64: $photoBase64, outcome: $outcome)';
+    return 'SalesActivityModel(id: $id, title: $title, userId: $userId, leadId: $leadId, customerId: $customerId, dealId: $dealId, taskDestinationId: $taskDestinationId, activityType: $activityType, notes: $notes, activityAt: $activityAt, createdAt: $createdAt, updatedAt: $updatedAt, latitude: $latitude, longitude: $longitude, checkInTime: $checkInTime, checkOutTime: $checkOutTime, selfiePhotoPath: $selfiePhotoPath, placePhotoPath: $placePhotoPath, distance: $distance, isOffline: $isOffline, address: $address, outcome: $outcome)';
   }
 }
 
@@ -700,14 +850,26 @@ abstract mixin class _$SalesActivityModelCopyWith<$Res>
       @JsonKey(name: 'task_destination_id') String? taskDestinationId,
       @JsonKey(name: 'activity_type') String activityType,
       @JsonKey(name: 'description') String notes,
-      @JsonKey(name: 'activity_at') DateTime activityAt,
-      @JsonKey(name: 'created_at') DateTime? createdAt,
-      @JsonKey(name: 'updated_at') DateTime? updatedAt,
+      @DateTimeUtcConverter() @JsonKey(name: 'activity_at') DateTime activityAt,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'created_at')
+      DateTime? createdAt,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'updated_at')
+      DateTime? updatedAt,
       double? latitude,
       double? longitude,
-      @JsonKey(name: 'check_in_time') DateTime? checkInTime,
-      @JsonKey(name: 'check_out_time') DateTime? checkOutTime,
-      @JsonKey(name: 'photo_base64') String? photoBase64,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'check_in_time')
+      DateTime? checkInTime,
+      @DateTimeUtcNullableConverter()
+      @JsonKey(name: 'check_out_time')
+      DateTime? checkOutTime,
+      @JsonKey(name: 'selfie_photo_path') String? selfiePhotoPath,
+      @JsonKey(name: 'place_photo_path') String? placePhotoPath,
+      double? distance,
+      @JsonKey(name: 'is_offline') bool isOffline,
+      String? address,
       String? outcome});
 }
 
@@ -740,7 +902,11 @@ class __$SalesActivityModelCopyWithImpl<$Res>
     Object? longitude = freezed,
     Object? checkInTime = freezed,
     Object? checkOutTime = freezed,
-    Object? photoBase64 = freezed,
+    Object? selfiePhotoPath = freezed,
+    Object? placePhotoPath = freezed,
+    Object? distance = freezed,
+    Object? isOffline = null,
+    Object? address = freezed,
     Object? outcome = freezed,
   }) {
     return _then(_SalesActivityModel(
@@ -808,9 +974,25 @@ class __$SalesActivityModelCopyWithImpl<$Res>
           ? _self.checkOutTime
           : checkOutTime // ignore: cast_nullable_to_non_nullable
               as DateTime?,
-      photoBase64: freezed == photoBase64
-          ? _self.photoBase64
-          : photoBase64 // ignore: cast_nullable_to_non_nullable
+      selfiePhotoPath: freezed == selfiePhotoPath
+          ? _self.selfiePhotoPath
+          : selfiePhotoPath // ignore: cast_nullable_to_non_nullable
+              as String?,
+      placePhotoPath: freezed == placePhotoPath
+          ? _self.placePhotoPath
+          : placePhotoPath // ignore: cast_nullable_to_non_nullable
+              as String?,
+      distance: freezed == distance
+          ? _self.distance
+          : distance // ignore: cast_nullable_to_non_nullable
+              as double?,
+      isOffline: null == isOffline
+          ? _self.isOffline
+          : isOffline // ignore: cast_nullable_to_non_nullable
+              as bool,
+      address: freezed == address
+          ? _self.address
+          : address // ignore: cast_nullable_to_non_nullable
               as String?,
       outcome: freezed == outcome
           ? _self.outcome

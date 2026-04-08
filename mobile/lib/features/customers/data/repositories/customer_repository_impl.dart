@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/customer.dart';
+import '../../domain/entities/customer_detail_response.dart';
 import '../../domain/repositories/customer_repository.dart';
 import '../datasources/customer_remote_data_source.dart';
 
@@ -27,10 +28,10 @@ class CustomerRepositoryImpl implements CustomerRepository {
   }
 
   @override
-  Future<Either<Failure, Customer>> getCustomerDetail(String id) async {
+  Future<Either<Failure, CustomerDetailResponse>> getCustomerDetail(String id) async {
     try {
-      final customer = await remoteDataSource.getCustomerDetail(id);
-      return Right(customer);
+      final response = await remoteDataSource.getCustomerDetail(id);
+      return Right(response);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {

@@ -7,7 +7,7 @@ import '../models/visit_activity_model.dart';
 abstract class VisitRemoteDataSource {
   Future<void> checkIn(CheckInRequest request);
   Future<void> checkOut(CheckOutRequest request);
-  Future<List<VisitActivityModel>> getActivities({String? salesId, String? customerId});
+  Future<List<VisitActivityModel>> getActivities({String? salesId, String? customerId, String? leadId});
 }
 
 class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
@@ -16,12 +16,13 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
   VisitRemoteDataSourceImpl(this.dio);
 
   @override
-  Future<List<VisitActivityModel>> getActivities({String? salesId, String? customerId}) async {
+  Future<List<VisitActivityModel>> getActivities({String? salesId, String? customerId, String? leadId}) async {
     final response = await dio.get(
       '/visits/activities', // Assuming unified endpoint
       queryParameters: {
         if (salesId != null) 'sales_id': salesId,
         if (customerId != null) 'customer_id': customerId,
+        if (leadId != null) 'lead_id': leadId,
       },
     );
 
@@ -44,6 +45,7 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
         'notes': request.checkInNotes,
         'deal_id': request.dealId,
         'override_reason': request.overrideReason,
+        'task_destination_id': request.taskDestinationId,
         'photo': await MultipartFile.fromFile(
           request.photoFile.path,
           filename: request.photoFile.path.split('/').last,
@@ -90,6 +92,7 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
         'next_visit_date': request.nextVisitDate,
         if (request.inventoryData != null)
           'inventory_data': request.inventoryData,
+        'task_destination_id': request.taskDestinationId,
       };
 
       // Attach signature image if captured

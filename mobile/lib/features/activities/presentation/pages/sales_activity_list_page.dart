@@ -376,10 +376,14 @@ class _SalesActivityListPageState extends State<SalesActivityListPage> {
               ],
             ),
           ),
+
+          // ── VISIT SESSION DETAILS ──
+          if (activityType == 'visit' && activity.checkInTime != null)
+            _buildVisitSession(activity),
           
           if (activityType == 'visit' && activity.checkOutTime == null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
@@ -500,6 +504,176 @@ class _SalesActivityListPageState extends State<SalesActivityListPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildVisitSession(SalesActivity activity) {
+    const String imageBaseUrl = 'http://localhost:8082'; // Base URL for static photos
+    final duration = _formatDuration(activity.checkInTime, activity.checkOutTime);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Timeline
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Column(
+              children: [
+                _buildSessionPoint(
+                  LucideIcons.logIn,
+                  'Check-In',
+                  activity.checkInTime!,
+                  Colors.green,
+                ),
+                if (activity.checkOutTime != null) ...[
+                  const Padding(
+                    padding: EdgeInsets.only(left: 7),
+                    child: SizedBox(
+                      height: 12,
+                      child: VerticalDivider(width: 1, thickness: 1),
+                    ),
+                  ),
+                  _buildSessionPoint(
+                    LucideIcons.logOut,
+                    'Check-Out',
+                    activity.checkOutTime!,
+                    Colors.red,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          
+          if (duration.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8, left: 4),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.timer, size: 14, color: _primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Durasi Kunjungan: $duration',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: _primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Photo Gallery
+          if (activity.selfiePhotoPath != null || activity.placePhotoPath != null) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'BUKTI KUNJUNGAN',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: _textSecondary,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (activity.selfiePhotoPath != null)
+                  _buildPhotoItem('Selfie', '$imageBaseUrl${activity.selfiePhotoPath}'),
+                if (activity.placePhotoPath != null) ...[
+                  const SizedBox(width: 12),
+                  _buildPhotoItem('Lokasi', '$imageBaseUrl${activity.placePhotoPath}'),
+                ],
+              ],
+            ),
+          ],
+          
+          if (activity.outcome != null && activity.outcome!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'HASIL KUNJUNGAN',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: _textSecondary,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              activity.outcome!,
+              style: const TextStyle(
+                fontSize: 14,
+                color: _textPrimary,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSessionPoint(IconData icon, String label, DateTime time, Color color) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        const Spacer(),
+        Text(
+          DateFormat('HH:mm').format(time),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhotoItem(String label, String url) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.network(
+            url,
+            width: 100,
+            height: 100,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Container(
+              width: 100,
+              height: 100,
+              color: Colors.grey[200],
+              child: const Icon(LucideIcons.imageOff, color: Colors.grey),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 10, color: _textSecondary)),
+      ],
+    );
+  }
+
+  String _formatDuration(DateTime? start, DateTime? end) {
+    if (start == null || end == null) return '';
+    final diff = end.difference(start);
+    if (diff.inHours > 0) {
+      return '${diff.inHours} jam ${diff.inMinutes % 60} menit';
+    }
+    return '${diff.inMinutes} menit';
   }
 
   Widget _buildErrorState(String message) {

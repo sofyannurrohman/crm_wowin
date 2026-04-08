@@ -18,6 +18,7 @@ import '../../domain/entities/kpi_dashboard.dart';
 import '../../../deals/domain/entities/deal.dart';
 import '../../../visits/domain/entities/visit_activity.dart';
 import '../widgets/active_visit_card.dart';
+import '../widgets/next_visit_card.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 
@@ -194,14 +195,20 @@ class _DashboardPageState extends State<DashboardPage> {
         // Active Visit Card Integration
         BlocBuilder<VisitBloc, VisitState>(
           builder: (context, visitState) {
-            if (visitState is VisitSuccess && visitState.scheduleId != null) {
-              return ActiveVisitCard(
-                scheduleId: visitState.scheduleId!,
-                customerName: visitState.customerName ?? 'Pelanggan',
-                startTime: visitState.checkInTime ?? DateTime.now(),
-              );
-            }
-            return const SizedBox();
+            final hasActiveVisit = visitState is VisitSuccess && visitState.scheduleId != null;
+            
+            return Column(
+              children: [
+                if (hasActiveVisit)
+                  ActiveVisitCard(
+                    scheduleId: visitState.scheduleId!,
+                    customerName: visitState.customerName ?? 'Pelanggan',
+                    startTime: visitState.checkInTime ?? DateTime.now(),
+                  )
+                else if (d.nextStop != null)
+                  NextVisitCard(nextStop: d.nextStop!),
+              ],
+            );
           },
         ),
 

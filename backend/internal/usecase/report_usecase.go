@@ -4,10 +4,11 @@ import (
 	"context"
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
+	"github.com/google/uuid"
 )
 
 type ReportUseCase interface {
-	GetDashboardSummary(ctx context.Context) (*models.KpiSummary, error)
+	GetDashboardSummary(ctx context.Context, salesID string) (*models.KpiSummary, error)
 	GetAnalytics(ctx context.Context, months int) (map[string]interface{}, error)
 	GetVisitRecommendations(ctx context.Context, salesID string) ([]models.VisitRecommendation, error)
 }
@@ -15,13 +16,14 @@ type ReportUseCase interface {
 type reportUseCaseImpl struct {
 	repo       repository.ReportRepository
 	targetRepo repository.TargetRepository
+	taskRepo   repository.TaskRepository
 }
 
-func NewReportUseCase(repo repository.ReportRepository, targetRepo repository.TargetRepository) ReportUseCase {
-	return &reportUseCaseImpl{repo: repo, targetRepo: targetRepo}
+func NewReportUseCase(repo repository.ReportRepository, targetRepo repository.TargetRepository, taskRepo repository.TaskRepository) ReportUseCase {
+	return &reportUseCaseImpl{repo: repo, targetRepo: targetRepo, taskRepo: taskRepo}
 }
 
-func (u *reportUseCaseImpl) GetDashboardSummary(ctx context.Context) (*models.KpiSummary, error) {
+func (u *reportUseCaseImpl) GetDashboardSummary(ctx context.Context, salesID string) (*models.KpiSummary, error) {
 	summary, err := u.repo.GetKpiSummary(ctx)
 	if err != nil {
 		return nil, err
@@ -48,6 +50,45 @@ func (u *reportUseCaseImpl) GetDashboardSummary(ctx context.Context) (*models.Kp
 	// Static growth trends
 	summary.CustomersGrowth = 12.0
 	summary.WinRateGrowth = 2.4
+
+	// --- NEXT STOP LOGIC ---
+	// Fetch today's tasks for this salesman
+	uid, _ := uuid.Parse(salesID)
+	tasks, err := u.taskRepo.List(ctx, repository.TaskFilter{
+		SalesID: &uid,
+	})
+	if err == nil && len(tasks) > 0 {
+		var nextStop *models.TaskDestination
+		// Look for the first uncompleted destination in today's tasks
+		for _, task := range tasks {
+			for _, dest := range task.Destinations {
+				if dest.Status != models.TaskStatusCompleted {
+					if nextStop == nil || dest.SequenceOrder < nextStop.SequenceOrder {
+						nextStop = &dest
+					}
+				}
+			}
+		}
+
+		if nextStop != nil {
+			rec := &models.VisitRecommendation{
+				ID:       nextStop.ID.String(),
+				Name:     nextStop.TargetName,
+				Priority: string(nextStop.Status),
+				Reason:   "Destinasi berikutnya sesuai rute Anda hari ini.",
+			}
+			if nextStop.TargetAddress != nil {
+				rec.Address = *nextStop.TargetAddress
+			}
+			if nextStop.TargetLatitude != nil {
+				rec.Latitude = *nextStop.TargetLatitude
+			}
+			if nextStop.TargetLongitude != nil {
+				rec.Longitude = *nextStop.TargetLongitude
+			}
+			summary.NextStop = rec
+		}
+	}
 
 	return summary, nil
 }

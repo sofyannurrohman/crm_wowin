@@ -9,7 +9,7 @@ abstract class Lead with _$Lead {
     required String id,
     required String title,
     required String name,
-    @JsonKey(name: 'company_name') String? company,
+    @JsonKey(name: 'company') String? company,
     String? email,
     String? phone,
     required String source,
@@ -19,6 +19,7 @@ abstract class Lead with _$Lead {
     @JsonKey(name: 'potential_products') List<String>? potentialProducts,
     String? notes,
     @JsonKey(name: 'converted_at') DateTime? convertedAt,
+    String? address,
     double? latitude,
     double? longitude,
   }) = _Lead;

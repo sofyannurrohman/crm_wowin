@@ -54,15 +54,18 @@ func (h *CustomerHandler) GetCustomer(c *gin.Context) {
 		return
 	}
 
-	customer, contacts, err := h.uc.GetCustomerDetail(c.Request.Context(), id)
+	customer, contacts, activities, deals, schedules, err := h.uc.GetCustomerDetail(c.Request.Context(), id)
 	if err != nil {
 		response.MapDBError(c, err)
 		return
 	}
 
 	response.OK(c, gin.H{
-		"customer": customer,
-		"contacts": contacts,
+		"customer":   customer,
+		"contacts":   contacts,
+		"activities": activities,
+		"deals":      deals,
+		"schedules":  schedules,
 	})
 }
 

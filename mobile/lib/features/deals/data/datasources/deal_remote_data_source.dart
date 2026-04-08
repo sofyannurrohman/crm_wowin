@@ -3,7 +3,7 @@ import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_item.dart';
 
 abstract class DealRemoteDataSource {
-  Future<List<Deal>> getDeals();
+  Future<List<Deal>> getDeals({String? customerId});
   Future<Deal> getDeal(String id);
   Future<Deal> createDeal(Deal deal);
   Future<Deal> updateDeal(Deal deal);
@@ -20,8 +20,10 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
   DealRemoteDataSourceImpl(this._dio);
 
   @override
-  Future<List<Deal>> getDeals() async {
-    final response = await _dio.get('/deals');
+  Future<List<Deal>> getDeals({String? customerId}) async {
+    final response = await _dio.get('/deals', queryParameters: {
+      if (customerId != null) 'customer_id': customerId,
+    });
     final List data = response.data['data'] ?? [];
     return data.map((e) => Deal.fromJson(e as Map<String, dynamic>)).toList();
   }

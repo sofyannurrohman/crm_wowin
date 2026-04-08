@@ -10,6 +10,7 @@ const String kRouteCustomers = 'customers';
 const String kRouteCustomerDetail = 'customer_detail';
 const String kRouteAddCustomer = 'add_customer';
 const String kRouteLeads = 'leads';
+const String kRouteLeadDetail = 'lead_detail';
 const String kRouteDeals = 'deals';
 const String kRouteMap = 'map';
 const String kRouteSplash = 'splash';
@@ -31,4 +32,5 @@ const String kRouteConvertLead = 'convert_lead';
 const String kRouteAddDeal = 'add_deal';
 const String kRouteSalesActivities = 'sales_activities';
 const String kRouteAddSalesActivity = 'add_sales_activity';
+const String kRouteRoutePlanner = 'route_planner';
 

@@ -27,7 +27,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
   ) async {
     emit(VisitLoading());
     final result = await getActivitiesUseCase(
-        salesId: event.salesId, customerId: event.customerId);
+        salesId: event.salesId, customerId: event.customerId, leadId: event.leadId);
     result.fold(
       (failure) => emit(VisitError(failure.message)),
       (activities) => emit(ActivitiesLoaded(activities)),
@@ -49,6 +49,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
       checkInNotes: event.notes,
       dealId: event.dealId,
       overrideReason: event.overrideReason,
+      taskDestinationId: event.taskDestinationId,
     );
 
     final result = await checkInUseCase(request);
@@ -56,7 +57,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
     result.fold(
       (failure) => emit(VisitError(failure.message)),
       (_) => emit(VisitSuccess(
-        'Check-in berhasil dilakukan!',
+        'Check-in Berhasil! Silakan catat hasil setelah selesai.',
         scheduleId: event.scheduleId,
         customerName: event.customerName,
         checkInTime: DateTime.now(),
@@ -79,13 +80,14 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
       nextVisitDate: event.nextVisitDate,
       signaturePath: event.signaturePath,
       inventoryData: event.inventoryData,
+      taskDestinationId: event.taskDestinationId,
     );
 
     final result = await checkOutUseCase(request);
 
     result.fold(
       (failure) => emit(VisitError(failure.message)),
-      (_) => emit(const VisitSuccess('Check-out berhasil disimpan!')),
+      (_) => emit(const VisitSuccess('Laporan Kunjungan Berhasil Disimpan!')),
     );
   }
 }

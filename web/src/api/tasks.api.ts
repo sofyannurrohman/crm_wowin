@@ -12,6 +12,8 @@ export interface Task {
   priority: TaskPriority
   assigned_to: string
   assigned_name?: string
+  warehouse_id: string
+  warehouse?: any
   customer_id?: string
   customer_name?: string
   due_at: string

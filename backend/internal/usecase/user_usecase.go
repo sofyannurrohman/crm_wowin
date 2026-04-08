@@ -6,6 +6,7 @@ import (
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
 	"crm_wowin_backend/pkg/jwtutil"
+	"crm_wowin_backend/pkg/utils"
 	"errors"
 	"strings"
 	"time"
@@ -73,7 +74,7 @@ func (u *userUseCaseImpl) Login(ctx context.Context, email, password, ip, agent 
 	}
 
 	// Store Refresh Token in database
-	expiresAt := time.Now().AddDate(0, 0, u.refreshExp)
+	expiresAt := utils.ToFlexTime(time.Now().AddDate(0, 0, u.refreshExp))
 	rtRecord := &models.RefreshToken{
 		UserID:    user.ID,
 		TokenHash: refreshToken, // We temporarily store plaintext refresh-token hash matching (can be hashed ideally)
@@ -87,8 +88,7 @@ func (u *userUseCaseImpl) Login(ctx context.Context, email, password, ip, agent 
 	}
 
 	// Update last login
-	now := time.Now()
-	user.LastLoginAt = &now
+	user.LastLoginAt = utils.ToFlexTimePtr(time.Now())
 	_ = u.userRepo.Update(ctx, user)
 
 	// Populate metadata for frontend
@@ -110,16 +110,13 @@ func (u *userUseCaseImpl) Register(ctx context.Context, req *models.User) (*mode
 	}
 	req.PasswordHash = string(hashed)
 	
-	now := time.Now()
-	req.JoinedAt = &now
+	req.JoinedAt = utils.ToFlexTimePtr(time.Now())
 
 	if err := u.userRepo.Create(ctx, req); err != nil {
 		return nil, err
 	}
 
-	if err == nil {
-		req.FirstName, req.LastName = splitName(req.Name)
-	}
+	req.FirstName, req.LastName = splitName(req.Name)
 	return req, nil
 }
 

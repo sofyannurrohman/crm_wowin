@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useCustomerStore } from '@/stores/customers.store'
 import { useRouter } from 'vue-router'
-import { Plus, Search, MapPin, Loader2, Eye, Edit, Users, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { 
+  Plus, Search, MapPin, Loader2, Eye, Edit, Users, 
+  ChevronLeft, ChevronRight, Building2, UserCircle, Mail, Phone
+} from 'lucide-vue-next'
 import { useDebounce } from '@vueuse/core'
 import type { Customer, CustomerStatus } from '@/types/customer.types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -17,14 +21,41 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter,
+  DialogHeader, DialogTitle
+} from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toast/use-toast'
 
 const store = useCustomerStore()
 const router = useRouter()
+const { toast } = useToast()
 
 const searchInput = ref('')
 const debouncedSearch = useDebounce(searchInput, 500)
 const selectedStatus = ref<string>('all')
 const page = ref(1)
+
+// Dialog State
+const showDialog = ref(false)
+const saving = ref(false)
+const formData = ref({
+  name: '',
+  industry: '',
+  email: '',
+  phone: '',
+  status: 'prospect' as CustomerStatus
+})
+
+const businessTypes = [
+  'Warung Makan', 
+  'Toko Kelontong', 
+  'Retail / Minimarket', 
+  'Agen / Distributor', 
+  'Restoran', 
+  'Cafe', 
+  'Lainnya'
+]
 
 const loadCustomers = () => {
   store.fetchAll({
@@ -42,6 +73,56 @@ watch([debouncedSearch, selectedStatus, page], () => {
 onMounted(() => {
   loadCustomers()
 })
+
+function openCreate() {
+  formData.value = {
+    name: '',
+    industry: '',
+    email: '',
+    phone: '',
+    status: 'prospect'
+  }
+  showDialog.value = true
+}
+
+async function handleSave() {
+  if (!formData.value.name || !formData.value.industry) {
+    toast({ title: 'Input tidak valid', description: 'Nama dan Tipe Bisnis wajib diisi', variant: 'destructive' })
+    return
+  }
+
+  saving.value = true
+  try {
+    // Map industry to backend type value
+    let typeValue = 'company'
+    const ind = formData.value.industry
+    if (ind === 'Warung Makan') typeValue = 'warung'
+    else if (ind === 'Toko Kelontong') typeValue = 'toko'
+    else if (ind === 'Retail / Minimarket') typeValue = 'retail'
+    else if (ind === 'Agen / Distributor') typeValue = 'agen'
+    else if (ind === 'Restoran') typeValue = 'restoran'
+    else if (ind === 'Cafe') typeValue = 'cafe'
+    else if (ind === 'Lainnya') typeValue = 'lainnya'
+
+    const payload = {
+      ...formData.value,
+      type: typeValue as any,
+      company_name: formData.value.name
+    }
+
+    await store.createCustomer(payload)
+    toast({ title: 'Berhasil', description: `Customer "${formData.value.name}" telah dibuat.` })
+    showDialog.value = false
+  } catch (e: any) {
+    toast({ 
+      title: 'Gagal membuat customer', 
+      description: e.response?.data?.error || 'Terjadi kesalahan pada server', 
+      variant: 'destructive' 
+    })
+  } finally {
+    saving.value = false
+  }
+}
 
 const goDetail = (id: string) => router.push(`/customers/${id}`)
 
@@ -68,7 +149,7 @@ const formatStatus = (status: string) => {
           <MapPin class="w-4 h-4 mr-2" />
           Lihat Peta
         </Button>
-        <Button size="sm">
+        <Button size="sm" @click="openCreate">
           <Plus class="w-4 h-4 mr-2" />
           Pelanggan Baru
         </Button>
@@ -206,5 +287,75 @@ const formatStatus = (status: string) => {
         </div>
       </div>
     </Card>
+
+    <!-- Dialog Add Customer -->
+    <Dialog :open="showDialog" @update:open="showDialog = $event">
+      <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Tambah Pelanggan Baru</DialogTitle>
+          <DialogDescription>
+            Lengkapi data di bawah ini untuk mendaftarkan pelanggan baru ke sistem.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="grid gap-6 py-4">
+          <!-- Basic Info Section -->
+          <div class="space-y-4">
+            <div class="grid gap-2">
+              <Label for="name">Nama Bisnis / Toko</Label>
+              <div class="relative">
+                <Building2 class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input id="name" v-model="formData.name" placeholder="Contoh: Toko Berkah Jaya" class="pl-10" />
+              </div>
+            </div>
+
+            <div class="grid gap-2">
+              <Label>Tipe Bisnis / Kategori</Label>
+              <Select v-model="formData.industry">
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Tipe Bisnis" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="type in businessTypes" :key="type" :value="type">
+                    {{ type }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Separator />
+
+          <!-- Contact Info Section -->
+          <div class="space-y-4">
+            <h4 class="text-xs font-bold text-muted-foreground uppercase tracking-wider">Informasi Kontak</h4>
+            
+            <div class="grid gap-2">
+              <Label for="phone">Nomor Telepon</Label>
+              <div class="relative">
+                <Phone class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input id="phone" v-model="formData.phone" placeholder="0812..." class="pl-10" />
+              </div>
+            </div>
+
+            <div class="grid gap-2">
+              <Label for="email">Alamat Email</Label>
+              <div class="relative">
+                <Mail class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input id="email" v-model="formData.email" placeholder="email@toko.com" class="pl-10" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showDialog = false" :disabled="saving">Batal</Button>
+          <Button @click="handleSave" :disabled="saving">
+            <Loader2 v-if="saving" class="w-4 h-4 mr-2 animate-spin" />
+            Simpan Pelanggan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

@@ -9,7 +9,11 @@ abstract class DealEvent extends Equatable {
 }
 
 class FetchDeals extends DealEvent {
-  const FetchDeals();
+  final String? customerId;
+  const FetchDeals({this.customerId});
+
+  @override
+  List<Object?> get props => [customerId];
 }
 
 class FetchDealDetail extends DealEvent {

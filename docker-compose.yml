@@ -55,7 +55,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - UPLOADS_DIR=/app/uploads
       - GIN_MODE=release
-      - SEED_DATABASE=false # New: Automate seeding in development
+      - SEED_DATABASE=true # New: Automate seeding in development
     volumes:
       - ./storage/uploads:/app/uploads
     depends_on:

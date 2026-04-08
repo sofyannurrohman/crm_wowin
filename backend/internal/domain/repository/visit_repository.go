@@ -10,6 +10,7 @@ import (
 
 type ScheduleFilter struct {
 	SalesID    *uuid.UUID
+	LeadID     *uuid.UUID
 	CustomerID *uuid.UUID
 	Status     string
 	StartDate  *time.Time
@@ -29,11 +30,13 @@ type VisitRepository interface {
 	LogActivity(ctx context.Context, activity *models.VisitActivity) error
 	GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error)
 	GetActivitiesByCustomer(ctx context.Context, customerID uuid.UUID) ([]*models.VisitActivity, error)
+	GetActivitiesByLead(ctx context.Context, leadID uuid.UUID) ([]*models.VisitActivity, error)
 	ListActivities(ctx context.Context, filter ActivityFilter) ([]*models.VisitActivity, error)
 }
 
 type ActivityFilter struct {
 	SalesID    *uuid.UUID
+	LeadID     *uuid.UUID
 	CustomerID *uuid.UUID
 	StartDate  *time.Time
 	EndDate    *time.Time
