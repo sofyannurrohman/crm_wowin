@@ -107,3 +107,29 @@ func (h *AuthHandler) ListUsers(c *gin.Context) {
 	}
 	response.OK(c, users)
 }
+// UpdateProfile allows an authenticated user to change their basic info
+func (h *AuthHandler) UpdateProfile(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		response.Fail(c, http.StatusUnauthorized, "missing user context")
+		return
+	}
+
+	var req struct {
+		Name  string `json:"name"`
+		Phone string `json:"phone"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, "invalid update payload", err.Error())
+		return
+	}
+
+	updated, err := h.userUC.UpdateProfile(c.Request.Context(), userID, req.Name, req.Phone)
+	if err != nil {
+		response.MapDBError(c, err)
+		return
+	}
+
+	response.OK(c, updated, "profile updated successfully")
+}

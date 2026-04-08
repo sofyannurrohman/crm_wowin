@@ -17,6 +17,7 @@ class CheckInSubmitted extends VisitEvent {
   final String notes;
   final String? dealId;
   final String? overrideReason;
+  final String? customerId;
   final String? customerName;
   final String? taskDestinationId;
 
@@ -29,12 +30,13 @@ class CheckInSubmitted extends VisitEvent {
     required this.notes,
     this.dealId,
     this.overrideReason,
+    this.customerId,
     this.customerName,
     this.taskDestinationId,
   });
 
   @override
-  List<Object?> get props => [scheduleId, latitude, longitude, photoFile, selfiePhotoFile, notes, dealId, overrideReason, customerName, taskDestinationId];
+  List<Object?> get props => [scheduleId, latitude, longitude, photoFile, selfiePhotoFile, notes, dealId, overrideReason, customerId, customerName, taskDestinationId];
 }
 
 
@@ -59,11 +61,14 @@ class CheckOutSubmitted extends VisitEvent {
     this.signaturePath,
     this.inventoryData,
     this.taskDestinationId,
+    this.dealId,
   });
+
+  final String? dealId;
 
   @override
   List<Object?> get props =>
-      [scheduleId, latitude, longitude, visitResult, nextAction, nextVisitDate, signaturePath, inventoryData, taskDestinationId];
+      [scheduleId, latitude, longitude, visitResult, nextAction, nextVisitDate, signaturePath, inventoryData, taskDestinationId, dealId];
 }
 
 class FetchActivities extends VisitEvent {
@@ -75,4 +80,12 @@ class FetchActivities extends VisitEvent {
 
   @override
   List<Object?> get props => [salesId, customerId, leadId];
+}
+
+class LinkDealToVisit extends VisitEvent {
+  final String dealId;
+  const LinkDealToVisit(this.dealId);
+
+  @override
+  List<Object?> get props => [dealId];
 }

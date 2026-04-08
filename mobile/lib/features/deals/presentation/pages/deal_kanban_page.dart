@@ -22,10 +22,10 @@ class DealKanbanPage extends StatefulWidget {
 class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final List<String> _stages = [
-    'prospecting',
-    'qualification',
+    'prospect',
+    'survey',
     'negotiation',
-    'proposal',
+    'closing',
   ];
 
   static const Color _orange = Color(0xFFE8622A);
@@ -57,7 +57,12 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
             _buildHeader(),
             _buildTabBar(),
             Expanded(
-              child: BlocBuilder<DealBloc, DealState>(
+              child: BlocConsumer<DealBloc, DealState>(
+                listener: (context, state) {
+                  if (state is DealOperationSuccess) {
+                    context.read<DealBloc>().add(const FetchDeals());
+                  }
+                },
                 builder: (context, state) {
                   if (state is DealLoading) {
                     return const Center(child: CircularProgressIndicator(color: _orange));
@@ -144,10 +149,10 @@ class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProvid
       labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
       unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
       tabs: const [
-        Tab(text: 'PROSPECTING'),
-        Tab(text: 'QUALIFICATION'),
+        Tab(text: 'PROSPECT'),
+        Tab(text: 'SURVEY'),
         Tab(text: 'NEGOTIATION'),
-        Tab(text: 'PROPOSAL'),
+        Tab(text: 'CLOSING'),
       ],
     );
   }
@@ -341,10 +346,15 @@ class _DealCard extends StatelessWidget {
                             child: const Icon(LucideIcons.building2, size: 12, color: Color(0xFF64748B)),
                           ),
                           const SizedBox(width: 8),
-                          const Expanded(
+                          Expanded(
                             child: Text(
-                              'Client Corporation',
-                              style: TextStyle(color: Color(0xFF6B7280), fontSize: 14, fontWeight: FontWeight.w500),
+                              deal.customer?.name ?? 'Unknown Customer',
+                              style: const TextStyle(
+                                  color: Color(0xFF6B7280),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -360,29 +370,22 @@ class _DealCard extends StatelessWidget {
                             children: [
                               Text(
                                 fmt.format(deal.amount ?? 0),
-                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A)),
+                                style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF1A1A1A)),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 '${deal.probability ?? 0}% Probability',
-                                style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontWeight: FontWeight.w600),
+                                style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
-                          ElevatedButton(
-                            onPressed: () => context.pushNamed(
-                              kRouteDealDetail,
-                              pathParameters: {'id': deal.id},
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isOverdue ? _orange : const Color(0xFFF1F5F9),
-                              foregroundColor: isOverdue ? Colors.white : const Color(0xFF1A1A1A),
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            child: const Text('Details', style: TextStyle(fontWeight: FontWeight.w700)),
-                          ),
+                          _buildStageAction(context),
                         ],
                       ),
                     ],
@@ -393,6 +396,43 @@ class _DealCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildStageAction(BuildContext context) {
+    const List<Map<String, String>> availableStages = [
+      {'stage': 'prospect', 'label': 'Move to Prospect'},
+      {'stage': 'survey', 'label': 'Move to Survey'},
+      {'stage': 'negotiation', 'label': 'Move to Negotiation'},
+      {'stage': 'closing', 'label': 'Move to Closing'},
+      {'stage': 'closed_won', 'label': 'Mark WON'},
+      {'stage': 'closed_lost', 'label': 'Mark LOST'},
+    ];
+
+    return PopupMenuButton<String>(
+      icon: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(LucideIcons.arrowRightLeft,
+            size: 16, color: Color(0xFF1A1A1A)),
+      ),
+      onSelected: (newStage) {
+        context.read<DealBloc>().add(
+              UpdateDealStageSubmitted(id: deal.id, stage: newStage),
+            );
+      },
+      itemBuilder: (context) {
+        return availableStages
+            .where((s) => s['stage'] != deal.stage)
+            .map((s) => PopupMenuItem(
+                  value: s['stage'],
+                  child: Text(s['label']!),
+                ))
+            .toList();
+      },
     );
   }
 }

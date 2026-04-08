@@ -46,5 +46,8 @@ class CheckOutRequest {
     this.signaturePath,
     this.inventoryData,
     this.taskDestinationId,
+    this.dealId,
   });
+
+  final String? dealId;
 }

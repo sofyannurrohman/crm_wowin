@@ -234,7 +234,7 @@ class _DealDetailPageState extends State<DealDetailPage> {
                         const Icon(LucideIcons.building2, size: 14, color: _orange),
                         const SizedBox(width: 4),
                         Text(
-                          'Pelanggan: ${deal.customerId}',
+                          'Pelanggan: ${deal.customer?.name ?? 'Unknown'}',
                           style: TextStyle(color: _orange.withOpacity(0.9), fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       ],
@@ -399,7 +399,7 @@ class _DealDetailPageState extends State<DealDetailPage> {
   }
 
   Widget _buildStageProgress(String currentStage) {
-    final stages = ['prospecting', 'qualification', 'proposal', 'negotiation', 'closed_won'];
+    final stages = ['prospect', 'survey', 'negotiation', 'closing', 'closed_won'];
     final currentIndex = stages.indexOf(currentStage.toLowerCase());
     
     return Row(
@@ -426,10 +426,10 @@ class _DealDetailPageState extends State<DealDetailPage> {
 
   void _showStagePicker(BuildContext context, Deal deal) {
     final stages = [
-      {'id': 'prospecting', 'label': 'Prospecting', 'desc': 'Identifikasi awal peluang'},
-      {'id': 'qualification', 'label': 'Qualification', 'desc': 'Validasi kebutuhan & budget'},
-      {'id': 'proposal', 'label': 'Proposal', 'desc': 'Pengiriman penawaran resmi'},
+      {'id': 'prospect', 'label': 'Prospect', 'desc': 'Identifikasi awal peluang'},
+      {'id': 'survey', 'label': 'Survey', 'desc': 'Survey lokasi & kebutuhan'},
       {'id': 'negotiation', 'label': 'Negotiation', 'desc': 'Diskusi harga & kontrak'},
+      {'id': 'closing', 'label': 'Closing', 'desc': 'Finalisasi penawaran'},
       {'id': 'closed_won', 'label': 'Closed Won', 'desc': 'Deal berhasil ditutup'},
       {'id': 'closed_lost', 'label': 'Closed Lost', 'desc': 'Deal gagal/dibatalkan'},
     ];

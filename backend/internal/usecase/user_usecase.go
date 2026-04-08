@@ -20,6 +20,7 @@ type UserUseCase interface {
 	Login(ctx context.Context, email, password string, ip string, userAgent string) (*models.TokenResponse, error)
 	Register(ctx context.Context, req *models.User) (*models.User, error)
 	GetProfile(ctx context.Context, userID string) (*models.User, error)
+	UpdateProfile(ctx context.Context, userID string, name, phone string) (*models.User, error)
 	Logout(ctx context.Context, userID string) error
 	ListUsers(ctx context.Context) ([]*models.User, error)
 }
@@ -121,18 +122,42 @@ func (u *userUseCaseImpl) Register(ctx context.Context, req *models.User) (*mode
 }
 
 func (u *userUseCaseImpl) GetProfile(ctx context.Context, userID string) (*models.User, error) {
-	// Need to parse string to UUID in transport layer, but here we expect parsed UUID.
-	// For simplicity in parameter, we'll parse it here.
-	importUUID, err := ParseUUID(userID)
+	id, err := uuid.Parse(userID)
 	if err != nil {
 		return nil, dberrors.ErrInvalidInput
 	}
 	
-	user, err := u.userRepo.FindByID(ctx, importUUID)
+	user, err := u.userRepo.FindByID(ctx, id)
 	if err == nil && user != nil {
 		user.FirstName, user.LastName = splitName(user.Name)
 	}
 	return user, err
+}
+
+func (u *userUseCaseImpl) UpdateProfile(ctx context.Context, userID string, name, phone string) (*models.User, error) {
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, dberrors.ErrInvalidInput
+	}
+
+	user, err := u.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if name != "" {
+		user.Name = name
+	}
+	if phone != "" {
+		user.Phone = &phone
+	}
+
+	if err := u.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	user.FirstName, user.LastName = splitName(user.Name)
+	return user, nil
 }
 
 func (u *userUseCaseImpl) Logout(ctx context.Context, userID string) error {

@@ -34,10 +34,12 @@ dependencies:
   
   # GPS & Free Maps (OSM)
   geolocator: ^14.0.2
+  geocoding: ^3.0.0
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   permission_handler: ^12.0.1
   workmanager: ^0.9.0+3
+  image: ^4.3.0
   
   # Utils
   dartz: ^0.10.1

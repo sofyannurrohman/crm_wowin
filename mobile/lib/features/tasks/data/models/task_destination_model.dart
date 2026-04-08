@@ -54,6 +54,11 @@ class TaskDestinationModel extends TaskDestination {
       'deal_id': dealId,
       'sequence_order': sequenceOrder,
       'status': status.name,
+      'target_name': targetName,
+      'target_address': targetAddress,
+      'target_latitude': targetLatitude,
+      'target_longitude': targetLongitude,
+      'deal_title': dealTitle,
     };
   }
 }

@@ -101,4 +101,18 @@ class AuthRepositoryImpl implements AuthRepository {
       return const Left(ServerFailure('Gagal mengambil data profil'));
     }
   }
+
+  @override
+  Future<Either<Failure, UserEntity>> updateProfile(
+      {String? name, String? phone}) async {
+    try {
+      final user = await remoteDataSource.updateProfile(
+          name: name, phone: phone);
+      return Right(user);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal memperbarui profil'));
+    }
+  }
 }

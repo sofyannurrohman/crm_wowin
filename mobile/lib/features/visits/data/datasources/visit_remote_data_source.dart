@@ -90,9 +90,9 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
         'visit_result': request.visitResult,
         'next_action': request.nextAction,
         'next_visit_date': request.nextVisitDate,
-        if (request.inventoryData != null)
-          'inventory_data': request.inventoryData,
+        'inventory_data': request.inventoryData,
         'task_destination_id': request.taskDestinationId,
+        'deal_id': request.dealId,
       };
 
       // Attach signature image if captured

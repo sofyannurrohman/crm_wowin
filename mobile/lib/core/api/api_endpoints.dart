@@ -7,6 +7,7 @@ class ApiEndpoints {
   static const String login = '/auth/login';
   static const String register = '/auth/register';
   static const String getMe = '/users/me';
+  static const String updateProfile = '/users/me';
   static const String refresh = '/auth/refresh';
 
   // Customers & Contacts

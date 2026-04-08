@@ -21,6 +21,8 @@ import '../widgets/active_visit_card.dart';
 import '../widgets/next_visit_card.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../tasks/presentation/bloc/task_bloc.dart';
+import '../../../tasks/presentation/bloc/task_state.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -56,11 +58,17 @@ class _DashboardPageState extends State<DashboardPage> {
             _buildHeader(context, l10n),
             // Scrollable body
             Expanded(
-              child: RefreshIndicator(
-                color: _orange,
-                onRefresh: () async {
-                  context.read<DashboardBloc>().add(FetchDashboardKpis());
+              child: BlocListener<TaskBloc, TaskState>(
+                listener: (context, state) {
+                  if (state is TaskOperationSuccess) {
+                    context.read<DashboardBloc>().add(FetchDashboardKpis());
+                  }
                 },
+                child: RefreshIndicator(
+                  color: _orange,
+                  onRefresh: () async {
+                    context.read<DashboardBloc>().add(FetchDashboardKpis());
+                  },
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
@@ -84,6 +92,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ),
+          ),
           ],
         ),
       ),
@@ -202,6 +211,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 if (hasActiveVisit)
                   ActiveVisitCard(
                     scheduleId: visitState.scheduleId!,
+                    customerId: visitState.customerId ?? '',
                     customerName: visitState.customerName ?? 'Pelanggan',
                     startTime: visitState.checkInTime ?? DateTime.now(),
                   )

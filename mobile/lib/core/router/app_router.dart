@@ -78,6 +78,7 @@ final GoRouter appRouter = GoRouter(
         final args = state.extra as Map<String, dynamic>?;
         return CheckInPage(
           scheduleId: args?['scheduleId'] as String? ?? 'adhoc',
+          customerId: args?['customerId'] as String?,
           customerName: args?['customerName'] as String?,
           customerAddress: args?['customerAddress'] as String?,
           targetLat: args?['targetLat'] as double?,
@@ -133,6 +134,22 @@ final GoRouter appRouter = GoRouter(
       name: kRouteLeads,
       path: '/leads',
       builder: (context, state) => const LeadListPage(),
+    ),
+    GoRoute(
+      name: kRouteAddLead,
+      path: '/leads/add',
+      builder: (context, state) {
+        final lead = state.extra as Lead?;
+        return AddLeadPage(initialLead: lead);
+      },
+    ),
+    GoRoute(
+      name: kRouteConvertLead,
+      path: '/leads/convert',
+      builder: (context, state) {
+        final lead = state.extra as Lead;
+        return ConvertLeadPage(lead: lead);
+      },
     ),
     GoRoute(
       name: kRouteLeadDetail,
@@ -200,7 +217,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       name: kRouteNewTask,
       path: '/new-task',
-      builder: (context, state) => const NewTaskPage(),
+      builder: (context, state) {
+        final task = state.extra as task_ent.Task?;
+        return NewTaskPage(initialTask: task);
+      },
     ),
     GoRoute(
       name: kRouteActivityLog,
@@ -238,30 +258,20 @@ final GoRouter appRouter = GoRouter(
         id: state.pathParameters['id']!,
       ),
     ),
-    GoRoute(
-      name: kRouteAddLead,
-      path: '/leads/add',
-      builder: (context, state) {
-        final lead = state.extra as Lead?;
-        return AddLeadPage(initialLead: lead);
-      },
-    ),
+
     GoRoute(
       name: kRouteAddDeal,
       path: '/deals/add',
       builder: (context, state) {
-        final deal = state.extra as Deal?;
-        return AddDealPage(initialDeal: deal);
+        final extras = state.extra as Map<String, dynamic>? ?? {};
+        return AddDealPage(
+          initialDeal: extras['initialDeal'] as Deal?,
+          initialCustomerId: extras['initialCustomerId'] as String?,
+          initialCustomerName: extras['initialCustomerName'] as String?,
+        );
       },
     ),
-    GoRoute(
-      name: kRouteConvertLead,
-      path: '/leads/convert',
-      builder: (context, state) {
-        final lead = state.extra as Lead;
-        return ConvertLeadPage(lead: lead);
-      },
-    ),
+
     GoRoute(
       path: '/sales-activities',
       name: kRouteSalesActivities,

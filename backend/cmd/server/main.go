@@ -177,7 +177,7 @@ func main() {
 	leadUC := usecase.NewLeadUseCase(leadRepo, customerRepo)
 	dealUC := usecase.NewDealUseCase(dealRepo, customerRepo)
 	productUC := usecase.NewProductUseCase(productRepo, dealItemRepo, dealRepo)
-	visitUC := usecase.NewVisitUseCase(visitRepo, customerRepo, taskRepo, salesActivityRepo, leadRepo)
+	visitUC := usecase.NewVisitUseCase(visitRepo, customerRepo, taskRepo, salesActivityRepo, leadRepo, dealRepo)
 	trackingUC := usecase.NewTrackingUseCase(trackingRepo)
 	territoryUC := usecase.NewTerritoryUseCase(territoryRepo)
 	reportUC := usecase.NewReportUseCase(reportRepo, targetRepo, taskRepo)

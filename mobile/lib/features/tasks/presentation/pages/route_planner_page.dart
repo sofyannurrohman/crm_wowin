@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../domain/entities/task.dart';
 import '../../domain/entities/task_destination.dart';
+import 'package:geolocator/geolocator.dart';
 
 class RoutePlannerPage extends StatefulWidget {
   final Task task;
@@ -44,12 +45,33 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
     });
 
     try {
-      // 1. Simple Greedy Optimization (Nearest Neighbor)
-      List<TaskDestination> unvisited = List.from(widget.task.destinations);
       LatLng currentLoc = _warehouseLocation;
-      List<TaskDestination> optimized = [];
-      List<LatLng> waypoints = [_warehouseLocation];
+      try {
+        final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high, timeLimit: const Duration(seconds: 3));
+        currentLoc = LatLng(position.latitude, position.longitude);
+      } catch (e) {
+        debugPrint('Geolocator error in Route Planner: $e');
+      }
 
+      // Separate completed vs unvisited
+      List<TaskDestination> doneDests = widget.task.destinations.where((d) => d.status == TaskStatus.done).toList();
+      List<TaskDestination> unvisited = widget.task.destinations.where((d) => d.status != TaskStatus.done).toList();
+      
+      List<TaskDestination> optimized = [];
+      List<LatLng> waypoints = [];
+
+      // Add done tasks as fixed sequence (already visited)
+      for (var dest in doneDests) {
+        optimized.add(dest);
+        if (dest.targetLatitude != null && dest.targetLongitude != null) {
+          waypoints.add(LatLng(dest.targetLatitude!, dest.targetLongitude!));
+        }
+      }
+
+      // Only add start currentLoc if we haven't added done elements, OR if currentLoc is far away from the last done (for simplicity just prepend if waypoints is empty, or append if we want route from current location)
+      waypoints.add(currentLoc);
+
+      // 1. Simple Greedy Optimization for UNVISITED tasks
       while (unvisited.isNotEmpty) {
         double minDistance = double.infinity;
         int nearestIndex = -1;
@@ -108,11 +130,12 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
 
     } catch (e) {
       debugPrint('Error fetching OSRM route: $e');
+      final safeList = widget.task.destinations.where((d) => d.targetLatitude != null && d.targetLongitude != null).toList();
       setState(() {
         _isLoadingRoute = false;
+        if (_optimizedRoute.isEmpty) _optimizedRoute = safeList;
         _routeError = 'Gagal memuat peta rute jalan. Menampilkan garis lurus.';
-        // Fallback to simple points
-        _routePoints = [_warehouseLocation, ...widget.task.destinations.map((d) => LatLng(d.targetLatitude ?? 0, d.targetLongitude ?? 0))];
+        _routePoints = [_warehouseLocation, ..._optimizedRoute.where((d) => d.targetLatitude != null && d.targetLongitude != null).map((d) => LatLng(d.targetLatitude!, d.targetLongitude!))];
       });
     }
   }
@@ -246,9 +269,12 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                   );
                 }
                 final dest = _optimizedRoute[index - 1];
+                final destName = (dest.targetName == null || dest.targetName!.isEmpty) ? 'Target Kunjungan' : dest.targetName!;
+                final destAddress = (dest.targetAddress == null || dest.targetAddress!.isEmpty) ? 'Tidak ada detail alamat' : dest.targetAddress!;
+
                 return _buildListTile(
-                  title: dest.targetName ?? 'Target Kunjungan',
-                  subtitle: dest.targetAddress ?? 'Tidak ada detail alamat',
+                  title: destName,
+                  subtitle: destAddress,
                   leading: CircleAvatar(
                     radius: 12,
                     backgroundColor: (dest.status == TaskStatus.done ? Colors.green : const Color(0xFF3B82F6)).withOpacity(0.1),
@@ -262,8 +288,8 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                     if (dest.status != TaskStatus.done) {
                       context.pushNamed(kRouteCheckIn, extra: {
                         'scheduleId': 'task',
-                        'customerName': dest.targetName,
-                        'customerAddress': dest.targetAddress,
+                        'customerName': destName,
+                        'customerAddress': destAddress,
                         'targetLat': dest.targetLatitude,
                         'targetLng': dest.targetLongitude,
                         'taskDestinationId': dest.id,

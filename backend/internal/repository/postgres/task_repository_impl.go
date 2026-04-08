@@ -21,12 +21,18 @@ func NewTaskRepository(db *pgxpool.Pool) repository.TaskRepository {
 }
 
 func (r *taskRepoImpl) Create(ctx context.Context, t *models.Task) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
 	query := `
 		INSERT INTO tasks (sales_id, warehouse_id, title, description, status, due_date)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, created_at, updated_at
 	`
-	err := r.db.QueryRow(ctx, query, t.SalesID, t.WarehouseID, t.Title, t.Description, t.Status, t.DueDate).
+	err = tx.QueryRow(ctx, query, t.SalesID, t.WarehouseID, t.Title, t.Description, t.Status, t.DueDate).
 		Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		return err
@@ -39,12 +45,17 @@ func (r *taskRepoImpl) Create(ctx context.Context, t *models.Task) error {
 		if qStatus == "" {
 			qStatus = models.TaskStatusTodo
 		}
+		
 		dQuery := `INSERT INTO task_destinations (task_id, lead_id, customer_id, deal_id, sequence_order, status)
 				   VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at, updated_at`
-		r.db.QueryRow(ctx, dQuery, t.ID, t.Destinations[i].LeadID, t.Destinations[i].CustomerID, t.Destinations[i].DealID, t.Destinations[i].SequenceOrder, qStatus).
+		err = tx.QueryRow(ctx, dQuery, t.ID, t.Destinations[i].LeadID, t.Destinations[i].CustomerID, t.Destinations[i].DealID, t.Destinations[i].SequenceOrder, qStatus).
 			Scan(&t.Destinations[i].ID, &t.Destinations[i].CreatedAt, &t.Destinations[i].UpdatedAt)
+		if err != nil {
+			return fmt.Errorf("failed to insert destination %d: %w", i, err)
+		}
 	}
-	return nil
+
+	return tx.Commit(ctx)
 }
 
 func (r *taskRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Task, error) {
@@ -72,9 +83,9 @@ func (r *taskRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Task,
 	// Get Destinations with joined names and locations
 	dQuery := `
 		SELECT td.id, td.task_id, td.lead_id, td.customer_id, td.deal_id, td.sequence_order, td.status, td.created_at, td.updated_at,
-		       COALESCE(l.name, c.name) as target_name,
-		       COALESCE(l.latitude, c.latitude) as target_lat,
-		       COALESCE(l.longitude, c.longitude) as target_lng,
+		       COALESCE(c.name, l.name) as target_name,
+		       COALESCE(l.latitude, ST_Y(c.location)) as target_lat,
+		       COALESCE(l.longitude, ST_X(c.location)) as target_lng,
 		       COALESCE(l.address, c.address) as target_address
 		FROM task_destinations td
 		LEFT JOIN leads l ON td.lead_id = l.id
@@ -95,9 +106,10 @@ func (r *taskRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Task,
 			&td.ID, &td.TaskID, &td.LeadID, &td.CustomerID, &td.DealID, &td.SequenceOrder, &td.Status, &td.CreatedAt, &td.UpdatedAt,
 			&td.TargetName, &td.TargetLatitude, &td.TargetLongitude, &td.TargetAddress,
 		)
-		if err == nil {
-			t.Destinations = append(t.Destinations, td)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan destination for task %s: %w", id, err)
 		}
+		t.Destinations = append(t.Destinations, td)
 	}
 
 	return &t, nil
@@ -165,16 +177,19 @@ func (r *taskRepoImpl) List(ctx context.Context, filter repository.TaskFilter) (
 		
 		dQuery := `
 			SELECT td.id, td.task_id, td.lead_id, td.customer_id, td.deal_id, td.sequence_order, td.status, td.created_at, td.updated_at,
-			       COALESCE(l.name, c.name) as target_name,
-			       COALESCE(l.latitude, c.latitude) as target_lat,
-			       COALESCE(l.longitude, c.longitude) as target_lng,
+			       COALESCE(c.name, l.name) as target_name,
+			       COALESCE(l.latitude, ST_Y(c.location)) as target_lat,
+			       COALESCE(l.longitude, ST_X(c.location)) as target_lng,
 			       COALESCE(l.address, c.address) as target_address
 			FROM task_destinations td
 			LEFT JOIN leads l ON td.lead_id = l.id
 			LEFT JOIN customers c ON td.customer_id = c.id
 			WHERE td.task_id = $1 
 			ORDER BY td.sequence_order ASC`
-		dRows, _ := r.db.Query(ctx, dQuery, t.ID)
+		dRows, err := r.db.Query(ctx, dQuery, t.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query destinations for task %s: %w", t.ID, err)
+		}
 		t.Destinations = []models.TaskDestination{}
 		for dRows.Next() {
 			var td models.TaskDestination
@@ -182,9 +197,11 @@ func (r *taskRepoImpl) List(ctx context.Context, filter repository.TaskFilter) (
 				&td.ID, &td.TaskID, &td.LeadID, &td.CustomerID, &td.DealID, &td.SequenceOrder, &td.Status, &td.CreatedAt, &td.UpdatedAt,
 				&td.TargetName, &td.TargetLatitude, &td.TargetLongitude, &td.TargetAddress,
 			)
-			if err == nil {
-				t.Destinations = append(t.Destinations, td)
+			if err != nil {
+				dRows.Close()
+				return nil, fmt.Errorf("failed to scan destination for task %s: %w", t.ID, err)
 			}
+			t.Destinations = append(t.Destinations, td)
 		}
 		dRows.Close()
 
@@ -210,12 +227,27 @@ func (r *taskRepoImpl) Update(ctx context.Context, t *models.Task) error {
 		return err
 	}
 
-	// Update existing destinations status/order
-	for _, d := range t.Destinations {
-		dQuery := `UPDATE task_destinations SET status = $1, sequence_order = $2, updated_at = NOW() WHERE id = $3`
-		_, err = tx.Exec(ctx, dQuery, d.Status, d.SequenceOrder, d.ID)
+	// Delete existing destinations to perform a clean re-sync
+	_, err = tx.Exec(ctx, "DELETE FROM task_destinations WHERE task_id = $1", t.ID)
+	if err != nil {
+		return err
+	}
+
+	// Insert current destinations
+	for i := range t.Destinations {
+		t.Destinations[i].TaskID = t.ID
+		t.Destinations[i].SequenceOrder = i + 1
+		qStatus := t.Destinations[i].Status
+		if qStatus == "" {
+			qStatus = models.TaskStatusTodo
+		}
+
+		dQuery := `INSERT INTO task_destinations (task_id, lead_id, customer_id, deal_id, sequence_order, status)
+				   VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at, updated_at`
+		err = tx.QueryRow(ctx, dQuery, t.ID, t.Destinations[i].LeadID, t.Destinations[i].CustomerID, t.Destinations[i].DealID, t.Destinations[i].SequenceOrder, qStatus).
+			Scan(&t.Destinations[i].ID, &t.Destinations[i].CreatedAt, &t.Destinations[i].UpdatedAt)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to re-sync destination %d: %w", i, err)
 		}
 	}
 

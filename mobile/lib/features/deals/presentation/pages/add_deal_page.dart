@@ -20,8 +20,15 @@ import '../../domain/entities/deal_item.dart';
 
 class AddDealPage extends StatefulWidget {
   final Deal? initialDeal;
+  final String? initialCustomerId;
+  final String? initialCustomerName;
 
-  const AddDealPage({super.key, this.initialDeal});
+  const AddDealPage({
+    super.key, 
+    this.initialDeal,
+    this.initialCustomerId,
+    this.initialCustomerName,
+  });
 
   @override
   State<AddDealPage> createState() => _AddDealPageState();
@@ -37,15 +44,16 @@ class _AddDealPageState extends State<AddDealPage> {
   
   String? _selectedCustomerId;
   String? _selectedCustomerName;
-  String _selectedStage = 'prospecting';
+  String _selectedStage = 'prospect';
   DateTime? _expectedCloseDate;
   List<DealItem> _items = [];
+  String? _submittedDealId;
 
   final List<String> _stages = [
-    'prospecting',
-    'qualification',
-    'proposal',
+    'prospect',
+    'survey',
     'negotiation',
+    'closing',
     'closed_won',
     'closed_lost'
   ];
@@ -62,9 +70,9 @@ class _AddDealPageState extends State<AddDealPage> {
     _expectedCloseController = TextEditingController(
       text: _expectedCloseDate != null ? DateFormat('yyyy-MM-dd').format(_expectedCloseDate!) : '',
     );
-    _selectedCustomerId = deal?.customerId;
-    _selectedCustomerName = deal?.customer?.name;
-    _selectedStage = deal?.stage ?? 'prospecting';
+    _selectedCustomerId = deal?.customerId ?? widget.initialCustomerId;
+    _selectedCustomerName = deal?.customer?.name ?? widget.initialCustomerName;
+    _selectedStage = deal?.stage ?? 'prospect';
     _items = deal?.items ?? [];
     
     // Fetch products for the picker
@@ -315,6 +323,8 @@ class _AddDealPageState extends State<AddDealPage> {
         status: 'open',
         items: _items,
       );
+      
+      _submittedDealId = deal.id;
 
       if (widget.initialDeal == null) {
         context.read<DealBloc>().add(CreateDealSubmitted(deal));
@@ -341,7 +351,7 @@ class _AddDealPageState extends State<AddDealPage> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message), backgroundColor: Colors.green),
             );
-            context.pop(true); // Return true to indicate refresh needed
+            context.pop(_submittedDealId); // Return the deal ID to the caller
           } else if (state is DealError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message), backgroundColor: Colors.red),

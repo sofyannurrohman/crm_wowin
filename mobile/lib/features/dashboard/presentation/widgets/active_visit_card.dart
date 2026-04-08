@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../features/visits/presentation/widgets/check_out_sheet.dart';
+import '../../../../features/visits/presentation/bloc/visit_bloc.dart';
+import '../../../../features/visits/presentation/bloc/visit_event.dart';
 import 'dart:async';
+import 'dart:ui';
 
 class ActiveVisitCard extends StatefulWidget {
   final String scheduleId;
@@ -12,9 +17,12 @@ class ActiveVisitCard extends StatefulWidget {
   const ActiveVisitCard({
     super.key,
     required this.scheduleId,
+    required this.customerId,
     required this.customerName,
     required this.startTime,
   });
+
+  final String customerId;
 
   @override
   State<ActiveVisitCard> createState() => _ActiveVisitCardState();
@@ -166,6 +174,37 @@ class _ActiveVisitCardState extends State<ActiveVisitCard> {
                   Row(
                     children: [
                       Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            // Navigate to Add Deal Page with current customer context
+                            final newDealId = await context.pushNamed<String>(
+                              'add_deal', // Route name for kRouteAddDeal
+                              extra: {
+                                'initialCustomerId': widget.customerId,
+                                'initialCustomerName': widget.customerName,
+                              },
+                            );
+
+                            if (newDealId != null && mounted) {
+                              context.read<VisitBloc>().add(LinkDealToVisit(newDealId));
+                            }
+                          },
+                          icon: const Icon(LucideIcons.shoppingBag, size: 18),
+                          label: const Text('BUAT PENJUALAN'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white, width: 1.5),
+                            elevation: 0,
+                            minimumSize: const Size(0, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
                             showModalBottomSheet(
@@ -180,7 +219,7 @@ class _ActiveVisitCardState extends State<ActiveVisitCard> {
                             );
                           },
                           icon: const Icon(LucideIcons.logOut, size: 18),
-                          label: const Text('CATAT HASIL & SELESAI'),
+                          label: const Text('SELESAI'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: const Color(0xFF1A237E),

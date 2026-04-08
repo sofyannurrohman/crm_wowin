@@ -65,17 +65,25 @@ func (r *dealRepoImpl) Create(ctx context.Context, d *models.Deal) error {
 
 func (r *dealRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Deal, error) {
 	query := `
-		SELECT 	id, title, customer_id, contact_id, assigned_to, stage, status, amount, 
-				probability, expected_close, closed_at, lost_reason, description, 
-				created_by, created_at, updated_at
-		FROM deals WHERE id = $1
+		SELECT 	d.id, d.title, d.customer_id, d.contact_id, d.assigned_to, d.stage, d.status, d.amount, 
+				d.probability, d.expected_close, d.closed_at, d.lost_reason, d.description, 
+				d.created_by, d.created_at, d.updated_at,
+				c.id, c.name, c.company_name, c.email, c.phone, c.address
+		FROM deals d
+		JOIN customers c ON d.customer_id = c.id
+		WHERE d.id = $1
 	`
 	var d models.Deal
+	var cust models.Customer
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&d.ID, &d.Title, &d.CustomerID, &d.ContactID, &d.AssignedTo, &d.Stage, &d.Status, &d.Amount,
 		&d.Probability, &d.ExpectedClose, &d.ClosedAt, &d.LostReason, &d.Description,
 		&d.CreatedBy, &d.CreatedAt, &d.UpdatedAt,
+		&cust.ID, &cust.Name, &cust.CompanyName, &cust.Email, &cust.Phone, &cust.Address,
 	)
+	if err == nil {
+		d.Customer = &cust
+	}
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -108,8 +116,12 @@ func (r *dealRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Deal,
 }
 
 func (r *dealRepoImpl) List(ctx context.Context, filter repository.DealFilter) ([]*models.Deal, error) {
-	baseQuery := `SELECT id, title, customer_id, contact_id, assigned_to, stage, status, amount, 
-				probability, expected_close, closed_at, created_by, created_at FROM deals WHERE 1=1 `
+	baseQuery := `SELECT d.id, d.title, d.customer_id, d.contact_id, d.assigned_to, d.stage, d.status, d.amount, 
+				d.probability, d.expected_close, d.closed_at, d.created_by, d.created_at,
+				c.name, c.company_name
+				FROM deals d
+				JOIN customers c ON d.customer_id = c.id
+				WHERE 1=1 `
 	
 	args := []interface{}{}
 	argCount := 1
@@ -125,17 +137,17 @@ func (r *dealRepoImpl) List(ctx context.Context, filter repository.DealFilter) (
 		argCount++
 	}
 	if filter.Stage != "" {
-		baseQuery += fmt.Sprintf(" AND stage = $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND d.stage = $%d", argCount)
 		args = append(args, filter.Stage)
 		argCount++
 	}
 	if filter.Status != "" {
-		baseQuery += fmt.Sprintf(" AND status = $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND d.status = $%d", argCount)
 		args = append(args, filter.Status)
 		argCount++
 	}
 	
-	baseQuery += " ORDER BY created_at DESC"
+	baseQuery += " ORDER BY d.created_at DESC"
 
 	rows, err := r.db.Query(ctx, baseQuery, args...)
 	if err != nil {
@@ -146,13 +158,16 @@ func (r *dealRepoImpl) List(ctx context.Context, filter repository.DealFilter) (
 	var results []*models.Deal
 	for rows.Next() {
 		var d models.Deal
+		var cust models.Customer
 		err := rows.Scan(
 			&d.ID, &d.Title, &d.CustomerID, &d.ContactID, &d.AssignedTo, &d.Stage, &d.Status, &d.Amount,
 			&d.Probability, &d.ExpectedClose, &d.ClosedAt, &d.CreatedBy, &d.CreatedAt,
+			&cust.Name, &cust.CompanyName,
 		)
 		if err != nil {
 			return nil, err
 		}
+		d.Customer = &cust
 		results = append(results, &d)
 	}
 	return results, nil
@@ -293,7 +308,7 @@ func (r *leadRepoImpl) Create(ctx context.Context, l *models.Lead) error {
 	`
 	err := r.db.QueryRow(ctx, query,
 		l.Title, l.Name, l.Company, l.Email, l.Phone, l.Source, l.Status,
-		l.AssignedTo, l.EstimatedValue, l.PotentialProducts, l.Notes, 
+		l.AssignedTo, l.EstimatedValue, l.PotentialProducts, l.Notes,
 		l.Address, l.Latitude, l.Longitude, l.CreatedBy,
 	).Scan(&l.ID, &l.CreatedAt, &l.UpdatedAt)
 
@@ -310,7 +325,7 @@ func (r *leadRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Lead,
 	var l models.Lead
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&l.ID, &l.Title, &l.Name, &l.Company, &l.Email, &l.Phone, &l.Source, &l.Status, &l.AssignedTo,
-		&l.CustomerID, &l.EstimatedValue, &l.PotentialProducts, &l.Notes, 
+		&l.CustomerID, &l.EstimatedValue, &l.PotentialProducts, &l.Notes,
 		&l.Address, &l.Latitude, &l.Longitude, &l.ConvertedAt, &l.CreatedBy, &l.CreatedAt, &l.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -320,7 +335,7 @@ func (r *leadRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Lead,
 }
 
 func (r *leadRepoImpl) List(ctx context.Context, filter repository.LeadFilter) ([]*models.Lead, error) {
-	baseQuery := `SELECT id, title, name, company, email, phone, status, source, assigned_to, potential_products, address, latitude, longitude, created_at FROM leads WHERE 1=1 `
+	baseQuery := `SELECT id, title, name, company, email, phone, status, source, assigned_to, customer_id, estimated_value, potential_products, notes, address, latitude, longitude, converted_at, created_by, created_at, updated_at FROM leads WHERE 1=1 `
 	args := []interface{}{}
 	argCount := 1
 
@@ -337,6 +352,7 @@ func (r *leadRepoImpl) List(ctx context.Context, filter repository.LeadFilter) (
 	if filter.AssignedTo != nil {
 		baseQuery += fmt.Sprintf(" AND assigned_to = $%d", argCount)
 		args = append(args, *filter.AssignedTo)
+		_ = argCount
 	}
 
 	baseQuery += " ORDER BY created_at DESC"
@@ -351,7 +367,9 @@ func (r *leadRepoImpl) List(ctx context.Context, filter repository.LeadFilter) (
 	for rows.Next() {
 		var l models.Lead
 		err := rows.Scan(
-			&l.ID, &l.Title, &l.Name, &l.Company, &l.Email, &l.Phone, &l.Status, &l.Source, &l.AssignedTo, &l.PotentialProducts, &l.Address, &l.Latitude, &l.Longitude, &l.CreatedAt,
+			&l.ID, &l.Title, &l.Name, &l.Company, &l.Email, &l.Phone, &l.Status, &l.Source, &l.AssignedTo,
+			&l.CustomerID, &l.EstimatedValue, &l.PotentialProducts, &l.Notes, &l.Address, &l.Latitude, &l.Longitude,
+			&l.ConvertedAt, &l.CreatedBy, &l.CreatedAt, &l.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -371,10 +389,10 @@ func (r *leadRepoImpl) Update(ctx context.Context, l *models.Lead) error {
 	`
 	err := r.db.QueryRow(ctx, query,
 		l.Title, l.Name, l.Company, l.Email, l.Phone, l.Source, l.Status,
-		l.AssignedTo, l.EstimatedValue, l.PotentialProducts, l.Notes, 
+		l.AssignedTo, l.EstimatedValue, l.PotentialProducts, l.Notes,
 		l.Address, l.Latitude, l.Longitude, l.ID,
 	).Scan(&l.UpdatedAt)
-	
+
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dberrors.ErrNotFound
 	}

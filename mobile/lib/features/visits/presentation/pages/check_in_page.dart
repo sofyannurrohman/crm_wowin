@@ -11,6 +11,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:http/http.dart' as http;
 import '../../../../core/utils/image_utils.dart';
+import '../../../../core/services/watermark_service.dart';
 
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_event.dart';
@@ -23,6 +24,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 class CheckInPage extends StatefulWidget {
   final String scheduleId;
+  final String? customerId;
   final String? customerName;
   final String? customerAddress;
   final double? targetLat;
@@ -34,6 +36,7 @@ class CheckInPage extends StatefulWidget {
   const CheckInPage({
     super.key,
     required this.scheduleId,
+    this.customerId,
     this.customerName,
     this.customerAddress,
     this.targetLat,
@@ -64,6 +67,7 @@ class _CheckInPageState extends State<CheckInPage> {
   bool _isCameraInitialized = false;
   List<CameraDescription> _cameras = [];
   bool _isCapturing = false;
+  bool _isWatermarking = false;
 
   // GPS Override
   String? _overrideReason;
@@ -121,7 +125,7 @@ class _CheckInPageState extends State<CheckInPage> {
   void _initWizard() {
     if (widget.customerName != null && widget.targetLat != null) {
       _selectedCustomer = Customer(
-        id: 'external',
+        id: widget.customerId ?? 'external',
         name: widget.customerName!,
         address: widget.customerAddress,
         latitude: widget.targetLat,
@@ -269,8 +273,17 @@ class _CheckInPageState extends State<CheckInPage> {
     setState(() => _isCapturing = true);
     try {
       final photo = await _cameraController!.takePicture();
-      final compressed = await ImageUtils.compressImage(File(photo.path));
+      final originalFile = File(photo.path);
+      
+      // 1. Watermark first (needs position)
+      setState(() => _isWatermarking = true);
+      final watermarkedFile = await WatermarkService.addAddressWatermark(originalFile, _currentPosition);
+      
+      // 2. Compress after watermark
+      final compressed = await ImageUtils.compressImage(watermarkedFile);
+      
       setState(() {
+        _isWatermarking = false;
         if (isStorefront) {
           _storefrontPhoto = XFile(compressed.path);
         } else {
@@ -280,6 +293,7 @@ class _CheckInPageState extends State<CheckInPage> {
       _nextStep();
     } catch (e) {
       debugPrint('Photo capture error: $e');
+      if (mounted) setState(() => _isWatermarking = false);
     } finally {
       if (mounted) setState(() => _isCapturing = false);
     }
@@ -298,6 +312,7 @@ class _CheckInPageState extends State<CheckInPage> {
         notes: _notesController.text,
         dealId: widget.dealId,
         overrideReason: _overrideReason,
+        customerId: _selectedCustomer?.id,
         customerName: _selectedCustomer?.name,
         taskDestinationId: widget.taskDestinationId,
       ),
@@ -325,6 +340,23 @@ class _CheckInPageState extends State<CheckInPage> {
               ],
             ),
           ),
+          if (_isWatermarking)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 20),
+                    Text(
+                      'Menambahkan Watermark Alamat...',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

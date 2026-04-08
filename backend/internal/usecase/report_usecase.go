@@ -71,9 +71,13 @@ func (u *reportUseCaseImpl) GetDashboardSummary(ctx context.Context, salesID str
 		}
 
 		if nextStop != nil {
+			targetName := "Unknown"
+			if nextStop.TargetName != nil {
+				targetName = *nextStop.TargetName
+			}
 			rec := &models.VisitRecommendation{
 				ID:       nextStop.ID.String(),
-				Name:     nextStop.TargetName,
+				Name:     targetName,
 				Priority: string(nextStop.Status),
 				Reason:   "Destinasi berikutnya sesuai rute Anda hari ini.",
 			}

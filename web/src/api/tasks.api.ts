@@ -4,6 +4,20 @@ import type { ApiResponse } from '@/types/api.types'
 export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+export interface TaskDestination {
+  id: string
+  task_id: string
+  lead_id?: string
+  customer_id?: string
+  deal_id?: string
+  sequence_order: number
+  status: string
+  target_name?: string
+  target_latitude?: number
+  target_longitude?: number
+  target_address?: string
+}
+
 export interface Task {
   id: string
   title: string
@@ -16,6 +30,7 @@ export interface Task {
   warehouse?: any
   customer_id?: string
   customer_name?: string
+  destinations?: TaskDestination[]
   due_at: string
   completed_at?: string
   created_at: string

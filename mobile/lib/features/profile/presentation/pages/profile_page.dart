@@ -58,6 +58,10 @@ class _ProfilePageState extends State<ProfilePage> {
       listener: (context, state) {
         if (state is Unauthenticated) {
           context.goNamed(kRouteLogin);
+        } else if (state is AuthError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+          );
         }
       },
       builder: (context, state) {
@@ -240,6 +244,9 @@ class _ProfilePageState extends State<ProfilePage> {
             label: 'Full Name',
             value: user.name,
             showDivider: true,
+            onTap: () => _showEditDialog('Update Full Name', user.name, (val) {
+              context.read<AuthBloc>().add(UpdateProfileRequested(name: val));
+            }),
           ),
           _buildInfoItem(
             icon: LucideIcons.phone,
@@ -248,6 +255,9 @@ class _ProfilePageState extends State<ProfilePage> {
             label: 'Phone Number',
             value: user.phone ?? 'Not set',
             showDivider: true,
+            onTap: () => _showEditDialog('Update Phone Number', user.phone ?? '', (val) {
+              context.read<AuthBloc>().add(UpdateProfileRequested(phone: val));
+            }),
           ),
           _buildInfoItem(
             icon: LucideIcons.hash,
@@ -299,56 +309,63 @@ class _ProfilePageState extends State<ProfilePage> {
     required String label,
     required String value,
     required bool showDivider,
+    VoidCallback? onTap,
   }) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(10),
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 20),
                 ),
-                child: Icon(icon, color: iconColor, size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        color: Color(0xFF9CA3AF),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: Color(0xFF9CA3AF),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      value,
-                      style: const TextStyle(
-                        color: _textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
+                      const SizedBox(height: 2),
+                      Text(
+                        value,
+                        style: const TextStyle(
+                          color: _textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const Icon(LucideIcons.chevronRight, color: Color(0xFFD1D5DB), size: 20),
-            ],
+                if (onTap != null)
+                  const Icon(LucideIcons.edit2, color: Color(0xFFD1D5DB), size: 16)
+                else
+                  const Icon(LucideIcons.chevronRight, color: Color(0xFFD1D5DB), size: 20),
+              ],
+            ),
           ),
-        ),
-        if (showDivider)
-          const Padding(
-            padding: EdgeInsets.only(left: 62), // Matches content alignment
-            child: Divider(height: 1, color: Color(0xFFF3F4F6)),
-          ),
-      ],
+          if (showDivider)
+            const Padding(
+              padding: EdgeInsets.only(left: 62), // Matches content alignment
+              child: Divider(height: 1, color: Color(0xFFF3F4F6)),
+            ),
+        ],
+      ),
     );
   }
 
@@ -430,6 +447,35 @@ class _ProfilePageState extends State<ProfilePage> {
               fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditDialog(String title, String initialValue, Function(String) onSave) {
+    final controller = TextEditingController(text: initialValue);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _orange)),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () {
+              onSave(controller.text);
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: _orange, foregroundColor: Colors.white),
+            child: const Text('Simpan'),
           ),
         ],
       ),

@@ -23,7 +23,8 @@ import '../../../deals/presentation/bloc/deal_state.dart' as dl;
 import '../../../deals/domain/entities/deal.dart';
 
 class NewTaskPage extends StatefulWidget {
-  const NewTaskPage({super.key});
+  final ent.Task? initialTask;
+  const NewTaskPage({super.key, this.initialTask});
 
   @override
   State<NewTaskPage> createState() => _NewTaskPageState();
@@ -44,8 +45,10 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
   String? _selectedWarehouseId;
   List<ent.Warehouse> _warehouses = [];
   List<ent.TaskDestination> _destinations = [];
-  Map<String, List<Deal>> _customerDeals = {}; // Store fetched deals for destinations
+  Map<String, List<Deal>> _customerDeals = {};
   bool _isSubmitting = false;
+
+  bool get _isEditMode => widget.initialTask != null;
 
   @override
   void initState() {
@@ -54,6 +57,16 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
     context.read<TaskBloc>().add(const FetchWarehouses());
     context.read<CustomerBloc>().add(const FetchCustomers());
     context.read<LeadBloc>().add(const FetchLeads());
+
+    // Pre-fill fields if in edit mode
+    if (_isEditMode) {
+      final t = widget.initialTask!;
+      _titleController.text = t.title;
+      _descController.text = t.description;
+      _selectedDate = t.dueDate;
+      _selectedWarehouseId = t.warehouseId;
+      _destinations = List.from(t.destinations);
+    }
   }
 
   @override
@@ -134,31 +147,59 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
       return;
     }
 
-    final taskId = const Uuid().v4();
-    final newTask = ent.Task(
-      id: taskId,
-      salesId: const Uuid().v4(), 
-      warehouseId: _selectedWarehouseId,
-      title: title,
-      description: _descController.text.trim(),
-      status: ent.TaskStatus.pending,
-      destinations: _destinations.map((d) => ent.TaskDestination(
-        id: d.id,
-        taskId: taskId,
-        leadId: d.leadId,
-        customerId: d.customerId,
-        dealId: d.dealId,
-        sequenceOrder: d.sequenceOrder,
-        status: d.status,
-        createdAt: d.createdAt,
-        updatedAt: d.updatedAt,
-      )).toList(),
-      dueDate: _selectedDate,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-
-    context.read<TaskBloc>().add(CreateTask(newTask));
+    if (_isEditMode) {
+      // UPDATE mode
+      final existing = widget.initialTask!;
+      final updated = ent.Task(
+        id: existing.id,
+        salesId: existing.salesId,
+        warehouseId: _selectedWarehouseId,
+        title: title,
+        description: _descController.text.trim(),
+        status: existing.status,
+        destinations: _destinations.map((d) => ent.TaskDestination(
+          id: d.id,
+          taskId: existing.id,
+          leadId: d.leadId,
+          customerId: d.customerId,
+          dealId: d.dealId,
+          sequenceOrder: d.sequenceOrder,
+          status: d.status,
+          createdAt: d.createdAt,
+          updatedAt: DateTime.now(),
+        )).toList(),
+        dueDate: _selectedDate,
+        createdAt: existing.createdAt,
+        updatedAt: DateTime.now(),
+      );
+      context.read<TaskBloc>().add(UpdateTask(updated));
+    } else {
+      // CREATE mode
+      final taskId = const Uuid().v4();
+      final newTask = ent.Task(
+        id: taskId,
+        salesId: const Uuid().v4(),
+        warehouseId: _selectedWarehouseId,
+        title: title,
+        description: _descController.text.trim(),
+        status: ent.TaskStatus.pending,
+        destinations: _destinations.map((d) => ent.TaskDestination(
+          id: d.id,
+          taskId: taskId,
+          leadId: d.leadId,
+          customerId: d.customerId,
+          dealId: d.dealId,
+          sequenceOrder: d.sequenceOrder,
+          status: d.status,
+          createdAt: d.createdAt,
+          updatedAt: d.updatedAt,
+        )).toList(),
+        dueDate: _selectedDate,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      context.read<TaskBloc>().add(CreateTask(newTask));
+    }
   }
 
   @override
@@ -254,9 +295,9 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
         onPressed: () => context.pop(),
       ),
       centerTitle: true,
-      title: const Text(
-        'New Visit Schedule',
-        style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+      title: Text(
+        _isEditMode ? 'Edit Jadwal Kunjungan' : 'New Visit Schedule',
+        style: const TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
       ),
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1.0),
@@ -540,17 +581,22 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
   Widget _buildBottomAction() {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: _bg, border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1)))),
+      decoration: BoxDecoration(color: _bg, border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1)))),
       child: SafeArea(
         child: ElevatedButton(
           onPressed: _isSubmitting ? null : _submit,
           style: ElevatedButton.styleFrom(
             backgroundColor: _orange,
-            disabledBackgroundColor: _orange.withOpacity(0.5),
+            disabledBackgroundColor: _orange.withValues(alpha: 0.5),
             minimumSize: const Size(double.infinity, 54),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          child: _isSubmitting ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Create Schedule Trip', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          child: _isSubmitting
+              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : Text(
+                  _isEditMode ? 'Simpan Perubahan' : 'Create Schedule Trip',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
         ),
       ),
     );

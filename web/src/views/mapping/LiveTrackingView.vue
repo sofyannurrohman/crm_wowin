@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useTrackingStore } from '@/stores/tracking.store'
 import { useTerritoryStore } from '@/stores/territories.store'
-import { useVisitStore } from '@/stores/visits.store'
+import { fetchTasks, type Task } from '@/api/tasks.api'
 import { LMap, LTileLayer, LMarker, LPopup, LControl, LPolyline, LTooltip } from '@vue-leaflet/vue-leaflet'
 import { Icon, LatLng } from 'leaflet'
 import { Loader2, Users, Battery, Navigation, Clock, Activity, MapPin, Truck } from 'lucide-vue-next'
@@ -27,7 +27,7 @@ import { warehouseApi, type Warehouse } from '@/api/warehouses.api'
 
 const trackingStore = useTrackingStore()
 const territoryStore = useTerritoryStore()
-const visitStore = useVisitStore()
+const todaysTasks = ref<Task[]>([])
 
 const mapReady = ref(false)
 const zoom = ref(5)
@@ -118,26 +118,61 @@ watch(selectedSalesmanId, async (newVal) => {
     return
   }
 
-  // Fetch visit schedules for selected salesman
-  await visitStore.fetchAll({ sales_id: newVal })
-  
-  const todaySchedules = visitStore.schedules
-  let unvisitedNodes = todaySchedules.map(schedule => {
-    const cust = allCustomers.value.find(c => c.id === schedule.customer_id)
-    return {
-      schedule,
-      customer: cust,
-      lat: cust?.latitude,
-      lng: cust?.longitude
+  await fetchSalesTasks(newVal)
+  computeRoute(true)
+})
+
+watch(() => trackingStore.livePositions, async () => {
+  if (isFocusMode.value && selectedSalesmanId.value) {
+    await fetchSalesTasks(selectedSalesmanId.value)
+    computeRoute(false)
+  }
+}, { deep: true })
+
+const fetchSalesTasks = async (salesId: string) => {
+  try {
+    const res = await fetchTasks({ sales_id: salesId })
+    if (res.data.data) {
+      // Filter incomplete tasks
+      todaysTasks.value = res.data.data.filter(t => t.status !== 'done' && t.status !== 'cancelled')
+    } else {
+      todaysTasks.value = []
     }
-  }).filter(n => n.lat !== undefined && n.lng !== undefined && n.lat !== null && n.lng !== null)
+  } catch(e) {
+    console.error("Failed to load tasks", e)
+    todaysTasks.value = []
+  }
+}
+
+const computeRoute = (shouldRecenter: boolean = false) => {
+  let unvisitedNodes: any[] = []
+  
+  todaysTasks.value.forEach(task => {
+    if (task.destinations && task.destinations.length > 0) {
+      task.destinations.forEach(dest => {
+        if (dest.status !== 'done' && dest.status !== 'cancelled') {
+           unvisitedNodes.push({
+             task,
+             dest,
+             lat: typeof dest.target_latitude === 'string' ? parseFloat(dest.target_latitude) : dest.target_latitude,
+             lng: typeof dest.target_longitude === 'string' ? parseFloat(dest.target_longitude) : dest.target_longitude
+           })
+        }
+      })
+    }
+  })
+
+  // Safely parse out any misconfigured coordinates
+  unvisitedNodes = unvisitedNodes.filter(n => n.lat !== undefined && n.lng !== undefined && n.lat !== null && n.lng !== null && !isNaN(n.lat) && !isNaN(n.lng))
 
   // Nearest Neighbor Algorithm
   const sortedTasks = []
   
-  // Start from warehouse if available, else standard center
+  // Start from chosen salesman's live location if available, otherwise warehouse, else standard center
   let currentPos = new LatLng(center.value[0], center.value[1])
-  if (warehousePoint.value) {
+  if (selectedSalesmanLivePos.value) {
+    currentPos = new LatLng(selectedSalesmanLivePos.value.latitude, selectedSalesmanLivePos.value.longitude)
+  } else if (warehousePoint.value) {
     currentPos = new LatLng(warehousePoint.value[0], warehousePoint.value[1])
   } else if (unvisitedNodes.length > 0) {
     currentPos = new LatLng(unvisitedNodes[0].lat, unvisitedNodes[0].lng)
@@ -165,9 +200,11 @@ watch(selectedSalesmanId, async (newVal) => {
     unvisitedNodes.splice(closestIdx, 1)
   }
 
-  // Generate Polyline structure
+  // Generate Polyline structure from starting point to scheduled destinations
   const points: [number, number][] = []
-  if (warehousePoint.value) {
+  if (selectedSalesmanLivePos.value) {
+    points.push([selectedSalesmanLivePos.value.latitude, selectedSalesmanLivePos.value.longitude])
+  } else if (warehousePoint.value) {
     points.push(warehousePoint.value)
   }
   
@@ -178,11 +215,11 @@ watch(selectedSalesmanId, async (newVal) => {
   polylinePoints.value = points
   taskMarkers.value = sortedTasks
 
-  if (points.length > 0) {
+  if (shouldRecenter && points.length > 0) {
      center.value = points[0]
      zoom.value = 13
   }
-})
+}
 
 </script>
 
@@ -282,7 +319,7 @@ watch(selectedSalesmanId, async (newVal) => {
           <!-- Scheduled Tasks / Destinations -->
           <LMarker
             v-for="task in taskMarkers"
-            :key="task.schedule.id"
+            :key="task.dest.id"
             :lat-lng="[task.lat, task.lng]"
           >
             <LTooltip direction="bottom" :permanent="true" class="font-bold text-lg text-primary custom-tooltip">
@@ -295,16 +332,16 @@ watch(selectedSalesmanId, async (newVal) => {
                      <MapPin class="w-5 h-5" />
                    </div>
                    <div>
-                     <h4 class="font-bold leading-tight">{{ task.customer?.name || 'Pelanggan' }}</h4>
-                     <p class="text-xs text-muted-foreground mt-0.5 max-w-[200px] truncate">{{ task.customer?.address || 'Tidak ada alamat' }}</p>
+                     <h4 class="font-bold leading-tight">{{ task.dest.target_name || 'Pelanggan' }}</h4>
+                     <p class="text-xs text-muted-foreground mt-0.5 max-w-[200px] truncate">{{ task.dest.target_address || 'Tidak ada alamat' }}</p>
                    </div>
                  </div>
                  <div class="space-y-1">
-                   <p class="text-sm font-medium">{{ task.schedule.title }}</p>
-                   <p class="text-xs text-muted-foreground line-clamp-2" v-if="task.schedule.notes">{{ task.schedule.notes }}</p>
+                   <p class="text-sm font-medium">{{ task.task.title }}</p>
+                   <p class="text-xs text-muted-foreground line-clamp-2" v-if="task.task.description">{{ task.task.description }}</p>
                    <div class="pt-2">
-                     <Badge :variant="task.schedule.status === 'completed' ? 'default' : 'secondary'">
-                       {{ task.schedule.status.toUpperCase() }}
+                     <Badge :variant="task.dest.status === 'done' ? 'default' : 'secondary'">
+                       {{ task.dest.status.toUpperCase() }}
                      </Badge>
                    </div>
                  </div>

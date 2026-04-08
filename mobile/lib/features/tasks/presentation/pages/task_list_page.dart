@@ -44,61 +44,75 @@ class _TaskListPageState extends State<TaskListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _bg,
-      appBar: _buildAppBar(context),
-      drawer: const AppSidebar(),
-      body: Column(
-        children: [
-          _buildFilterChips(),
-          Expanded(
-            child: BlocBuilder<TaskBloc, TaskState>(
-              builder: (context, state) {
-                if (state is TaskLoading) {
-                  return const Center(child: CircularProgressIndicator(color: _orange));
-                } else if (state is TasksLoaded) {
-                  if (state.tasks.isEmpty) {
-                    return _buildEmptyState();
+    return BlocListener<TaskBloc, TaskState>(
+      listener: (context, state) {
+        if (state is TaskOperationSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: const Color(0xFF0D8549)),
+          );
+          _fetchTasks();
+        } else if (state is TaskError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        appBar: _buildAppBar(context),
+        drawer: const AppSidebar(),
+        body: Column(
+          children: [
+            _buildFilterChips(),
+            Expanded(
+              child: BlocBuilder<TaskBloc, TaskState>(
+                builder: (context, state) {
+                  if (state is TaskLoading) {
+                    return const Center(child: CircularProgressIndicator(color: _orange));
+                  } else if (state is TasksLoaded) {
+                    if (state.tasks.isEmpty) {
+                      return _buildEmptyState();
+                    }
+                    return _buildTaskList(state.tasks);
+                  } else if (state is TaskError) {
+                    return _buildErrorState(state.message);
                   }
-                  return _buildTaskList(state.tasks);
-                } else if (state is TaskError) {
-                  return _buildErrorState(state.message);
-                }
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(LucideIcons.list, size: 48, color: Colors.grey.withOpacity(0.5)),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Tarik untuk memuat tugas',
-                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchTasks,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _orange,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          elevation: 0,
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(LucideIcons.list, size: 48, color: Colors.grey.withValues(alpha: 0.5)),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Tarik untuk memuat tugas',
+                          style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
                         ),
-                        child: const Text('Refresh', style: TextStyle(color: Colors.white)),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _fetchTasks,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _orange,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            elevation: 0,
+                          ),
+                          child: const Text('Refresh', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildErrorState(String message) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -336,95 +350,146 @@ class _TaskListPageState extends State<TaskListPage> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey.shade100),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
+            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))
           ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () {
-              if (!isCompleted) {
-                context.read<TaskBloc>().add(CompleteTask(task.id));
-              }
-            },
-            child: Container(
-              margin: const EdgeInsets.only(top: 2),
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: isCompleted ? _orange : Colors.transparent,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: isCompleted ? _orange : Colors.grey.shade300, width: 1.5),
+          children: [
+            GestureDetector(
+              onTap: () {
+                if (!isCompleted) {
+                  context.read<TaskBloc>().add(CompleteTask(task.id));
+                }
+              },
+              child: Container(
+                margin: const EdgeInsets.only(top: 2),
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: isCompleted ? _orange : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: isCompleted ? _orange : Colors.grey.shade300, width: 1.5),
+                ),
+                child: isCompleted ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
               ),
-              child: isCompleted ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        task.title,
-                        style: TextStyle(
-                          color: isCompleted ? Colors.grey : _textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          decoration: isCompleted ? TextDecoration.lineThrough : null,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  task.description,
-                  style: const TextStyle(
-                    color: _textSecondary,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Icon(isOverdue ? LucideIcons.alertCircle : LucideIcons.clock, 
-                         size: 14, color: isOverdue ? Colors.red : _textSecondary),
-                    const SizedBox(width: 6),
-                    Text(
-                      task.dueDate != null ? DateFormat('MMM d, HH:mm').format(task.dueDate!) : 'No deadline',
-                      style: TextStyle(
-                        color: isOverdue ? Colors.red : _textSecondary,
-                        fontSize: 12,
-                        fontWeight: isOverdue ? FontWeight.bold : FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    if (task.customerName != null) ...[
-                      const Icon(LucideIcons.building2, size: 14, color: _textSecondary),
-                      const SizedBox(width: 6),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       Expanded(
                         child: Text(
-                          task.customerName!,
-                          style: const TextStyle(color: _textSecondary, fontSize: 12),
-                          overflow: TextOverflow.ellipsis,
+                          task.title,
+                          style: TextStyle(
+                            color: isCompleted ? Colors.grey : _textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            decoration: isCompleted ? TextDecoration.lineThrough : null,
+                          ),
                         ),
                       ),
-                    ]
-                  ],
-                ),
-              ],
+                      PopupMenuButton<String>(
+                        icon: const Icon(LucideIcons.moreVertical, size: 18, color: Color(0xFF6B7280)),
+                        onSelected: (value) async {
+                          if (value == 'edit') {
+                            await context.pushNamed(kRouteNewTask, extra: task);
+                            _fetchTasks();
+                          } else if (value == 'delete') {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                title: const Text('Hapus Tugas?'),
+                                content: Text('Apakah Anda yakin ingin menghapus "${task.title}"? Tindakan ini tidak dapat dibatalkan.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(ctx).pop(false),
+                                    child: const Text('Batal'),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                    child: const Text('Hapus'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true && context.mounted) {
+                              context.read<TaskBloc>().add(DeleteTask(task.id));
+                            }
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem<String>(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(LucideIcons.pencil, size: 16, color: Color(0xFF0D8549)),
+                                SizedBox(width: 12),
+                                Text('Edit Tugas'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(LucideIcons.trash2, size: 16, color: Colors.red),
+                                SizedBox(width: 12),
+                                Text('Hapus Tugas', style: TextStyle(color: Colors.red)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    task.description,
+                    style: const TextStyle(color: _textSecondary, fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Icon(isOverdue ? LucideIcons.alertCircle : LucideIcons.clock,
+                           size: 14, color: isOverdue ? Colors.red : _textSecondary),
+                      const SizedBox(width: 6),
+                      Text(
+                        task.dueDate != null ? DateFormat('MMM d, HH:mm').format(task.dueDate!) : 'No deadline',
+                        style: TextStyle(
+                          color: isOverdue ? Colors.red : _textSecondary,
+                          fontSize: 12,
+                          fontWeight: isOverdue ? FontWeight.bold : FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      if (task.customerName != null) ...[
+                        const Icon(LucideIcons.building2, size: 14, color: _textSecondary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            task.customerName!,
+                            style: const TextStyle(color: _textSecondary, fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ]
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
 }

@@ -50,6 +50,7 @@ func SetupRouter(
 		usersGroup := protected.Group("/users")
 		usersGroup.GET("", authHandler.ListUsers)
 		usersGroup.GET("/me", authHandler.GetMe)
+		usersGroup.PATCH("/me", authHandler.UpdateProfile)
 		
 		// Customer Domain
 		customerGroup := protected.Group("/customers")

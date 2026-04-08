@@ -42,6 +42,7 @@ type Deal struct {
 	Description   *string         `json:"description,omitempty"`
 	Items         []DealItem      `json:"items,omitempty"`
 	CreatedBy     *uuid.UUID      `json:"created_by,omitempty"`
+	Customer      *Customer       `json:"customer,omitempty"`
 	CreatedAt     utils.FlexTime   `json:"created_at"`
 	UpdatedAt     utils.FlexTime   `json:"updated_at"`
 }

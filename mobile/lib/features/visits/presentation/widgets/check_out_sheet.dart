@@ -88,6 +88,10 @@ class _CheckOutSheetState extends State<CheckOutSheet> {
         }
       }
 
+      final String? currentDealId = (context.read<VisitBloc>().state is VisitSuccess) 
+          ? (context.read<VisitBloc>().state as VisitSuccess).currentDealId 
+          : null;
+
       context.read<VisitBloc>().add(
         CheckOutSubmitted(
           scheduleId: widget.scheduleId,
@@ -98,6 +102,7 @@ class _CheckOutSheetState extends State<CheckOutSheet> {
           nextVisitDate: _nextVisitDate != null ? DateFormat('yyyy-MM-dd').format(_nextVisitDate!) : '',
           signaturePath: signaturePath,
           inventoryData: _inventoryJson,
+          dealId: currentDealId,
         ),
       );
     } catch (e) {
@@ -250,6 +255,41 @@ class _CheckOutSheetState extends State<CheckOutSheet> {
               ],
 
               const SizedBox(height: 24),
+
+              // ── Linked Deal Info ────────────────────────────
+              BlocBuilder<VisitBloc, VisitState>(
+                builder: (context, state) {
+                  if (state is VisitSuccess && state.currentDealId != null) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(LucideIcons.shoppingBag, size: 20, color: Color(0xFF10B981)),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Penjualan Terdaftar', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF065F46))),
+                                Text('Deal akan otomatis ditandai sebagai WON jika PO dikirim.', style: TextStyle(fontSize: 11, color: Color(0xFF065F46))),
+                              ],
+                            ),
+                          ),
+                          if (_selectedResult == 'PO Submitted')
+                            const Icon(LucideIcons.checkCircle, color: Color(0xFF10B981), size: 20),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox();
+                },
+              ),
 
               // ── Stock check button ──────────────────────────
               InkWell(

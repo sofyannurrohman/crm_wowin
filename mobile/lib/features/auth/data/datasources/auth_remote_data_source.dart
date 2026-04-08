@@ -13,6 +13,7 @@ abstract class AuthRemoteDataSource {
     String companyName,
   });
   Future<UserEntity> getMe();
+  Future<UserEntity> updateProfile({String? name, String? phone});
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -89,6 +90,27 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         return UserEntity.fromJson(response.data['data']);
       } else {
         throw ServerException('Gagal mengambil data profil');
+      }
+    } on DioException catch (e) {
+      throw ServerException(e.message ?? 'Server error occurred');
+    }
+  }
+
+  @override
+  Future<UserEntity> updateProfile({String? name, String? phone}) async {
+    try {
+      final response = await dio.patch(
+        ApiEndpoints.updateProfile,
+        data: {
+          if (name != null) 'name': name,
+          if (phone != null) 'phone': phone,
+        },
+      );
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        return UserEntity.fromJson(response.data['data']);
+      } else {
+        throw ServerException(
+            response.data['message'] ?? 'Gagal memperbarui profil');
       }
     } on DioException catch (e) {
       throw ServerException(e.message ?? 'Server error occurred');

@@ -19,6 +19,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
     on<CheckInSubmitted>(_onCheckInSubmitted);
     on<CheckOutSubmitted>(_onCheckOutSubmitted);
     on<FetchActivities>(_onFetchActivities);
+    on<LinkDealToVisit>(_onLinkDealToVisit);
   }
 
   Future<void> _onFetchActivities(
@@ -59,6 +60,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
       (_) => emit(VisitSuccess(
         'Check-in Berhasil! Silakan catat hasil setelah selesai.',
         scheduleId: event.scheduleId,
+        customerId: event.customerId,
         customerName: event.customerName,
         checkInTime: DateTime.now(),
       )),
@@ -89,5 +91,22 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
       (failure) => emit(VisitError(failure.message)),
       (_) => emit(const VisitSuccess('Laporan Kunjungan Berhasil Disimpan!')),
     );
+  }
+
+  void _onLinkDealToVisit(
+    LinkDealToVisit event,
+    Emitter<VisitState> emit,
+  ) {
+    if (state is VisitSuccess) {
+      final s = state as VisitSuccess;
+      emit(VisitSuccess(
+        s.message,
+        scheduleId: s.scheduleId,
+        customerId: s.customerId,
+        customerName: s.customerName,
+        checkInTime: s.checkInTime,
+        currentDealId: event.dealId,
+      ));
+    }
   }
 }

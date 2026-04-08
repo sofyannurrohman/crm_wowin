@@ -18,7 +18,7 @@ type TaskDestination struct {
 	UpdatedAt     time.Time   `json:"updated_at"`
 
 	// Joined attributes for convenience in response
-	TargetName      string   `json:"target_name,omitempty"`
+	TargetName      *string  `json:"target_name,omitempty"`
 	TargetLatitude  *float64 `json:"target_latitude,omitempty"`
 	TargetLongitude *float64 `json:"target_longitude,omitempty"`
 	TargetAddress   *string  `json:"target_address,omitempty"`

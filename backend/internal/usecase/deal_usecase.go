@@ -205,6 +205,9 @@ func (u *leadUseCaseImpl) UpdateLead(ctx context.Context, l *models.Lead) (*mode
 	if l.Longitude != nil {
 		existing.Longitude = l.Longitude
 	}
+	if l.Address != nil {
+		existing.Address = l.Address
+	}
 
 	err = u.leadRepo.Update(ctx, existing)
 	return existing, err
@@ -262,6 +265,7 @@ func (u *leadUseCaseImpl) ConvertLeadToCustomer(ctx context.Context, leadID uuid
 		Status:      models.CustomerStatusActive,
 		AssignedTo:  lead.AssignedTo, // inherits assignment
 		CreatedBy:   &operatorID,
+		Address:     lead.Address,
 		Latitude:    lead.Latitude,
 		Longitude:   lead.Longitude,
 	}

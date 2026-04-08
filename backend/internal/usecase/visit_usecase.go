@@ -30,10 +30,11 @@ type visitUseCaseImpl struct {
 	taskRepo     repository.TaskRepository
 	activityRepo repository.SalesActivityRepository
 	leadRepo     repository.LeadRepository
+	dealRepo     repository.DealRepository
 }
 
-func NewVisitUseCase(vr repository.VisitRepository, cr repository.CustomerRepository, tr repository.TaskRepository, ar repository.SalesActivityRepository, lr repository.LeadRepository) VisitUseCase {
-	return &visitUseCaseImpl{visitRepo: vr, custRepo: cr, taskRepo: tr, activityRepo: ar, leadRepo: lr}
+func NewVisitUseCase(vr repository.VisitRepository, cr repository.CustomerRepository, tr repository.TaskRepository, ar repository.SalesActivityRepository, lr repository.LeadRepository, dr repository.DealRepository) VisitUseCase {
+	return &visitUseCaseImpl{visitRepo: vr, custRepo: cr, taskRepo: tr, activityRepo: ar, leadRepo: lr, dealRepo: dr}
 }
 
 func (u *visitUseCaseImpl) CreateSchedule(ctx context.Context, s *models.VisitSchedule) (*models.VisitSchedule, error) {
@@ -247,6 +248,13 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 				
 				_ = u.taskRepo.Update(ctx, task)
 			}
+		}
+
+		// AUTOMATIC WON LOGIC: If outcome is "PO Submitted" and DealID exists
+		if activity.DealID != nil && activity.Notes != nil && (*activity.Notes == "PO Submitted" || *activity.Notes == "PO Terkirim") {
+			newStage := models.DealStage("closed_won")
+			notes := "Otomatis diubah menjadi WON melalui laporan kunjungan: " + *activity.Notes
+			_ = u.dealRepo.UpdateStage(ctx, *activity.DealID, newStage, &activity.SalesID, &notes)
 		}
 	}
 

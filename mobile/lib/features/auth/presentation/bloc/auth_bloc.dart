@@ -20,6 +20,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<RegisterSubmitted>(_onRegisterSubmitted);
     on<LogoutRequested>(_onLogoutRequested);
     on<FetchProfile>(_onFetchProfile);
+    on<UpdateProfileRequested>(_onUpdateProfileRequested);
   }
 
   Future<void> _onFetchProfile(
@@ -88,5 +89,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     await authRepository.logout();
     emit(Unauthenticated());
+  }
+
+  Future<void> _onUpdateProfileRequested(
+    UpdateProfileRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    // We don't necessarily want to emit AuthLoading here if we want a smoother experience, 
+    // but for now let's use it for simplicity and consistency.
+    final result = await authRepository.updateProfile(
+      name: event.name,
+      phone: event.phone,
+    );
+
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (user) => emit(Authenticated(user)),
+    );
   }
 }

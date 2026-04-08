@@ -16,6 +16,7 @@ class VisitActivity extends Equatable {
   final double? distance;
   final bool isOffline;
   final String? notes;
+  final String? dealId;
   final DateTime createdAt;
 
   const VisitActivity({
@@ -32,6 +33,7 @@ class VisitActivity extends Equatable {
     this.distance,
     required this.isOffline,
     this.notes,
+    this.dealId,
     required this.createdAt,
   });
 
@@ -50,6 +52,7 @@ class VisitActivity extends Equatable {
       distance: (json['distance'] as num?)?.toDouble(),
       isOffline: json['is_offline'] ?? false,
       notes: json['notes'],
+      dealId: json['deal_id'],
       createdAt: DateTime.parse(json['created_at']),
     );
   }
@@ -69,6 +72,7 @@ class VisitActivity extends Equatable {
         distance,
         isOffline,
         notes,
+        dealId,
         createdAt,
       ];
 }
