@@ -4,7 +4,7 @@ import '../entities/task.dart';
 import '../entities/warehouse.dart';
 
 abstract class TaskRepository {
-  Future<Either<Failure, List<Task>>> getTasks({String? customerId, TaskStatus? status});
+  Future<Either<Failure, List<Task>>> getTasks({String? customerId, String? salesId, TaskStatus? status});
   Future<Either<Failure, Task>> createTask(Task task);
   Future<Either<Failure, Task>> updateTask(Task task);
   Future<Either<Failure, void>> completeTask(String id);

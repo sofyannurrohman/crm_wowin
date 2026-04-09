@@ -60,10 +60,17 @@ func (h *VisitHandler) ListSchedules(c *gin.Context) {
 	var filter repository.ScheduleFilter
 	filter.Status = c.Query("status")
 
+	// Role-aware enforcement
+	userRole, _ := c.Get("user_role")
+	userID, _ := uuid.Parse(c.GetString("user_id"))
+
 	if sID := c.Query("sales_id"); sID != "" {
 		if u, err := uuid.Parse(sID); err == nil {
 			filter.SalesID = &u
 		}
+	} else if userRole == models.RoleSales {
+		// Sales role restricted to their own data
+		filter.SalesID = &userID
 	}
 	if cID := c.Query("customer_id"); cID != "" {
 		if u, err := uuid.Parse(cID); err == nil {
@@ -198,6 +205,42 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	}
 
 	if customerID == nil && leadID == nil {
+		// Attempt to resolve from schedule if provided
+		if sID := c.Request.FormValue("schedule_id"); sID != "" {
+			if suid, err := uuid.Parse(sID); err == nil {
+				if sched, err := h.uc.GetSchedule(c.Request.Context(), suid); err == nil {
+					customerID = sched.CustomerID
+					leadID = sched.LeadID
+					// Some schedules might have one or the other as uuid.Nil
+					if customerID != nil && *customerID == uuid.Nil { customerID = nil }
+					if leadID != nil && *leadID == uuid.Nil { leadID = nil }
+				}
+			}
+		}
+	}
+
+	if customerID == nil && leadID == nil {
+		// Attempt to resolve from task destination if provided
+		if tdID := c.Request.FormValue("task_destination_id"); tdID != "" {
+			if tuid, err := uuid.Parse(tdID); err == nil {
+				// We need a task repository or a way to get destination directly
+				// LogActivity has access to h.uc which usually has what we need
+				if t, err := h.uc.GetTaskByDestinationID(c.Request.Context(), tuid); err == nil {
+					for _, d := range t.Destinations {
+						if d.ID == tuid {
+							customerID = d.CustomerID
+							leadID = d.LeadID
+							if customerID != nil && *customerID == uuid.Nil { customerID = nil }
+							if leadID != nil && *leadID == uuid.Nil { leadID = nil }
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if customerID == nil && leadID == nil {
 		response.Fail(c, http.StatusBadRequest, "customer_id or lead_id is required")
 		return
 	}
@@ -268,15 +311,19 @@ func (h *VisitHandler) GetActivitiesBySchedule(c *gin.Context) {
 func (h *VisitHandler) ListActivities(c *gin.Context) {
 	var filter repository.ActivityFilter
 	
+	// Role-aware enforcement
+	userRole, _ := c.Get("user_role")
+	userID, _ := uuid.Parse(c.GetString("user_id"))
+
 	if sID := c.Query("sales_id"); sID != "" {
 		if u, err := uuid.Parse(sID); err == nil {
 			filter.SalesID = &u
 		}
-	} else {
-		// Default to current user if no sales_id specified (for sales personnel use case)
-		userID, _ := uuid.Parse(c.GetString("user_id"))
+	} else if userRole == models.RoleSales {
+		// Default to current user for sales personnel
 		filter.SalesID = &userID
 	}
+	// For other roles, if no sales_id is specified, filter.SalesID remains nil (show all)
 
 	if cID := c.Query("customer_id"); cID != "" {
 		if u, err := uuid.Parse(cID); err == nil {

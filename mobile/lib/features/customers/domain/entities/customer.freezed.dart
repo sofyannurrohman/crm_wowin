@@ -30,6 +30,10 @@ mixin _$Customer {
   double? get longitude;
   @JsonKey(name: 'checkin_radius')
   int? get checkinRadius;
+  @JsonKey(name: 'sales_id')
+  String? get salesId;
+  @JsonKey(name: 'salesman_name')
+  String? get salesmanName;
 
   /// Create a copy of Customer
   /// with the given fields replaced by the non-null parameter values.
@@ -64,7 +68,10 @@ mixin _$Customer {
             (identical(other.longitude, longitude) ||
                 other.longitude == longitude) &&
             (identical(other.checkinRadius, checkinRadius) ||
-                other.checkinRadius == checkinRadius));
+                other.checkinRadius == checkinRadius) &&
+            (identical(other.salesId, salesId) || other.salesId == salesId) &&
+            (identical(other.salesmanName, salesmanName) ||
+                other.salesmanName == salesmanName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -84,11 +91,13 @@ mixin _$Customer {
       city,
       latitude,
       longitude,
-      checkinRadius);
+      checkinRadius,
+      salesId,
+      salesmanName);
 
   @override
   String toString() {
-    return 'Customer(id: $id, code: $code, name: $name, companyName: $companyName, type: $type, industry: $industry, email: $email, phone: $phone, status: $status, address: $address, city: $city, latitude: $latitude, longitude: $longitude, checkinRadius: $checkinRadius)';
+    return 'Customer(id: $id, code: $code, name: $name, companyName: $companyName, type: $type, industry: $industry, email: $email, phone: $phone, status: $status, address: $address, city: $city, latitude: $latitude, longitude: $longitude, checkinRadius: $checkinRadius, salesId: $salesId, salesmanName: $salesmanName)';
   }
 }
 
@@ -111,7 +120,9 @@ abstract mixin class $CustomerCopyWith<$Res> {
       String? city,
       double? latitude,
       double? longitude,
-      @JsonKey(name: 'checkin_radius') int? checkinRadius});
+      @JsonKey(name: 'checkin_radius') int? checkinRadius,
+      @JsonKey(name: 'sales_id') String? salesId,
+      @JsonKey(name: 'salesman_name') String? salesmanName});
 }
 
 /// @nodoc
@@ -140,6 +151,8 @@ class _$CustomerCopyWithImpl<$Res> implements $CustomerCopyWith<$Res> {
     Object? latitude = freezed,
     Object? longitude = freezed,
     Object? checkinRadius = freezed,
+    Object? salesId = freezed,
+    Object? salesmanName = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -198,6 +211,14 @@ class _$CustomerCopyWithImpl<$Res> implements $CustomerCopyWith<$Res> {
           ? _self.checkinRadius
           : checkinRadius // ignore: cast_nullable_to_non_nullable
               as int?,
+      salesId: freezed == salesId
+          ? _self.salesId
+          : salesId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      salesmanName: freezed == salesmanName
+          ? _self.salesmanName
+          : salesmanName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -309,7 +330,9 @@ extension CustomerPatterns on Customer {
             String? city,
             double? latitude,
             double? longitude,
-            @JsonKey(name: 'checkin_radius') int? checkinRadius)?
+            @JsonKey(name: 'checkin_radius') int? checkinRadius,
+            @JsonKey(name: 'sales_id') String? salesId,
+            @JsonKey(name: 'salesman_name') String? salesmanName)?
         $default, {
     required TResult orElse(),
   }) {
@@ -330,7 +353,9 @@ extension CustomerPatterns on Customer {
             _that.city,
             _that.latitude,
             _that.longitude,
-            _that.checkinRadius);
+            _that.checkinRadius,
+            _that.salesId,
+            _that.salesmanName);
       case _:
         return orElse();
     }
@@ -365,7 +390,9 @@ extension CustomerPatterns on Customer {
             String? city,
             double? latitude,
             double? longitude,
-            @JsonKey(name: 'checkin_radius') int? checkinRadius)
+            @JsonKey(name: 'checkin_radius') int? checkinRadius,
+            @JsonKey(name: 'sales_id') String? salesId,
+            @JsonKey(name: 'salesman_name') String? salesmanName)
         $default,
   ) {
     final _that = this;
@@ -385,7 +412,9 @@ extension CustomerPatterns on Customer {
             _that.city,
             _that.latitude,
             _that.longitude,
-            _that.checkinRadius);
+            _that.checkinRadius,
+            _that.salesId,
+            _that.salesmanName);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -419,7 +448,9 @@ extension CustomerPatterns on Customer {
             String? city,
             double? latitude,
             double? longitude,
-            @JsonKey(name: 'checkin_radius') int? checkinRadius)?
+            @JsonKey(name: 'checkin_radius') int? checkinRadius,
+            @JsonKey(name: 'sales_id') String? salesId,
+            @JsonKey(name: 'salesman_name') String? salesmanName)?
         $default,
   ) {
     final _that = this;
@@ -439,7 +470,9 @@ extension CustomerPatterns on Customer {
             _that.city,
             _that.latitude,
             _that.longitude,
-            _that.checkinRadius);
+            _that.checkinRadius,
+            _that.salesId,
+            _that.salesmanName);
       case _:
         return null;
     }
@@ -463,7 +496,9 @@ class _Customer implements Customer {
       this.city,
       this.latitude,
       this.longitude,
-      @JsonKey(name: 'checkin_radius') this.checkinRadius});
+      @JsonKey(name: 'checkin_radius') this.checkinRadius,
+      @JsonKey(name: 'sales_id') this.salesId,
+      @JsonKey(name: 'salesman_name') this.salesmanName});
   factory _Customer.fromJson(Map<String, dynamic> json) =>
       _$CustomerFromJson(json);
 
@@ -497,6 +532,12 @@ class _Customer implements Customer {
   @override
   @JsonKey(name: 'checkin_radius')
   final int? checkinRadius;
+  @override
+  @JsonKey(name: 'sales_id')
+  final String? salesId;
+  @override
+  @JsonKey(name: 'salesman_name')
+  final String? salesmanName;
 
   /// Create a copy of Customer
   /// with the given fields replaced by the non-null parameter values.
@@ -536,7 +577,10 @@ class _Customer implements Customer {
             (identical(other.longitude, longitude) ||
                 other.longitude == longitude) &&
             (identical(other.checkinRadius, checkinRadius) ||
-                other.checkinRadius == checkinRadius));
+                other.checkinRadius == checkinRadius) &&
+            (identical(other.salesId, salesId) || other.salesId == salesId) &&
+            (identical(other.salesmanName, salesmanName) ||
+                other.salesmanName == salesmanName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -556,11 +600,13 @@ class _Customer implements Customer {
       city,
       latitude,
       longitude,
-      checkinRadius);
+      checkinRadius,
+      salesId,
+      salesmanName);
 
   @override
   String toString() {
-    return 'Customer(id: $id, code: $code, name: $name, companyName: $companyName, type: $type, industry: $industry, email: $email, phone: $phone, status: $status, address: $address, city: $city, latitude: $latitude, longitude: $longitude, checkinRadius: $checkinRadius)';
+    return 'Customer(id: $id, code: $code, name: $name, companyName: $companyName, type: $type, industry: $industry, email: $email, phone: $phone, status: $status, address: $address, city: $city, latitude: $latitude, longitude: $longitude, checkinRadius: $checkinRadius, salesId: $salesId, salesmanName: $salesmanName)';
   }
 }
 
@@ -585,7 +631,9 @@ abstract mixin class _$CustomerCopyWith<$Res>
       String? city,
       double? latitude,
       double? longitude,
-      @JsonKey(name: 'checkin_radius') int? checkinRadius});
+      @JsonKey(name: 'checkin_radius') int? checkinRadius,
+      @JsonKey(name: 'sales_id') String? salesId,
+      @JsonKey(name: 'salesman_name') String? salesmanName});
 }
 
 /// @nodoc
@@ -614,6 +662,8 @@ class __$CustomerCopyWithImpl<$Res> implements _$CustomerCopyWith<$Res> {
     Object? latitude = freezed,
     Object? longitude = freezed,
     Object? checkinRadius = freezed,
+    Object? salesId = freezed,
+    Object? salesmanName = freezed,
   }) {
     return _then(_Customer(
       id: null == id
@@ -672,6 +722,14 @@ class __$CustomerCopyWithImpl<$Res> implements _$CustomerCopyWith<$Res> {
           ? _self.checkinRadius
           : checkinRadius // ignore: cast_nullable_to_non_nullable
               as int?,
+      salesId: freezed == salesId
+          ? _self.salesId
+          : salesId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      salesmanName: freezed == salesmanName
+          ? _self.salesmanName
+          : salesmanName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }

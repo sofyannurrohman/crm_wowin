@@ -12,6 +12,10 @@ import '../../domain/entities/lead.dart';
 import '../bloc/lead_bloc.dart';
 import '../bloc/lead_event.dart';
 import '../bloc/lead_state.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
+import '../../../auth/presentation/bloc/auth_state.dart' as auth;
+import '../../../auth/presentation/bloc/auth_event.dart' as auth;
+import '../../../auth/domain/entities/user_entity.dart' as user_ent;
 import '../../../products/presentation/bloc/product_bloc.dart';
 import '../../../products/presentation/bloc/product_event.dart';
 import '../../../products/presentation/bloc/product_state.dart';
@@ -44,6 +48,9 @@ class _AddLeadPageState extends State<AddLeadPage> {
   final MapController _mapController = MapController();
   bool _isGettingLocation = false;
 
+  String? _selectedSalesmanId;
+  List<user_ent.UserEntity> _salesmen = [];
+
   static const Color _green = Color(0xFF0D8549);
 
   @override
@@ -72,8 +79,18 @@ class _AddLeadPageState extends State<AddLeadPage> {
       }
       _addressController.text = lead.address ?? '';
       _selectedStatus = lead.status;
+      _selectedSalesmanId = lead.salesId;
     }
     context.read<ProductBloc>().add(const FetchProducts());
+
+    // Fetch salesmen if admin
+    // Fetch salesmen if admin
+    final authState = context.read<auth.AuthBloc>().state;
+    if (authState is auth.Authenticated && authState.user.role == 'admin') {
+      context.read<auth.AuthBloc>().add(auth.FetchSalesmen());
+    } else if (authState is auth.Authenticated) {
+      _selectedSalesmanId ??= authState.user.id;
+    }
   }
 
   final List<String> _sources = ['Survey', 'Referral', 'Website', 'Event', 'Other'];
@@ -137,6 +154,12 @@ class _AddLeadPageState extends State<AddLeadPage> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
+      final authState = context.read<auth.AuthBloc>().state;
+      if (authState is auth.Authenticated) {
+        debugPrint('Adding Lead - Current User ID: ${authState.user.id}');
+        debugPrint('Adding Lead - Selected Salesman ID: $_selectedSalesmanId');
+      }
+
       final lead = Lead(
         id: widget.initialLead?.id ?? const Uuid().v4(),
         title: _titleController.text,
@@ -152,6 +175,7 @@ class _AddLeadPageState extends State<AddLeadPage> {
         address: _addressController.text,
         latitude: _selectedLocation?.latitude,
         longitude: _selectedLocation?.longitude,
+        salesId: _selectedSalesmanId,
       );
       
       if (widget.initialLead == null) {
@@ -172,27 +196,51 @@ class _AddLeadPageState extends State<AddLeadPage> {
         backgroundColor: const Color(0xFF0D8549),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: BlocListener<LeadBloc, LeadState>(
+      body: BlocListener<auth.AuthBloc, auth.AuthState>(
         listener: (context, state) {
-          if (state is LeadOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.green),
-            );
-            context.pop();
-          } else if (state is LeadError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-            );
+          if (state is auth.SalesmenLoaded) {
+            setState(() {
+              _salesmen = state.salesmen;
+            });
           }
         },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionHeader('Lead Information', LucideIcons.user),
+        child: BlocListener<LeadBloc, LeadState>(
+          listener: (context, state) {
+            if (state is LeadOperationSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+              );
+              context.pop();
+            } else if (state is LeadError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              );
+            }
+          },
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  BlocBuilder<auth.AuthBloc, auth.AuthState>(
+                    builder: (context, authState) {
+                       if (authState is auth.Authenticated && authState.user.role == 'admin') {
+                         return Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             _buildSectionHeader('Assignment (Admin Only)', LucideIcons.userCheck),
+                             const SizedBox(height: 16),
+                             _buildSalesmanDropdown(),
+                             const SizedBox(height: 32),
+                           ],
+                         );
+                       }
+                       return const SizedBox.shrink();
+                    },
+                  ),
+                  _buildSectionHeader('Lead Information', LucideIcons.user),
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _titleController,
@@ -350,8 +398,9 @@ class _AddLeadPageState extends State<AddLeadPage> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildProductSelector() {
     return Column(
@@ -663,6 +712,36 @@ class _AddLeadPageState extends State<AddLeadPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSalesmanDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Assigned Salesman', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF4B5563))),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedSalesmanId,
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            prefixIcon: const Icon(LucideIcons.user, size: 18),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF0D8549), width: 2),
+            ),
+          ),
+          hint: const Text('Assign to Salesman'),
+          items: _salesmen.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+          onChanged: (v) {
+            setState(() {
+              _selectedSalesmanId = v;
+            });
+          },
+          validator: (v) => v == null ? 'Please assign a salesman' : null,
+        ),
+      ],
     );
   }
 }

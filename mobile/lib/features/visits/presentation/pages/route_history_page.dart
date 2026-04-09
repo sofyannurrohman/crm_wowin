@@ -7,6 +7,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/widgets/app_sidebar.dart';
 import '../../domain/entities/visit_activity.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
@@ -34,7 +36,12 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
   }
 
   void _fetchRouteHistory() {
-    context.read<VisitBloc>().add(const FetchActivities());
+    final authState = context.read<AuthBloc>().state;
+    String? salesId;
+    if (authState is Authenticated && authState.user.role == 'sales') {
+      salesId = authState.user.id;
+    }
+    context.read<VisitBloc>().add(FetchActivities(salesId: salesId));
   }
 
   @override

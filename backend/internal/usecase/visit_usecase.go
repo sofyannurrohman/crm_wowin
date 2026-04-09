@@ -22,6 +22,7 @@ type VisitUseCase interface {
 	LogActivity(ctx context.Context, activity *models.VisitActivity) (*models.VisitActivity, error)
 	GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error)
 	ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error)
+	GetTaskByDestinationID(ctx context.Context, destID uuid.UUID) (*models.Task, error)
 }
 
 type visitUseCaseImpl struct {
@@ -328,6 +329,10 @@ func (u *visitUseCaseImpl) ListActivities(ctx context.Context, filter repository
 	}
 	
 	return results, nil
+}
+
+func (u *visitUseCaseImpl) GetTaskByDestinationID(ctx context.Context, destID uuid.UUID) (*models.Task, error) {
+	return u.taskRepo.GetByDestinationID(ctx, destID)
 }
 
 // ==============

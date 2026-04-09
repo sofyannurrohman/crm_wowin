@@ -13,6 +13,9 @@ import 'package:wowin_crm/features/leads/domain/entities/lead.dart';
 import 'package:wowin_crm/features/visits/presentation/bloc/visit_bloc.dart';
 import 'package:wowin_crm/features/visits/presentation/bloc/visit_event.dart';
 import 'package:wowin_crm/features/visits/presentation/bloc/visit_state.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
+import '../../../auth/presentation/bloc/auth_state.dart' as auth;
+import '../../../auth/presentation/bloc/auth_event.dart' as auth;
 
 class LeadDetailPage extends StatefulWidget {
   final Lead lead;
@@ -46,27 +49,75 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
       ],
       child: Scaffold(
         backgroundColor: const Color(0xFFF9FAFB),
-        body: Column(
-          children: [
-            _buildHeader(context),
-            _buildTabBar(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildInfoTab(),
-                  _buildActivityTab(),
-                ],
-              ),
-            ),
-          ],
+        body: BlocBuilder<auth.AuthBloc, auth.AuthState>(
+          builder: (context, authState) {
+            final currentUser = (authState is auth.Authenticated) ? authState.user : null;
+            final bool isOwner = currentUser != null && 
+                (widget.lead.salesId?.toLowerCase().trim() == currentUser.id.toLowerCase().trim());
+            final bool isAdmin = currentUser?.role == 'admin';
+            final bool isLocked = !isOwner && !isAdmin;
+
+            return Column(
+              children: [
+                _buildHeader(context, isLocked),
+                if (isLocked)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFFFEDD5)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.lock, color: Color(0xFFF97316), size: 18),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Data ini dikunci karena dimiliki oleh salesman lain.',
+                            style: TextStyle(
+                              color: Color(0xFFC2410C),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                _buildTabBar(),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildInfoTab(isLocked),
+                      _buildActivityTab(),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
-        bottomNavigationBar: _buildBottomActions(context),
+        bottomNavigationBar: BlocBuilder<auth.AuthBloc, auth.AuthState>(
+          builder: (context, authState) {
+             final currentUser = (authState is auth.Authenticated)
+                 ? authState.user
+                 : null;
+             final bool isOwner = currentUser != null && (widget.lead.salesId == currentUser.id);
+             final bool isAdmin = currentUser?.role == 'admin';
+             final bool isLocked = !isOwner && !isAdmin;
+             
+             if (isLocked) return const SizedBox.shrink();
+             return _buildBottomActions(context);
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, bool isLocked) {
     return Container(
       padding: const EdgeInsets.only(top: 60, left: 20, right: 20, bottom: 24),
       decoration: const BoxDecoration(
@@ -95,10 +146,11 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
               ),
               Row(
                 children: [
-                  IconButton(
-                    onPressed: () => context.pushNamed(kRouteAddLead, extra: widget.lead),
-                    icon: const Icon(LucideIcons.edit2, color: AppColors.textPrimary, size: 20),
-                  ),
+                  if (!isLocked)
+                    IconButton(
+                      onPressed: () => context.pushNamed(kRouteAddLead, extra: widget.lead),
+                      icon: const Icon(LucideIcons.edit2, color: AppColors.textPrimary, size: 20),
+                    ),
                   const SizedBox(width: 8),
                   _buildStatusBadge(widget.lead.status),
                 ],
@@ -123,7 +175,7 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.lead.name,
+                      isLocked ? _obscureText(widget.lead.name) : widget.lead.name,
                       style: const TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -219,16 +271,16 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
     );
   }
 
-  Widget _buildInfoTab() {
+  Widget _buildInfoTab(bool isLocked) {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       children: [
         _buildInfoCard(
           title: 'Kontak Detail',
           items: [
-            _buildInfoItem(LucideIcons.phone, 'Telepon', widget.lead.phone ?? '-'),
-            _buildInfoItem(LucideIcons.mail, 'Email', widget.lead.email ?? '-'),
-            _buildInfoItem(LucideIcons.mapPin, 'Alamat', widget.lead.address ?? '-'),
+            _buildInfoItem(LucideIcons.phone, 'Telepon', isLocked ? _obscureText(widget.lead.phone) : (widget.lead.phone ?? '-')),
+            _buildInfoItem(LucideIcons.mail, 'Email', isLocked ? _obscureText(widget.lead.email) : (widget.lead.email ?? '-')),
+            _buildInfoItem(LucideIcons.mapPin, 'Alamat', isLocked ? 'Alamat disembunyikan' : (widget.lead.address ?? '-')),
           ],
         ),
         const SizedBox(height: 16),
@@ -236,12 +288,12 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
           title: 'Potensi Bisnis',
           items: [
             _buildInfoItem(LucideIcons.dollarSign, 'Estimasi Nilai', 
-              widget.lead.estimatedValue != null 
+              (isLocked) ? '*******' : (widget.lead.estimatedValue != null 
                 ? NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0).format(widget.lead.estimatedValue)
-                : '-'),
+                : '-')),
             _buildInfoItem(LucideIcons.package, 'Produk Potensial', 
-              widget.lead.potentialProducts?.join(', ') ?? '-'),
-            _buildInfoItem(LucideIcons.info, 'Sumber', widget.lead.source),
+              isLocked ? '*******' : (widget.lead.potentialProducts?.join(', ') ?? '-')),
+            _buildInfoItem(LucideIcons.info, 'Sumber', isLocked ? '*******' : widget.lead.source),
           ],
         ),
         const SizedBox(height: 16),
@@ -251,7 +303,7 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                widget.lead.notes ?? 'Tidak ada catatan.',
+                isLocked ? 'Catatan disembunyikan' : (widget.lead.notes ?? 'Tidak ada catatan.'),
                 style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
               ),
             ),
@@ -260,6 +312,12 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
         const SizedBox(height: 100),
       ],
     );
+  }
+
+  String _obscureText(String? text) {
+    if (text == null || text == '-' || text.isEmpty) return '-';
+    if (text.length <= 4) return '****';
+    return '${text.substring(0, 2)}********${text.substring(text.length - 2)}';
   }
 
   Widget _buildInfoCard({required String title, required List<Widget> items}) {
@@ -460,7 +518,19 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
                 color: Colors.blue.shade600,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildActionButton(
+                icon: LucideIcons.layout,
+                label: 'Survey',
+                onPressed: () => context.pushNamed(
+                  kRouteAddBanner,
+                  extra: {'lead': widget.lead},
+                ),
+                color: Colors.orange.shade700,
+              ),
+            ),
+            const SizedBox(width: 8),
             Expanded(
               child: _buildActionButton(
                 icon: LucideIcons.checkCircle,

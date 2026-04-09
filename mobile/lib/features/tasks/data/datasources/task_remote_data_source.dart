@@ -9,11 +9,12 @@ class TaskRemoteDataSource {
 
   TaskRemoteDataSource(this.dio);
 
-  Future<List<TaskModel>> getTasks({String? customerId, TaskStatus? status}) async {
+  Future<List<TaskModel>> getTasks({String? customerId, String? salesId, TaskStatus? status}) async {
     final response = await dio.get(
       ApiEndpoints.tasks,
       queryParameters: {
         if (customerId != null) 'customer_id': customerId,
+        if (salesId != null) 'sales_id': salesId,
         if (status != null) 'status': status.name,
       },
     );

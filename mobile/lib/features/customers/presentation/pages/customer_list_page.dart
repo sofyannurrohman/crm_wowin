@@ -6,6 +6,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
 import '../bloc/customer_state.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
 import '../../domain/entities/customer.dart';
@@ -45,10 +47,17 @@ class _CustomerListPageState extends State<CustomerListPage> {
       status = 'inactive';
     }
 
+    final authState = context.read<AuthBloc>().state;
+    String? salesId;
+    if (authState is Authenticated && authState.user.role == 'sales') {
+      salesId = authState.user.id;
+    }
+
     context.read<CustomerBloc>().add(
           FetchCustomers(
             query: _searchController.text,
             status: status,
+            salesId: salesId,
           ),
         );
   }

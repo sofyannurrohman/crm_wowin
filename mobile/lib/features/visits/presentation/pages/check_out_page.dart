@@ -8,12 +8,24 @@ import 'package:intl/intl.dart';
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
+import '../../../deals/presentation/bloc/deal_bloc.dart';
+import '../../../deals/presentation/bloc/deal_event.dart';
 
 class CheckOutPage extends StatefulWidget {
   final String scheduleId;
   final String? taskDestinationId;
+  final String? customerId;
+  final String? leadId;
+  final String? dealId;
 
-  const CheckOutPage({super.key, required this.scheduleId, this.taskDestinationId});
+  const CheckOutPage({
+    super.key,
+    required this.scheduleId,
+    this.taskDestinationId,
+    this.customerId,
+    this.leadId,
+    this.dealId,
+  });
 
   @override
   State<CheckOutPage> createState() => _CheckOutPageState();
@@ -22,6 +34,8 @@ class CheckOutPage extends StatefulWidget {
 class _CheckOutPageState extends State<CheckOutPage> {
   final _formKey = GlobalKey<FormState>();
   final _visitResultController = TextEditingController();
+  final _priceOverrideController = TextEditingController();
+  final _priceOverrideNoteController = TextEditingController();
 
   String? _selectedNextStep;
   final List<String> _nextStepOptions = [
@@ -51,6 +65,8 @@ class _CheckOutPageState extends State<CheckOutPage> {
   @override
   void dispose() {
     _visitResultController.dispose();
+    _priceOverrideController.dispose();
+    _priceOverrideNoteController.dispose();
     super.dispose();
   }
 
@@ -99,6 +115,19 @@ class _CheckOutPageState extends State<CheckOutPage> {
     }
   }
 
+  String? _mapResultToStage(String result, String? nextStep) {
+    // If it's a manual text result, we can check for keywords or just use the next step
+    final res = result.toLowerCase();
+    
+    if (nextStep == 'Close Deal') return 'closed_won';
+    if (res.contains('po') || res.contains('submit') || res.contains('deal done')) return 'closed_won';
+    if (res.contains('rejected') || res.contains('fail') || res.contains('lost')) return 'closed_lost';
+    if (res.contains('negotiation') || res.contains('nego')) return 'negotiation';
+    if (res.contains('sample') || res.contains('survey') || res.contains('eval')) return 'survey';
+    
+    return null;
+  }
+
   void _submitCheckOut() {
     if (_formKey.currentState!.validate() && _currentPosition != null) {
       String formattedDate = '';
@@ -115,6 +144,11 @@ class _CheckOutPageState extends State<CheckOutPage> {
               nextAction: _selectedNextStep ?? '',
               nextVisitDate: formattedDate,
               taskDestinationId: widget.taskDestinationId,
+              customerId: widget.customerId,
+              leadId: widget.leadId,
+              priceOverride: double.tryParse(_priceOverrideController.text),
+              priceOverrideNote: _priceOverrideNoteController.text,
+              dealId: widget.dealId,
             ),
           );
     }
@@ -154,6 +188,20 @@ class _CheckOutPageState extends State<CheckOutPage> {
       body: BlocListener<VisitBloc, VisitState>(
         listener: (context, state) {
           if (state is VisitSuccess) {
+            // ── Deal Pipeline Automation ──
+            final dealIdToUpdate = widget.dealId ?? state.currentDealId;
+            if (dealIdToUpdate != null) {
+              final targetStage = _mapResultToStage(_visitResultController.text, _selectedNextStep);
+              if (targetStage != null) {
+                context.read<DealBloc>().add(
+                  UpdateDealStageSubmitted(
+                    id: dealIdToUpdate,
+                    stage: targetStage,
+                  ),
+                );
+              }
+            }
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message), backgroundColor: const Color(0xFF10B981)),
             );
@@ -179,6 +227,11 @@ class _CheckOutPageState extends State<CheckOutPage> {
                       _buildLabel('Visit Summary'),
                       _buildSummaryField(),
                       const SizedBox(height: 20),
+                      if (widget.dealId != null || widget.taskDestinationId != null) ...[
+                        _buildLabel('Price Adjustment (Optional)'),
+                        _buildPriceOverrideFields(),
+                        const SizedBox(height: 20),
+                      ],
                       _buildLabel('Next Step'),
                       _buildNextStepDropdown(),
                       const SizedBox(height: 20),
@@ -381,6 +434,39 @@ class _CheckOutPageState extends State<CheckOutPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPriceOverrideFields() {
+    return Column(
+      children: [
+        TextFormField(
+          controller: _priceOverrideController,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(fontSize: 14, color: _textPrimary),
+          decoration: InputDecoration(
+            hintText: 'New total amount...',
+            prefixIcon: const Icon(LucideIcons.banknote, size: 18),
+            contentPadding: const EdgeInsets.all(16),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _orange)),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _priceOverrideNoteController,
+          style: const TextStyle(fontSize: 14, color: _textPrimary),
+          decoration: InputDecoration(
+            hintText: 'Reason (e.g., Promo Bundle)',
+            prefixIcon: const Icon(LucideIcons.stickyNote, size: 18),
+            contentPadding: const EdgeInsets.all(16),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _orange)),
+          ),
+        ),
+      ],
     );
   }
 

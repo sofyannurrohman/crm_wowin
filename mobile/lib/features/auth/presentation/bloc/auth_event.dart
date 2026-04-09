@@ -50,3 +50,5 @@ class UpdateProfileRequested extends AuthEvent {
   @override
   List<Object?> get props => [name, phone];
 }
+
+class FetchSalesmen extends AuthEvent {}

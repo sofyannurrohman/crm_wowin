@@ -31,7 +31,7 @@ type Deal struct {
 	Title         string          `json:"title"`
 	CustomerID    uuid.UUID       `json:"customer_id"`
 	ContactID     *uuid.UUID      `json:"contact_id,omitempty"`
-	AssignedTo    *uuid.UUID      `json:"assigned_to,omitempty"`
+	AssignedTo    *uuid.UUID      `json:"sales_id,omitempty"`
 	Stage         DealStage       `json:"stage"`
 	Status        DealStatus      `json:"status"`
 	Amount        *float64        `json:"amount,omitempty"`

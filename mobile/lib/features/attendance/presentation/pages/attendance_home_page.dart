@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:wowin_crm/l10n/app_localizations.dart';
@@ -40,6 +41,7 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
   Timer? _timer;
   DateTime _currentTime = DateTime.now();
   File? _imageFile;
+  Uint8List? _imageBytes;
   String? _imagePath;
   Position? _currentPosition;
   String? _address;
@@ -92,31 +94,73 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
   }
 
   Future<void> _initCamera() async {
+    if (!mounted) return;
+
     try {
       _cameras = await availableCameras();
-      if (_cameras.isEmpty) return;
+      if (_cameras.isEmpty) {
+        debugPrint('No cameras found');
+        return;
+      }
 
-      // Use front camera if available
-      final frontCamera = _cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.front,
-        orElse: () => _cameras.first,
-      );
+      await _cameraController?.dispose();
+      setState(() {
+        _cameraController = null;
+        _isCameraInitialized = false;
+      });
 
-      _cameraController = CameraController(
-        frontCamera,
-        ResolutionPreset.medium,
-        enableAudio: false,
-      );
+      // On Web, a small delay helps the browser release the hardware from the previous session
+      if (kIsWeb) await Future.delayed(const Duration(milliseconds: 300));
 
-      await _cameraController!.initialize();
-      if (mounted) {
+      // Prioritize cameras (Attendance usually wants front camera)
+      List<CameraDescription> candidates = [];
+      candidates.addAll(_cameras.where((c) => c.lensDirection == CameraLensDirection.front));
+      candidates.addAll(_cameras.where((c) => c.lensDirection != CameraLensDirection.front));
+
+      CameraException? lastEx;
+      for (var camera in candidates) {
+        try {
+          _cameraController = CameraController(
+            camera, 
+            ResolutionPreset.medium, 
+            enableAudio: false,
+            imageFormatGroup: ImageFormatGroup.jpeg, // jpeg is more compatible for web capture
+          );
+          
+          await _cameraController!.initialize();
+          lastEx = null; // Success
+          break;
+        } on CameraException catch (e) {
+          debugPrint('Failed to init camera ${camera.name}: ${e.code}');
+          lastEx = e;
+          if (e.code == 'cameraNotReadable' || e.code == 'CameraAccessDenied') {
+            await _cameraController?.dispose();
+            _cameraController = null;
+            continue; // Try next camera
+          }
+          rethrow;
+        }
+      }
+
+      if (lastEx != null) throw lastEx;
+
+      if (mounted && _cameraController != null) {
         setState(() {
           _isCameraInitialized = true;
         });
+        // Face detection only supported on native
         if (!kIsWeb) _startImageStream();
       }
     } catch (e) {
-      debugPrint('Camera error: $e');
+      debugPrint('Camera init error: $e');
+      if (mounted) {
+        String msg = 'Gagal membuka kamera.';
+        if (e is CameraException) {
+          if (e.code == 'cameraNotReadable') msg = 'Kamera sedang digunakan aplikasi lain atau tidak terbaca.';
+          if (e.code == 'CameraAccessDenied') msg = 'Izin kamera ditolak. Silakan cek pengaturan browser.';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
     }
   }
 
@@ -219,7 +263,7 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
       return;
     }
 
-    if (_imagePath == null && _faceStatus != FaceValidationStatus.valid) {
+    if (_imageBytes == null && !kIsWeb && _faceStatus != FaceValidationStatus.valid) {
        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Wajah tidak jelas. Cari posisi atau cahaya lebih baik di depan toko.')),
       );
@@ -236,8 +280,10 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
       await _cameraController!.stopImageStream();
       
       final image = await _cameraController!.takePicture();
+      final bytes = await image.readAsBytes();
       setState(() {
         _imagePath = image.path;
+        _imageBytes = bytes;
         if (!kIsWeb) {
           _imageFile = File(image.path);
         }
@@ -391,21 +437,9 @@ class _AttendanceHomePageState extends State<AttendanceHomePage> with WidgetsBin
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (_imagePath != null)
-                    kIsWeb 
-                    ? Image.network(
-                        _imagePath!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          debugPrint('Web Image build error: $error');
-                          return const Center(
-                            child: Icon(LucideIcons.imageOff,
-                                color: Colors.white70, size: 48),
-                          );
-                        },
-                      )
-                    : Image.file(
-                        _imageFile!,
+                  if (_imageBytes != null)
+                     Image.memory(
+                        _imageBytes!,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           debugPrint('Image build error: $error');

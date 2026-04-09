@@ -13,6 +13,8 @@ import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
 import 'stock_check_sheet.dart';
 import '../pages/visit_summary_result_page.dart';
+import '../../../deals/presentation/bloc/deal_bloc.dart';
+import '../../../deals/presentation/bloc/deal_event.dart';
 
 class CheckOutSheet extends StatefulWidget {
   final String scheduleId;
@@ -24,7 +26,10 @@ class CheckOutSheet extends StatefulWidget {
     required this.scheduleId,
     required this.customerName,
     this.visitStartTime,
+    this.leadId,
   });
+
+  final String? leadId;
 
   @override
   State<CheckOutSheet> createState() => _CheckOutSheetState();
@@ -32,6 +37,8 @@ class CheckOutSheet extends StatefulWidget {
 
 class _CheckOutSheetState extends State<CheckOutSheet> {
   final TextEditingController _nextActionController = TextEditingController();
+  final TextEditingController _priceOverrideController = TextEditingController();
+  final TextEditingController _priceOverrideNoteController = TextEditingController();
   String _selectedResult = 'Interested';
   DateTime? _nextVisitDate;
   bool _isSubmitting = false;
@@ -88,9 +95,16 @@ class _CheckOutSheetState extends State<CheckOutSheet> {
         }
       }
 
-      final String? currentDealId = (context.read<VisitBloc>().state is VisitSuccess) 
-          ? (context.read<VisitBloc>().state as VisitSuccess).currentDealId 
-          : null;
+      final visitState = context.read<VisitBloc>().state;
+      String? currentDealId;
+      String? customerId;
+      String? leadId;
+
+      if (visitState is VisitSuccess) {
+        currentDealId = visitState.currentDealId;
+        customerId = visitState.customerId;
+        leadId = visitState.leadId;
+      }
 
       context.read<VisitBloc>().add(
         CheckOutSubmitted(
@@ -103,6 +117,10 @@ class _CheckOutSheetState extends State<CheckOutSheet> {
           signaturePath: signaturePath,
           inventoryData: _inventoryJson,
           dealId: currentDealId,
+          customerId: customerId,
+          leadId: leadId,
+          priceOverride: double.tryParse(_priceOverrideController.text),
+          priceOverrideNote: _priceOverrideNoteController.text,
         ),
       );
     } catch (e) {
@@ -113,6 +131,24 @@ class _CheckOutSheetState extends State<CheckOutSheet> {
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  String? _mapResultToStage(String result) {
+    switch (result) {
+      case 'PO Submitted':
+        return 'closing';
+      case 'Price Negotiation':
+        return 'negotiation';
+      case 'Sample Given':
+      case 'Inventory Check':
+        return 'survey';
+      case 'Interested':
+        return 'prospect';
+      case 'Rejected':
+        return 'closed_lost';
+      default:
+        return null;
     }
   }
 
@@ -132,6 +168,19 @@ class _CheckOutSheetState extends State<CheckOutSheet> {
     return BlocListener<VisitBloc, VisitState>(
       listener: (context, state) {
         if (state is VisitSuccess) {
+          // ── Deal Pipeline Automation ──
+          if (state.currentDealId != null) {
+            final targetStage = _mapResultToStage(_selectedResult);
+            if (targetStage != null) {
+              context.read<DealBloc>().add(
+                UpdateDealStageSubmitted(
+                  id: state.currentDealId!,
+                  stage: targetStage,
+                ),
+              );
+            }
+          }
+
           Navigator.pop(context); // Close sheet
 
           // Calculate visit duration if we have the start time
@@ -260,31 +309,62 @@ class _CheckOutSheetState extends State<CheckOutSheet> {
               BlocBuilder<VisitBloc, VisitState>(
                 builder: (context, state) {
                   if (state is VisitSuccess && state.currentDealId != null) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(LucideIcons.shoppingBag, size: 20, color: Color(0xFF10B981)),
-                          const SizedBox(width: 12),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Penjualan Terdaftar', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF065F46))),
-                                Text('Deal akan otomatis ditandai sebagai WON jika PO dikirim.', style: TextStyle(fontSize: 11, color: Color(0xFF065F46))),
-                              ],
-                            ),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
                           ),
-                          if (_selectedResult == 'PO Submitted')
-                            const Icon(LucideIcons.checkCircle, color: Color(0xFF10B981), size: 20),
-                        ],
-                      ),
+                          child: Row(
+                            children: [
+                              const Icon(LucideIcons.shoppingBag, size: 20, color: Color(0xFF10B981)),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Penjualan Terdaftar', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF065F46))),
+                                    Text('Deal akan otomatis ditandai sebagai WON jika PO dikirim.', style: TextStyle(fontSize: 11, color: Color(0xFF065F46))),
+                                  ],
+                                ),
+                              ),
+                              if (_selectedResult == 'PO Submitted')
+                                const Icon(LucideIcons.checkCircle, color: Color(0xFF10B981), size: 20),
+                            ],
+                          ),
+                        ),
+                        // Price Override Fields
+                        const Text('PENYESUAIAN HARGA (OPSIONAL)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey, letterSpacing: 1)),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _priceOverrideController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            hintText: 'Masukkan total harga baru...',
+                            prefixIcon: const Icon(LucideIcons.banknote, size: 18),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _priceOverrideNoteController,
+                          decoration: InputDecoration(
+                            hintText: 'Alasan perubahan harga (contoh: Promo Bundle)',
+                            prefixIcon: const Icon(LucideIcons.stickyNote, size: 18),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                     );
                   }
                   return const SizedBox();

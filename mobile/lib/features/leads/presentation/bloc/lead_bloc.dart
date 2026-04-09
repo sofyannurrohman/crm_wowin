@@ -37,7 +37,7 @@ class LeadBloc extends Bloc<LeadEvent, LeadState> {
     Emitter<LeadState> emit,
   ) async {
     emit(LeadLoading());
-    final result = await getLeads(query: event.query, status: event.status);
+    final result = await getLeads(query: event.query, status: event.status, salesId: event.salesId);
     result.fold(
       (failure) => emit(LeadError(failure.message)),
       (leads) => emit(LeadsLoaded(leads)),

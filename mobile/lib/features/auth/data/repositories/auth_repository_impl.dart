@@ -62,6 +62,18 @@ class AuthRepositoryImpl implements AuthRepository {
     }
   }
 
+  @override
+  Future<Either<Failure, List<UserEntity>>> getSalesmen() async {
+    try {
+      final salesmen = await remoteDataSource.getSalesmen();
+      return Right(salesmen);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return const Left(ServerFailure('Gagal mengambil data list salesman'));
+    }
+  }
+
 
   @override
   Future<Either<Failure, void>> logout() async {

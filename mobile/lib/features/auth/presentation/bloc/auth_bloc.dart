@@ -21,6 +21,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LogoutRequested>(_onLogoutRequested);
     on<FetchProfile>(_onFetchProfile);
     on<UpdateProfileRequested>(_onUpdateProfileRequested);
+    on<FetchSalesmen>(_onFetchSalesmen);
+  }
+
+  Future<void> _onFetchSalesmen(
+    FetchSalesmen event,
+    Emitter<AuthState> emit,
+  ) async {
+    final result = await authRepository.getSalesmen();
+    result.fold(
+      (failure) => emit(AuthError(failure.message)),
+      (salesmen) => emit(SalesmenLoaded(salesmen)),
+    );
   }
 
   Future<void> _onFetchProfile(

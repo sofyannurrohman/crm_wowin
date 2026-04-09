@@ -11,6 +11,9 @@ import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
 import '../bloc/customer_state.dart';
 import '../../domain/entities/customer.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart' as auth;
+import '../../../../features/auth/presentation/bloc/auth_state.dart' as auth;
+import '../../../../features/auth/presentation/bloc/auth_event.dart' as auth;
 import 'package:wowin_crm/features/deals/domain/entities/deal.dart';
 import 'package:wowin_crm/features/visits/domain/entities/visit_activity.dart';
 import 'package:wowin_crm/features/visits/domain/entities/visit_schedule.dart';
@@ -45,94 +48,148 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     return BlocProvider(
       create: (context) => sl<CustomerBloc>()..add(FetchCustomerDetail(widget.id)),
       child: Scaffold(
-        body: BlocBuilder<CustomerBloc, CustomerState>(
-          builder: (context, state) {
-            if (state is CustomerLoading) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (state is CustomerDetailLoaded) {
-              final customer = state.customer;
-              return Scaffold(
-                backgroundColor: const Color(0xFFF9FAFB),
-                appBar: AppBar(
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  scrolledUnderElevation: 0,
-                  leading: IconButton(
-                    icon: const Icon(LucideIcons.arrowLeft,
-                        color: AppColors.textPrimary),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                  title: const Text(
-                    'Customer Details',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  centerTitle: true,
-                  actions: [
-                    PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          context.pushNamed(
-                            kRouteAddCustomer,
-                            extra: state.customer,
-                          );
-                        } else if (value == 'delete') {
-                          _showDeleteConfirmation(context, state.customer);
-                        }
-                      },
-                      icon: const Icon(LucideIcons.moreVertical,
-                          color: AppColors.textPrimary),
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(LucideIcons.edit2, size: 18),
-                              SizedBox(width: 8),
-                              const Text('Edit'),
+        body: BlocBuilder<auth.AuthBloc, auth.AuthState>(
+          builder: (context, authState) {
+            final currentUser = (authState is auth.Authenticated)
+                ? authState.user
+                : null;
+            
+            return BlocBuilder<CustomerBloc, CustomerState>(
+              builder: (context, state) {
+                if (state is CustomerLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is CustomerDetailLoaded) {
+                  final customer = state.customer;
+                  final bool isOwner = currentUser != null && 
+                      (customer.salesId?.toLowerCase().trim() == currentUser.id.toLowerCase().trim());
+                  final bool isAdmin = currentUser?.role == 'admin';
+                  final bool isLocked = !isOwner && !isAdmin;
+
+                  return Scaffold(
+                    backgroundColor: const Color(0xFFF9FAFB),
+                    appBar: AppBar(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      scrolledUnderElevation: 0,
+                      leading: IconButton(
+                        icon: const Icon(LucideIcons.arrowLeft,
+                            color: AppColors.textPrimary),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      title: const Text(
+                        'Customer Details',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      centerTitle: true,
+                      actions: [
+                        if (!isLocked)
+                          PopupMenuButton<String>(
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                context.pushNamed(
+                                  kRouteAddCustomer,
+                                  extra: state.customer,
+                                );
+                              } else if (value == 'delete') {
+                                _showDeleteConfirmation(context, state.customer);
+                              }
+                            },
+                            icon: const Icon(LucideIcons.moreVertical,
+                                color: AppColors.textPrimary),
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(LucideIcons.edit2, size: 18),
+                                    SizedBox(width: 8),
+                                    const Text('Edit'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(LucideIcons.trash2,
+                                        size: 18, color: Colors.red),
+                                    SizedBox(width: 8),
+                                    const Text('Delete',
+                                        style: TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(LucideIcons.trash2,
-                                  size: 18, color: Colors.red),
-                              SizedBox(width: 8),
-                              const Text('Delete',
-                                  style: TextStyle(color: Colors.red)),
-                            ],
-                          ),
-                        ),
+                        const SizedBox(width: 8),
                       ],
                     ),
-                    const SizedBox(width: 8),
-                  ],
-                ),
-                body: BlocListener<CustomerBloc, CustomerState>(
-                  listener: (context, state) {
-                    if (state is CustomerOperationSuccess) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text(state.message),
-                            backgroundColor: Colors.green),
-                      );
-                      if (state.message.contains('hapus')) {
-                        Navigator.of(context).pop(); // Back to list on delete
-                      }
-                    }
-                  },
-                  child: _buildContent(customer, state),
-                ),
-              );
-            } else if (state is CustomerError) {
-              return Center(child: Text(state.message));
-            }
-            return const SizedBox();
+                    bottomNavigationBar: isLocked ? null : Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(32),
+                          topRight: Radius.circular(32),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Color(0x0A000000),
+                            blurRadius: 20,
+                            offset: Offset(0, -10),
+                          ),
+                        ],
+                      ),
+                      child: SafeArea(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => context.pushNamed(
+                                  kRouteAddBanner,
+                                  extra: {'customer': customer},
+                                ),
+                                icon: const Icon(LucideIcons.layout),
+                                label: const Text('Survey Spanduk', style: TextStyle(fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange.shade700,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  elevation: 0,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    body: BlocListener<CustomerBloc, CustomerState>(
+                      listener: (context, state) {
+                        if (state is CustomerOperationSuccess) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text(state.message),
+                                backgroundColor: Colors.green),
+                          );
+                          if (state.message.contains('hapus')) {
+                            Navigator.of(context).pop(); // Back to list on delete
+                          }
+                        }
+                      },
+                      child: _buildContent(customer, state, isLocked, salesmanName: customer.salesmanName),
+                    ),
+                  );
+                } else if (state is CustomerError) {
+                  return Center(child: Text(state.message));
+                }
+                return const SizedBox();
+              },
+            );
           },
         ),
       ),
@@ -165,23 +222,57 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     );
   }
 
-  Widget _buildContent(Customer customer, CustomerDetailLoaded state) {
+  Widget _buildContent(Customer customer, CustomerDetailLoaded state, bool isLocked, {String? salesmanName}) {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       children: [
+        if (isLocked)
+          Container(
+            margin: const EdgeInsets.only(top: 20),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7ED),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFFFEDD5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(LucideIcons.lock, color: Color(0xFFF97316), size: 18),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Data ini dikunci karena dimiliki oleh salesman lain${salesmanName != null ? " ($salesmanName)" : ""}.',
+                    style: const TextStyle(
+                      color: Color(0xFFC2410C),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         const SizedBox(height: 20),
         _buildProfileHeader(customer),
         const SizedBox(height: 24),
-        _buildContactInfoCard(customer),
+        _buildContactInfoCard(customer, isLocked),
         const SizedBox(height: 24),
-        _buildMapSection(customer),
+        _buildMapSection(customer, isLocked),
         const SizedBox(height: 32),
-        _buildTabs(),
-        const SizedBox(height: 16),
-        _buildTabContent(customer, state),
-        const SizedBox(height: 40),
+        if (!isLocked) ...[
+          _buildTabs(),
+          const SizedBox(height: 16),
+          _buildTabContent(customer, state),
+          const SizedBox(height: 40),
+        ],
       ],
     );
+  }
+
+  String _obscureText(String? text) {
+    if (text == null || text == '-' || text.isEmpty) return '-';
+    if (text.length <= 4) return '****';
+    return '${text.substring(0, 2)}********${text.substring(text.length - 2)}';
   }
 
   Widget _buildProfileHeader(Customer customer) {
@@ -260,7 +351,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     );
   }
 
-  Widget _buildContactInfoCard(Customer customer) {
+  Widget _buildContactInfoCard(Customer customer, bool isLocked) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -279,7 +370,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
           _buildInfoRow(
             LucideIcons.user,
             'Contact Person',
-            customer.name,
+            isLocked ? _obscureText(customer.name) : customer.name,
             iconColor: const Color(0xFF0D8549),
           ),
           const Padding(
@@ -289,7 +380,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
           _buildInfoRow(
             LucideIcons.phone,
             'Phone',
-            customer.phone ?? '-',
+            isLocked ? _obscureText(customer.phone) : (customer.phone ?? '-'),
             iconColor: const Color(0xFF0D8549),
             valueColor: const Color(0xFF0D8549),
           ),
@@ -300,7 +391,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
           _buildInfoRow(
             LucideIcons.mail,
             'Email',
-            customer.email ?? '-',
+            isLocked ? _obscureText(customer.email) : (customer.email ?? '-'),
             iconColor: const Color(0xFF0D8549),
             valueColor: const Color(0xFF0D8549),
           ),
@@ -340,7 +431,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     );
   }
 
-  Widget _buildMapSection(Customer customer) {
+  Widget _buildMapSection(Customer customer, bool isLocked) {
     final lat = customer.latitude ?? -6.200000;
     final lng = customer.longitude ?? 106.816666;
 
@@ -359,27 +450,42 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
       ),
       child: Stack(
         children: [
-          FlutterMap(
-            options: MapOptions(
-              initialCenter: LatLng(lat, lng),
-              initialZoom: 14.0,
-              interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+          if (!isLocked)
+            FlutterMap(
+              options: MapOptions(
+                initialCenter: LatLng(lat, lng),
+                initialZoom: 14.0,
+                interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.wowin.crm',
+                ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: LatLng(lat, lng),
+                      child: const Icon(Icons.location_on, color: Color(0xFFF97316), size: 30),
+                    ),
+                  ],
+                ),
+              ],
+            )
+          else
+            Container(
+              color: Colors.grey[200],
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(LucideIcons.mapPinOff, size: 40, color: Colors.grey),
+                    SizedBox(height: 12),
+                    Text('Lokasi disembunyikan', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
             ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.wowin.crm',
-              ),
-              MarkerLayer(
-                markers: [
-                  Marker(
-                    point: LatLng(lat, lng),
-                    child: const Icon(Icons.location_on, color: Color(0xFFF97316), size: 30),
-                  ),
-                ],
-              ),
-            ],
-          ),
           Positioned(
             bottom: 12,
             left: 12,
@@ -403,7 +509,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      customer.address ?? 'San José, Costa Rica',
+                      isLocked ? 'Alamat disembunyikan' : (customer.address ?? 'San José, Costa Rica'),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,

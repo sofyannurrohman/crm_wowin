@@ -8,7 +8,7 @@ class GetDeals {
 
   GetDeals(this.repository);
 
-  Future<Either<Failure, List<Deal>>> call({String? customerId}) async {
-    return await repository.getDeals(customerId: customerId);
+  Future<Either<Failure, List<Deal>>> call({String? customerId, String? salesId}) async {
+    return await repository.getDeals(customerId: customerId, salesId: salesId);
   }
 }

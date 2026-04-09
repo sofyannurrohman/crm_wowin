@@ -29,6 +29,10 @@ mixin _$Deal {
   String? get description;
   List<DealItem>? get items;
   Customer? get customer;
+  @JsonKey(name: 'sales_id')
+  String? get salesId;
+  @JsonKey(name: 'salesman_name')
+  String? get salesmanName;
 
   /// Create a copy of Deal
   /// with the given fields replaced by the non-null parameter values.
@@ -62,7 +66,10 @@ mixin _$Deal {
                 other.description == description) &&
             const DeepCollectionEquality().equals(other.items, items) &&
             (identical(other.customer, customer) ||
-                other.customer == customer));
+                other.customer == customer) &&
+            (identical(other.salesId, salesId) || other.salesId == salesId) &&
+            (identical(other.salesmanName, salesmanName) ||
+                other.salesmanName == salesmanName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -80,11 +87,13 @@ mixin _$Deal {
       expectedClose,
       description,
       const DeepCollectionEquality().hash(items),
-      customer);
+      customer,
+      salesId,
+      salesmanName);
 
   @override
   String toString() {
-    return 'Deal(id: $id, title: $title, customerId: $customerId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items, customer: $customer)';
+    return 'Deal(id: $id, title: $title, customerId: $customerId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items, customer: $customer, salesId: $salesId, salesmanName: $salesmanName)';
   }
 }
 
@@ -105,7 +114,9 @@ abstract mixin class $DealCopyWith<$Res> {
       @JsonKey(name: 'expected_close') DateTime? expectedClose,
       String? description,
       List<DealItem>? items,
-      Customer? customer});
+      Customer? customer,
+      @JsonKey(name: 'sales_id') String? salesId,
+      @JsonKey(name: 'salesman_name') String? salesmanName});
 
   $CustomerCopyWith<$Res>? get customer;
 }
@@ -134,6 +145,8 @@ class _$DealCopyWithImpl<$Res> implements $DealCopyWith<$Res> {
     Object? description = freezed,
     Object? items = freezed,
     Object? customer = freezed,
+    Object? salesId = freezed,
+    Object? salesmanName = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -184,6 +197,14 @@ class _$DealCopyWithImpl<$Res> implements $DealCopyWith<$Res> {
           ? _self.customer
           : customer // ignore: cast_nullable_to_non_nullable
               as Customer?,
+      salesId: freezed == salesId
+          ? _self.salesId
+          : salesId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      salesmanName: freezed == salesmanName
+          ? _self.salesmanName
+          : salesmanName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 
@@ -307,7 +328,9 @@ extension DealPatterns on Deal {
             @JsonKey(name: 'expected_close') DateTime? expectedClose,
             String? description,
             List<DealItem>? items,
-            Customer? customer)?
+            Customer? customer,
+            @JsonKey(name: 'sales_id') String? salesId,
+            @JsonKey(name: 'salesman_name') String? salesmanName)?
         $default, {
     required TResult orElse(),
   }) {
@@ -326,7 +349,9 @@ extension DealPatterns on Deal {
             _that.expectedClose,
             _that.description,
             _that.items,
-            _that.customer);
+            _that.customer,
+            _that.salesId,
+            _that.salesmanName);
       case _:
         return orElse();
     }
@@ -359,7 +384,9 @@ extension DealPatterns on Deal {
             @JsonKey(name: 'expected_close') DateTime? expectedClose,
             String? description,
             List<DealItem>? items,
-            Customer? customer)
+            Customer? customer,
+            @JsonKey(name: 'sales_id') String? salesId,
+            @JsonKey(name: 'salesman_name') String? salesmanName)
         $default,
   ) {
     final _that = this;
@@ -377,7 +404,9 @@ extension DealPatterns on Deal {
             _that.expectedClose,
             _that.description,
             _that.items,
-            _that.customer);
+            _that.customer,
+            _that.salesId,
+            _that.salesmanName);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -409,7 +438,9 @@ extension DealPatterns on Deal {
             @JsonKey(name: 'expected_close') DateTime? expectedClose,
             String? description,
             List<DealItem>? items,
-            Customer? customer)?
+            Customer? customer,
+            @JsonKey(name: 'sales_id') String? salesId,
+            @JsonKey(name: 'salesman_name') String? salesmanName)?
         $default,
   ) {
     final _that = this;
@@ -427,7 +458,9 @@ extension DealPatterns on Deal {
             _that.expectedClose,
             _that.description,
             _that.items,
-            _that.customer);
+            _that.customer,
+            _that.salesId,
+            _that.salesmanName);
       case _:
         return null;
     }
@@ -449,7 +482,9 @@ class _Deal implements Deal {
       @JsonKey(name: 'expected_close') this.expectedClose,
       this.description,
       final List<DealItem>? items,
-      this.customer})
+      this.customer,
+      @JsonKey(name: 'sales_id') this.salesId,
+      @JsonKey(name: 'salesman_name') this.salesmanName})
       : _items = items;
   factory _Deal.fromJson(Map<String, dynamic> json) => _$DealFromJson(json);
 
@@ -488,6 +523,12 @@ class _Deal implements Deal {
 
   @override
   final Customer? customer;
+  @override
+  @JsonKey(name: 'sales_id')
+  final String? salesId;
+  @override
+  @JsonKey(name: 'salesman_name')
+  final String? salesmanName;
 
   /// Create a copy of Deal
   /// with the given fields replaced by the non-null parameter values.
@@ -526,7 +567,10 @@ class _Deal implements Deal {
                 other.description == description) &&
             const DeepCollectionEquality().equals(other._items, _items) &&
             (identical(other.customer, customer) ||
-                other.customer == customer));
+                other.customer == customer) &&
+            (identical(other.salesId, salesId) || other.salesId == salesId) &&
+            (identical(other.salesmanName, salesmanName) ||
+                other.salesmanName == salesmanName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -544,11 +588,13 @@ class _Deal implements Deal {
       expectedClose,
       description,
       const DeepCollectionEquality().hash(_items),
-      customer);
+      customer,
+      salesId,
+      salesmanName);
 
   @override
   String toString() {
-    return 'Deal(id: $id, title: $title, customerId: $customerId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items, customer: $customer)';
+    return 'Deal(id: $id, title: $title, customerId: $customerId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items, customer: $customer, salesId: $salesId, salesmanName: $salesmanName)';
   }
 }
 
@@ -570,7 +616,9 @@ abstract mixin class _$DealCopyWith<$Res> implements $DealCopyWith<$Res> {
       @JsonKey(name: 'expected_close') DateTime? expectedClose,
       String? description,
       List<DealItem>? items,
-      Customer? customer});
+      Customer? customer,
+      @JsonKey(name: 'sales_id') String? salesId,
+      @JsonKey(name: 'salesman_name') String? salesmanName});
 
   @override
   $CustomerCopyWith<$Res>? get customer;
@@ -600,6 +648,8 @@ class __$DealCopyWithImpl<$Res> implements _$DealCopyWith<$Res> {
     Object? description = freezed,
     Object? items = freezed,
     Object? customer = freezed,
+    Object? salesId = freezed,
+    Object? salesmanName = freezed,
   }) {
     return _then(_Deal(
       id: null == id
@@ -650,6 +700,14 @@ class __$DealCopyWithImpl<$Res> implements _$DealCopyWith<$Res> {
           ? _self.customer
           : customer // ignore: cast_nullable_to_non_nullable
               as Customer?,
+      salesId: freezed == salesId
+          ? _self.salesId
+          : salesId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      salesmanName: freezed == salesmanName
+          ? _self.salesmanName
+          : salesmanName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 

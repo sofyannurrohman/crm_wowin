@@ -37,7 +37,7 @@ type Lead struct {
 	Phone          *string     `json:"phone,omitempty"`
 	Source         LeadSource  `json:"source"`
 	Status         LeadStatus  `json:"status"`
-	AssignedTo     *uuid.UUID  `json:"assigned_to,omitempty"`
+	AssignedTo     *uuid.UUID  `json:"sales_id,omitempty"`
 	CustomerID        *uuid.UUID  `json:"customer_id,omitempty"` // populated if converted
 	EstimatedValue    *float64    `json:"estimated_value,omitempty"`
 	PotentialProducts []string    `json:"potential_products,omitempty"`

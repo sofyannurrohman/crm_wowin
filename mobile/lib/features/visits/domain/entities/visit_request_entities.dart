@@ -1,15 +1,18 @@
-import 'dart:io';
+import 'package:camera/camera.dart';
 
 class CheckInRequest {
   final String scheduleId;
   final double latitude;
   final double longitude;
-  final File photoFile;
+  final XFile photoFile;
   final String checkInNotes;
   final String? dealId;
-  final File? selfiePhotoFile;
+  final XFile? selfiePhotoFile;
   final String? overrideReason;
   final String? taskDestinationId;
+  final String? customerId;
+  final String? leadId;
+  final List<Map<String, dynamic>>? dealItems;
 
   CheckInRequest({
     required this.scheduleId,
@@ -21,6 +24,9 @@ class CheckInRequest {
     this.dealId,
     this.overrideReason,
     this.taskDestinationId,
+    this.customerId,
+    this.leadId,
+    this.dealItems,
   });
 }
 
@@ -35,6 +41,10 @@ class CheckOutRequest {
   final String? signaturePath;
   final String? inventoryData; // JSON formatted string for stock check
   final String? taskDestinationId;
+  final String? customerId;
+  final String? leadId;
+  final double? priceOverride;
+  final String? priceOverrideNote;
 
   CheckOutRequest({
     required this.scheduleId,
@@ -47,6 +57,10 @@ class CheckOutRequest {
     this.inventoryData,
     this.taskDestinationId,
     this.dealId,
+    this.customerId,
+    this.leadId,
+    this.priceOverride,
+    this.priceOverrideNote,
   });
 
   final String? dealId;

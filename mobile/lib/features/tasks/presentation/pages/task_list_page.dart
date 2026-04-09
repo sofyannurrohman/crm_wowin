@@ -8,6 +8,8 @@ import '../../../../core/widgets/app_sidebar.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../domain/entities/task.dart' as ent;
 
 class TaskListPage extends StatefulWidget {
@@ -38,8 +40,14 @@ class _TaskListPageState extends State<TaskListPage> {
     if (_selectedTab == 0) status = ent.TaskStatus.pending;
     if (_selectedTab == 1) status = ent.TaskStatus.in_progress;
     if (_selectedTab == 2) status = ent.TaskStatus.done;
-    
-    context.read<TaskBloc>().add(FetchTasks(status: status));
+
+    final authState = context.read<AuthBloc>().state;
+    String? salesId;
+    if (authState is Authenticated && authState.user.role == 'sales') {
+      salesId = authState.user.id;
+    }
+
+    context.read<TaskBloc>().add(FetchTasks(status: status, salesId: salesId));
   }
 
   @override

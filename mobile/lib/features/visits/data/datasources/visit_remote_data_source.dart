@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
@@ -46,14 +47,21 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
         'deal_id': request.dealId,
         'override_reason': request.overrideReason,
         'task_destination_id': request.taskDestinationId,
-        'photo': await MultipartFile.fromFile(
-          request.photoFile.path,
-          filename: request.photoFile.path.split('/').last,
+        'customer_id': request.customerId,
+        'lead_id': request.leadId,
+        'deal_items': request.dealItems != null ? jsonEncode(request.dealItems) : null,
+        'photo': MultipartFile.fromBytes(
+          await request.photoFile.readAsBytes(),
+          filename: request.photoFile.name.isEmpty 
+              ? 'visit_photo_${DateTime.now().millisecondsSinceEpoch}.jpg' 
+              : request.photoFile.name,
         ),
         if (request.selfiePhotoFile != null)
-          'selfie_photo': await MultipartFile.fromFile(
-            request.selfiePhotoFile!.path,
-            filename: request.selfiePhotoFile!.path.split('/').last,
+          'selfie_photo': MultipartFile.fromBytes(
+            await request.selfiePhotoFile!.readAsBytes(),
+            filename: request.selfiePhotoFile!.name.isEmpty 
+                ? 'selfie_${DateTime.now().millisecondsSinceEpoch}.jpg' 
+                : request.selfiePhotoFile!.name,
           ),
       });
 
@@ -93,6 +101,10 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
         'inventory_data': request.inventoryData,
         'task_destination_id': request.taskDestinationId,
         'deal_id': request.dealId,
+        'customer_id': request.customerId,
+        'lead_id': request.leadId,
+        'total_price_override': request.priceOverride,
+        'override_note': request.priceOverrideNote,
       };
 
       // Attach signature image if captured

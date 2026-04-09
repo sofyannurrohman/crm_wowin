@@ -51,4 +51,10 @@ type VisitRecommendation struct {
 	Address         string  `json:"address"`
 	Latitude        float64 `json:"latitude"`
 	Longitude       float64 `json:"longitude"`
+
+	// Contextual IDs for "Task same as Dashboard" consistency
+	LeadID            *string `json:"lead_id,omitempty"`
+	CustomerID        *string `json:"customer_id,omitempty"`
+	TaskDestinationID *string `json:"task_destination_id,omitempty"`
+	DealID            *string `json:"deal_id,omitempty"`
 }

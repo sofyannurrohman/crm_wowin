@@ -7,6 +7,8 @@ import '../widgets/check_out_sheet.dart';
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart' as sidebar;
 
@@ -29,7 +31,12 @@ class _VisitHistoryPageState extends State<VisitHistoryPage> {
   @override
   void initState() {
     super.initState();
-    context.read<VisitBloc>().add(const FetchActivities());
+    final authState = context.read<AuthBloc>().state;
+    String? salesId;
+    if (authState is Authenticated && authState.user.role == 'sales') {
+      salesId = authState.user.id;
+    }
+    context.read<VisitBloc>().add(FetchActivities(salesId: salesId));
   }
 
   @override

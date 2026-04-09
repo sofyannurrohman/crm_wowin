@@ -27,7 +27,11 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _onFetchTasks(FetchTasks event, Emitter<TaskState> emit) async {
     emit(TaskLoading());
-    final result = await repository.getTasks(customerId: event.customerId, status: event.status);
+    final result = await repository.getTasks(
+      customerId: event.customerId,
+      salesId: event.salesId,
+      status: event.status,
+    );
     result.fold(
       (failure) => emit(TaskError(failure.message)),
       (tasks) => emit(TasksLoaded(tasks)),

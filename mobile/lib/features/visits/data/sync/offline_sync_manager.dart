@@ -1,5 +1,6 @@
 import 'package:workmanager/workmanager.dart';
 import 'dart:io';
+import 'package:camera/camera.dart';
 import '../datasources/visit_local_data_source.dart';
 import '../datasources/visit_remote_data_source.dart';
 import '../../domain/entities/visit_request_entities.dart';
@@ -32,9 +33,9 @@ class OfflineSyncManager {
           scheduleId: data['schedule_id'],
           latitude: data['latitude'],
           longitude: data['longitude'],
-          photoFile: File(data['photo_path']),
+          photoFile: XFile(data['photo_path']),
           selfiePhotoFile: selfiePhotoPath != null && selfiePhotoPath.isNotEmpty
-              ? File(selfiePhotoPath)
+              ? XFile(selfiePhotoPath)
               : null,
           checkInNotes: data['notes'] ?? '',
           dealId: data['deal_id'],

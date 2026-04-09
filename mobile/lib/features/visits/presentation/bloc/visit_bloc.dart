@@ -51,6 +51,9 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
       dealId: event.dealId,
       overrideReason: event.overrideReason,
       taskDestinationId: event.taskDestinationId,
+      customerId: event.customerId,
+      leadId: event.leadId,
+      dealItems: event.dealItems,
     );
 
     final result = await checkInUseCase(request);
@@ -61,6 +64,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
         'Check-in Berhasil! Silakan catat hasil setelah selesai.',
         scheduleId: event.scheduleId,
         customerId: event.customerId,
+        leadId: event.leadId,
         customerName: event.customerName,
         checkInTime: DateTime.now(),
       )),
@@ -83,6 +87,11 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> {
       signaturePath: event.signaturePath,
       inventoryData: event.inventoryData,
       taskDestinationId: event.taskDestinationId,
+      customerId: event.customerId,
+      leadId: event.leadId,
+      priceOverride: event.priceOverride,
+      priceOverrideNote: event.priceOverrideNote,
+      dealId: event.dealId,
     );
 
     final result = await checkOutUseCase(request);

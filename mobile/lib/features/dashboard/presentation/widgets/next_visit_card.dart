@@ -127,7 +127,11 @@ class NextVisitCard extends StatelessWidget {
                           context.pushNamed(
                             kRouteCheckIn,
                             extra: {
-                              'customerId': nextStop.id,
+                              'scheduleId': 'task', // Unified with Task Flow
+                              'customerId': nextStop.customerId,
+                              'leadId': nextStop.leadId,
+                              'taskDestinationId': nextStop.taskDestinationId,
+                              'dealId': nextStop.dealId,
                               'customerName': nextStop.name,
                               'customerAddress': nextStop.address,
                               'targetLat': nextStop.latitude,

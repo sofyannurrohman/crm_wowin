@@ -33,4 +33,4 @@ const String kRouteAddDeal = 'add_deal';
 const String kRouteSalesActivities = 'sales_activities';
 const String kRouteAddSalesActivity = 'add_sales_activity';
 const String kRouteRoutePlanner = 'route_planner';
-
+const String kRouteAddBanner = 'add_banner';

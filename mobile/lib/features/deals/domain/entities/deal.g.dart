@@ -25,6 +25,8 @@ _Deal _$DealFromJson(Map<String, dynamic> json) => _Deal(
       customer: json['customer'] == null
           ? null
           : Customer.fromJson(json['customer'] as Map<String, dynamic>),
+      salesId: json['sales_id'] as String?,
+      salesmanName: json['salesman_name'] as String?,
     );
 
 Map<String, dynamic> _$DealToJson(_Deal instance) => <String, dynamic>{
@@ -40,4 +42,6 @@ Map<String, dynamic> _$DealToJson(_Deal instance) => <String, dynamic>{
       'description': instance.description,
       'items': instance.items,
       'customer': instance.customer,
+      'sales_id': instance.salesId,
+      'salesman_name': instance.salesmanName,
     };

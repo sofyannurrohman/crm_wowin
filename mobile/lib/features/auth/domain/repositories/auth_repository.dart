@@ -10,6 +10,7 @@ abstract class AuthRepository {
     required String password,
     String companyName,
   });
+  Future<Either<Failure, List<UserEntity>>> getSalesmen();
   Future<Either<Failure, void>> logout();
   Future<Either<Failure, UserEntity?>> checkAuthStatus();
   Future<Either<Failure, UserEntity>> getMe();

@@ -14,9 +14,9 @@ class TaskRepositoryImpl implements TaskRepository {
   TaskRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Future<Either<Failure, List<Task>>> getTasks({String? customerId, TaskStatus? status}) async {
+  Future<Either<Failure, List<Task>>> getTasks({String? customerId, String? salesId, TaskStatus? status}) async {
     try {
-      final result = await remoteDataSource.getTasks(customerId: customerId, status: status);
+      final result = await remoteDataSource.getTasks(customerId: customerId, salesId: salesId, status: status);
       return Right(result);
     } catch (e) {
       return Left(ServerFailure(e.toString()));

@@ -57,7 +57,7 @@ type Customer struct {
 
 	// Relations
 	TerritoryID *uuid.UUID `json:"territory_id,omitempty"`
-	AssignedTo  *uuid.UUID `json:"assigned_to,omitempty"`
+	AssignedTo  *uuid.UUID `json:"sales_id,omitempty"`
 	CreatedBy   *uuid.UUID `json:"created_by,omitempty"`
 
 	// Financial

@@ -27,6 +27,8 @@ _Lead _$LeadFromJson(Map<String, dynamic> json) => _Lead(
       address: json['address'] as String?,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      salesId: json['sales_id'] as String?,
+      salesmanName: json['salesman_name'] as String?,
     );
 
 Map<String, dynamic> _$LeadToJson(_Lead instance) => <String, dynamic>{
@@ -46,4 +48,6 @@ Map<String, dynamic> _$LeadToJson(_Lead instance) => <String, dynamic>{
       'address': instance.address,
       'latitude': instance.latitude,
       'longitude': instance.longitude,
+      'sales_id': instance.salesId,
+      'salesman_name': instance.salesmanName,
     };

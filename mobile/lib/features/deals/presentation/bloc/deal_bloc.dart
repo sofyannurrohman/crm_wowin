@@ -49,7 +49,7 @@ class DealBloc extends Bloc<DealEvent, DealState> {
     Emitter<DealState> emit,
   ) async {
     emit(DealLoading());
-    final result = await getDeals(customerId: event.customerId);
+    final result = await getDeals(customerId: event.customerId, salesId: event.salesId);
     result.fold(
       (failure) => emit(DealError(failure.message)),
       (deals) => emit(DealsLoaded(deals)),

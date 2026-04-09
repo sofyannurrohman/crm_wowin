@@ -19,6 +19,10 @@ _VisitRecommendation _$VisitRecommendationFromJson(Map<String, dynamic> json) =>
       address: json['address'] as String,
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
+      customerId: json['customer_id'] as String?,
+      leadId: json['lead_id'] as String?,
+      taskDestinationId: json['task_destination_id'] as String?,
+      dealId: json['deal_id'] as String?,
     );
 
 Map<String, dynamic> _$VisitRecommendationToJson(
@@ -35,4 +39,8 @@ Map<String, dynamic> _$VisitRecommendationToJson(
       'address': instance.address,
       'latitude': instance.latitude,
       'longitude': instance.longitude,
+      'customer_id': instance.customerId,
+      'lead_id': instance.leadId,
+      'task_destination_id': instance.taskDestinationId,
+      'deal_id': instance.dealId,
     };

@@ -18,11 +18,13 @@ class ActiveVisitCard extends StatefulWidget {
     super.key,
     required this.scheduleId,
     required this.customerId,
+    this.leadId,
     required this.customerName,
     required this.startTime,
   });
 
   final String customerId;
+  final String? leadId;
 
   @override
   State<ActiveVisitCard> createState() => _ActiveVisitCardState();
@@ -215,6 +217,7 @@ class _ActiveVisitCardState extends State<ActiveVisitCard> {
                                 scheduleId: widget.scheduleId,
                                 customerName: widget.customerName,
                                 visitStartTime: widget.startTime,
+                                leadId: widget.leadId,
                               ),
                             );
                           },

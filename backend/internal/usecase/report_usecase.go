@@ -60,11 +60,12 @@ func (u *reportUseCaseImpl) GetDashboardSummary(ctx context.Context, salesID str
 	if err == nil && len(tasks) > 0 {
 		var nextStop *models.TaskDestination
 		// Look for the first uncompleted destination in today's tasks
-		for _, task := range tasks {
-			for _, dest := range task.Destinations {
+		for i := range tasks {
+			for j := range tasks[i].Destinations {
+				dest := &tasks[i].Destinations[j]
 				if dest.Status != models.TaskStatusCompleted {
 					if nextStop == nil || dest.SequenceOrder < nextStop.SequenceOrder {
-						nextStop = &dest
+						nextStop = dest
 					}
 				}
 			}
@@ -90,6 +91,25 @@ func (u *reportUseCaseImpl) GetDashboardSummary(ctx context.Context, salesID str
 			if nextStop.TargetLongitude != nil {
 				rec.Longitude = *nextStop.TargetLongitude
 			}
+
+			// Add Check-In Context
+			taskDestinationID := nextStop.ID.String()
+			rec.TaskDestinationID = &taskDestinationID
+			if nextStop.CustomerID != nil && *nextStop.CustomerID != uuid.Nil {
+				cid := nextStop.CustomerID.String()
+				rec.CustomerID = &cid
+				rec.Type = "customer"
+			}
+			if nextStop.LeadID != nil && *nextStop.LeadID != uuid.Nil {
+				lid := nextStop.LeadID.String()
+				rec.LeadID = &lid
+				rec.Type = "lead"
+			}
+			if nextStop.DealID != nil && *nextStop.DealID != uuid.Nil {
+				did := nextStop.DealID.String()
+				rec.DealID = &did
+			}
+
 			summary.NextStop = rec
 		}
 	}

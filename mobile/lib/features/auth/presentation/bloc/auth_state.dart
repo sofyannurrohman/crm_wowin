@@ -37,3 +37,11 @@ class AuthError extends AuthState {
   @override
   List<Object> get props => [message];
 }
+
+class SalesmenLoaded extends AuthState {
+  final List<UserEntity> salesmen;
+  const SalesmenLoaded(this.salesmen);
+
+  @override
+  List<Object> get props => [salesmen];
+}

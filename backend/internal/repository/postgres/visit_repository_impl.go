@@ -206,7 +206,7 @@ func (r *visitRepoImpl) GetActivitiesByLead(ctx context.Context, leadID uuid.UUI
 }
 
 func scanActivities(rows pgx.Rows) ([]*models.VisitActivity, error) {
-	var results []*models.VisitActivity
+	results := []*models.VisitActivity{}
 	for rows.Next() {
 		var a models.VisitActivity
 		err := rows.Scan(

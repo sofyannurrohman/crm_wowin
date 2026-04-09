@@ -20,6 +20,8 @@ abstract class Deal with _$Deal {
     String? description,
     List<DealItem>? items,
     Customer? customer,
+    @JsonKey(name: 'sales_id') String? salesId,
+    @JsonKey(name: 'salesman_name') String? salesmanName,
   }) = _Deal;
 
   factory Deal.fromJson(Map<String, dynamic> json) => _$DealFromJson(json);

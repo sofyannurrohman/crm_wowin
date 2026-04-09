@@ -8,4 +8,10 @@ abstract class DashboardEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class FetchDashboardKpis extends DashboardEvent {}
+class FetchDashboardKpis extends DashboardEvent {
+  final String? salesId;
+  const FetchDashboardKpis({this.salesId});
+
+  @override
+  List<Object?> get props => [salesId];
+}

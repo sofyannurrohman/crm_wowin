@@ -58,20 +58,20 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
       List<TaskDestination> unvisited = widget.task.destinations.where((d) => d.status != TaskStatus.done).toList();
       
       List<TaskDestination> optimized = [];
-      List<LatLng> waypoints = [];
+      List<LatLng> waypoints = [_warehouseLocation];
+      currentLoc = _warehouseLocation;
 
-      // Add done tasks as fixed sequence (already visited)
+      // 1. Add already visited tasks (done)
       for (var dest in doneDests) {
         optimized.add(dest);
         if (dest.targetLatitude != null && dest.targetLongitude != null) {
-          waypoints.add(LatLng(dest.targetLatitude!, dest.targetLongitude!));
+          final loc = LatLng(dest.targetLatitude!, dest.targetLongitude!);
+          waypoints.add(loc);
+          currentLoc = loc; // Update currentLoc to last visited
         }
       }
 
-      // Only add start currentLoc if we haven't added done elements, OR if currentLoc is far away from the last done (for simplicity just prepend if waypoints is empty, or append if we want route from current location)
-      waypoints.add(currentLoc);
-
-      // 1. Simple Greedy Optimization for UNVISITED tasks
+      // 2. Simple Greedy Optimization for UNVISITED tasks
       while (unvisited.isNotEmpty) {
         double minDistance = double.infinity;
         int nearestIndex = -1;

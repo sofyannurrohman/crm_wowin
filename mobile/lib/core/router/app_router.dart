@@ -41,6 +41,7 @@ import '../../features/visits/presentation/pages/visit_summary_result_page.dart'
 import '../../features/activities/presentation/pages/sales_activity_list_page.dart';
 import '../../features/activities/presentation/pages/add_sales_activity_page.dart';
 import '../../features/activities/domain/entities/sales_activity.dart';
+import '../../features/banners/presentation/pages/add_banner_page.dart';
 
 
 
@@ -113,6 +114,7 @@ final GoRouter appRouter = GoRouter(
         return CheckInPage(
           scheduleId: args?['scheduleId'] as String? ?? 'adhoc',
           customerId: args?['customerId'] as String?,
+          leadId: args?['leadId'] as String?,
           customerName: args?['customerName'] as String?,
           customerAddress: args?['customerAddress'] as String?,
           targetLat: args?['targetLat'] as double?,
@@ -131,6 +133,9 @@ final GoRouter appRouter = GoRouter(
         return CheckOutPage(
           scheduleId: args['scheduleId'] as String,
           taskDestinationId: args['taskDestinationId'] as String?,
+          customerId: args['customerId'] as String?,
+          leadId: args['leadId'] as String?,
+          dealId: args['dealId'] as String?,
         );
       },
     ),
@@ -332,6 +337,17 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final task = state.extra as task_ent.Task;
         return RoutePlannerPage(task: task);
+      },
+    ),
+    GoRoute(
+      name: kRouteAddBanner,
+      path: '/banners/add',
+      builder: (context, state) {
+        final extras = state.extra as Map<String, dynamic>? ?? {};
+        return AddBannerPage(
+          lead: extras['lead'] as Lead?,
+          customer: extras['customer'] as Customer?,
+        );
       },
     ),
   ],

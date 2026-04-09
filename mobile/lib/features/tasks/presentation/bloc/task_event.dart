@@ -10,12 +10,13 @@ abstract class TaskEvent extends Equatable {
 
 class FetchTasks extends TaskEvent {
   final String? customerId;
+  final String? salesId;
   final TaskStatus? status;
 
-  const FetchTasks({this.customerId, this.status});
+  const FetchTasks({this.customerId, this.salesId, this.status});
 
   @override
-  List<Object?> get props => [customerId, status];
+  List<Object?> get props => [customerId, salesId, status];
 }
 
 class CreateTask extends TaskEvent {

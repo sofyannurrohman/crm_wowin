@@ -40,6 +40,9 @@ func NewCustomerUseCase(r repository.CustomerRepository, dr repository.DealRepos
 func (u *customerUseCaseImpl) CreateCustomer(ctx context.Context, c *models.Customer, reqUser uuid.UUID) (*models.Customer, error) {
 	// Auto stamp user trail
 	c.CreatedBy = &reqUser
+	if c.AssignedTo == nil {
+		c.AssignedTo = &reqUser
+	}
 	
 	if c.CheckinRadius == 0 {
 		c.CheckinRadius = 100 // Set Default Policy Radius

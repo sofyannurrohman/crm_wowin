@@ -3,14 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
-import 'package:wowin_crm/l10n/app_localizations.dart';
 
+import '../../domain/entities/deal.dart';
 import '../bloc/deal_bloc.dart';
 import '../bloc/deal_event.dart';
 import '../bloc/deal_state.dart';
-import '../../domain/entities/deal.dart';
-import '../../../../core/router/route_constants.dart';
-import '../../../../core/widgets/app_sidebar.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
+import '../../../auth/presentation/bloc/auth_state.dart' as auth;
+import '../../../auth/presentation/bloc/auth_event.dart' as auth;
 
 class DealKanbanPage extends StatefulWidget {
   const DealKanbanPage({super.key});
@@ -19,420 +19,310 @@ class DealKanbanPage extends StatefulWidget {
   State<DealKanbanPage> createState() => _DealKanbanPageState();
 }
 
-class _DealKanbanPageState extends State<DealKanbanPage> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _DealKanbanPageState extends State<DealKanbanPage> {
   final List<String> _stages = [
     'prospect',
     'survey',
     'negotiation',
     'closing',
+    'closed_won',
+    'closed_lost'
   ];
 
-  static const Color _orange = Color(0xFFE8622A);
-  static const Color _navy = Color(0xFF1A237E);
-  static const Color _bg = Color(0xFFF9FAFB);
+  final Map<String, String> _stageLabels = {
+    'prospect': 'PROSPECT',
+    'survey': 'SURVEY',
+    'negotiation': 'NEGOTIATION',
+    'closing': 'CLOSING',
+    'closed_won': 'WON',
+    'closed_lost': 'LOST',
+  };
+
+  final Map<String, Color> _stageColors = {
+    'prospect': const Color(0xFF3B82F6),
+    'survey': const Color(0xFF8B5CF6),
+    'negotiation': const Color(0xFFF59E0B),
+    'closing': const Color(0xFF10B981),
+    'closed_won': const Color(0xFF059669),
+    'closed_lost': const Color(0xFFEF4444),
+  };
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: _stages.length, vsync: this);
-    context.read<DealBloc>().add(FetchDeals());
+    _refreshDeals();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  void _refreshDeals() {
+    final authState = context.read<auth.AuthBloc>().state;
+    String? salesId;
+    if (authState is auth.Authenticated && authState.user.role == 'sales') {
+      salesId = authState.user.id;
+    }
+    
+    context.read<DealBloc>().add(FetchDeals(salesId: salesId));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
-      drawer: const AppSidebar(),
-      floatingActionButton: _buildFab(),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildTabBar(),
-            Expanded(
-              child: BlocConsumer<DealBloc, DealState>(
-                listener: (context, state) {
-                  if (state is DealOperationSuccess) {
-                    context.read<DealBloc>().add(const FetchDeals());
-                  }
-                },
-                builder: (context, state) {
-                  if (state is DealLoading) {
-                    return const Center(child: CircularProgressIndicator(color: _orange));
-                  } else if (state is DealsLoaded) {
-                    return TabBarView(
-                      controller: _tabController,
-                      children: _stages.map((stage) {
-                        final stageDeals = state.deals.where((d) => d.stage == stage).toList();
-                        return _buildStageContent(stageDeals);
-                      }).toList(),
-                    );
-                  } else if (state is DealError) {
-                    return Center(child: Text(state.message));
-                  }
-                  return const SizedBox();
-                },
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: AppBar(
+        title: const Text('Deal Kanban Pipeline', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF111827))),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        actions: [
+          IconButton(
+            icon: const Icon(LucideIcons.refreshCw, size: 20),
+            onPressed: _refreshDeals,
+          ),
+          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: ElevatedButton.icon(
+              onPressed: () => context.push('/deals/add'),
+              icon: const Icon(LucideIcons.plus, size: 16),
+              label: const Text('Add Deal', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE8622A),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+      body: MultiBlocListener(
+        listeners: [
+          BlocListener<DealBloc, DealState>(
+            listener: (context, state) {
+              if (state is DealOperationSuccess) {
+                _refreshDeals();
+              }
+            },
+          ),
+        ],
+        child: BlocBuilder<DealBloc, DealState>(
+          builder: (context, state) {
+            if (state is DealLoading) {
+              return const Center(child: CircularProgressIndicator(color: Color(0xFFE8622A)));
+            }
+
+            if (state is DealsLoaded) {
+              return _buildKanbanBoard(state.deals);
+            }
+
+            if (state is DealError) {
+              return Center(child: Text(state.message));
+            }
+
+            return const Center(child: Text('No deals found'));
+          },
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Builder(
-            builder: (context) => GestureDetector(
-              onTap: () => Scaffold.of(context).openDrawer(),
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _orange.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(LucideIcons.menu, color: _orange, size: 24),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Sales Pipeline',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-                Text(
-                  'Q3 Revenue Forecast',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade500,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.search, color: Color(0xFF4B5563)),
-            onPressed: () {},
-          ),
-        ],
-      ),
+  Widget _buildKanbanBoard(List<Deal> deals) {
+    return ListView.separated(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.all(16),
+      itemCount: _stages.length,
+      separatorBuilder: (context, index) => const SizedBox(width: 16),
+      itemBuilder: (context, index) {
+        final stage = _stages[index];
+        final stageDeals = deals.where((d) => d.stage == stage).toList();
+        return _buildKanbanColumn(stage, stageDeals);
+      },
     );
   }
 
-  Widget _buildTabBar() {
-    return TabBar(
-      controller: _tabController,
-      isScrollable: true,
-      indicatorColor: _orange,
-      indicatorWeight: 3,
-      labelColor: _orange,
-      unselectedLabelColor: Colors.grey.shade500,
-      labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-      tabs: const [
-        Tab(text: 'PROSPECT'),
-        Tab(text: 'SURVEY'),
-        Tab(text: 'NEGOTIATION'),
-        Tab(text: 'CLOSING'),
-      ],
-    );
-  }
+  Widget _buildKanbanColumn(String stage, List<Deal> deals) {
+    final double totalAmount = deals.fold(0, (sum, d) => sum + (d.amount ?? 0));
+    final Color stageColor = _stageColors[stage] ?? Colors.grey;
 
-  Widget _buildTab(String label, int count) {
-    return Tab(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(label),
-          const SizedBox(width: 4),
-          Text('($count)', style: const TextStyle(fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStageContent(List<Deal> deals) {
-    double totalValue = deals.fold(0, (sum, item) => sum + (item.amount ?? 0));
-    double weightedValue = deals.fold(0, (sum, item) => sum + ((item.amount ?? 0) * (item.probability ?? 0) / 100));
-
-    return RefreshIndicator(
-      color: _orange,
-      onRefresh: () async => context.read<DealBloc>().add(FetchDeals()),
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildSummaryCard(totalValue, weightedValue),
-          const SizedBox(height: 20),
-          ...deals.map((deal) => _DealCard(deal: deal)),
-          const SizedBox(height: 80),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(double total, double weighted) {
-    final fmt = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: '${AppLocalizations.of(context)!.currencySymbol} ',
-      decimalDigits: 0,
-    );
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'TOTAL PIPELINE',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF9CA3AF), letterSpacing: 0.5),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  fmt.format(total),
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _orange),
-                ),
-              ],
-            ),
-          ),
-          Container(width: 1, height: 40, color: Colors.grey.shade100),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'WEIGHTED VALUE',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Color(0xFF9CA3AF), letterSpacing: 0.5),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  fmt.format(weighted),
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _navy),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFab() {
-    return FloatingActionButton(
-      onPressed: () async {
-        final result = await context.pushNamed(kRouteAddDeal);
-        if (result == true) {
-          if (mounted) {
-            context.read<DealBloc>().add(FetchDeals());
-          }
+    return DragTarget<Deal>(
+      onAcceptWithDetails: (details) {
+        final deal = details.data;
+        if (deal.stage != stage) {
+          context.read<DealBloc>().add(UpdateDealStageSubmitted(id: deal.id, stage: stage));
         }
       },
-      backgroundColor: _orange,
-      child: const Icon(LucideIcons.plus, color: Colors.white),
-    );
-  }
-}
+      builder: (context, candidateData, rejectedData) {
+        final bool isColumnHovered = candidateData.isNotEmpty;
 
-class _DealCard extends StatelessWidget {
-  final Deal deal;
-  const _DealCard({required this.deal});
-
-  static const Color _orange = Color(0xFFE8622A);
-  static const Color _navy = Color(0xFF1A237E);
-
-  @override
-  Widget build(BuildContext context) {
-    final fmt = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: '${AppLocalizations.of(context)!.currencySymbol} ',
-      decimalDigits: 0,
-    );
-    final bool isOverdue = deal.expectedClose != null && deal.expectedClose!.isBefore(DateTime.now());
-    final bool isFollowUp = deal.probability != null && deal.probability! < 50; 
-
-    Color accentColor = isOverdue ? const Color(0xFFEF4444) : (isFollowUp ? const Color(0xFF10B981) : _navy);
-    String badgeText = isOverdue ? "! TERLAMBAT" : (isFollowUp ? "FOLLOW-UP HARI INI" : "DIPERBARUI 2J LALU");
-    Color badgeBg = isOverdue ? const Color(0xFFFEE2E2) : (isFollowUp ? const Color(0xFFD1FAE5) : const Color(0xFFF3F4F6));
-    Color badgeTextCol = isOverdue ? const Color(0xFFB91C1C) : (isFollowUp ? const Color(0xFF047857) : const Color(0xFF4B5563));
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: GestureDetector(
-        onTap: () => context.pushNamed(
-          kRouteDealDetail,
-          pathParameters: {'id': deal.id},
-        ),
-        child: IntrinsicHeight(
-          child: Row(
+        return Container(
+          width: 300,
+          decoration: BoxDecoration(
+            color: isColumnHovered ? stageColor.withOpacity(0.05) : const Color(0xFFF3F4F6).withOpacity(0.5),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isColumnHovered ? stageColor.withOpacity(0.2) : Colors.transparent, width: 2),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 5,
-                decoration: BoxDecoration(
-                  color: accentColor,
-                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
+              // Column Header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: stageColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                          child: Text(
+                            _stageLabels[stage]!,
+                            style: TextStyle(color: stageColor, fontSize: 11, fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                          child: Text(deals.length.toString(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6B7280))),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Rp ${NumberFormat('#,###', 'id_ID').format(totalAmount)}',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                    ),
+                  ],
                 ),
               ),
+              const Divider(height: 1),
+              
+              // Deal Cards
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(6)),
-                            child: Text(
-                              badgeText,
-                              style: TextStyle(color: badgeTextCol, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                            ),
-                          ),
-                          const Icon(LucideIcons.moreHorizontal, color: Color(0xFF9CA3AF), size: 20),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        deal.title,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Container(
-                            width: 22,
-                            height: 22,
-                            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(6)),
-                            child: const Icon(LucideIcons.building2, size: 12, color: Color(0xFF64748B)),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              deal.customer?.name ?? 'Unknown Customer',
-                              style: const TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Divider(height: 1),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                fmt.format(deal.amount ?? 0),
-                                style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF1A1A1A)),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${deal.probability ?? 0}% Probability',
-                                style: TextStyle(
-                                    color: Colors.grey.shade500,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                          _buildStageAction(context),
-                        ],
-                      ),
-                    ],
-                  ),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: deals.length,
+                  itemBuilder: (context, index) {
+                    final deal = deals[index];
+                    return _buildDealCard(deal);
+                  },
                 ),
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDealCard(Deal deal) {
+    final authState = context.read<auth.AuthBloc>().state;
+    final currentUser = (authState is auth.Authenticated) ? authState.user : null;
+    final bool isOwner = currentUser != null && (deal.salesId == currentUser.id);
+    final bool isAdmin = currentUser?.role == 'admin';
+    final bool isLocked = !isOwner && !isAdmin;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: LongPressDraggable<Deal>(
+        data: deal,
+        maxSimultaneousDrags: isLocked ? 0 : 1,
+        feedback: Material(
+          color: Colors.transparent,
+          child: _CardContent(deal: deal, isDragging: true, isLocked: isLocked),
+        ),
+        childWhenDragging: Opacity(opacity: 0.3, child: _CardContent(deal: deal, isLocked: isLocked)),
+        child: InkWell(
+          onTap: () => context.push('/deals/${deal.id}'),
+          child: _CardContent(deal: deal, isLocked: isLocked),
         ),
       ),
     );
   }
+}
 
-  Widget _buildStageAction(BuildContext context) {
-    const List<Map<String, String>> availableStages = [
-      {'stage': 'prospect', 'label': 'Move to Prospect'},
-      {'stage': 'survey', 'label': 'Move to Survey'},
-      {'stage': 'negotiation', 'label': 'Move to Negotiation'},
-      {'stage': 'closing', 'label': 'Move to Closing'},
-      {'stage': 'closed_won', 'label': 'Mark WON'},
-      {'stage': 'closed_lost', 'label': 'Mark LOST'},
-    ];
+class _CardContent extends StatelessWidget {
+  final Deal deal;
+  final bool isDragging;
+  final bool isLocked;
 
-    return PopupMenuButton<String>(
-      icon: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(LucideIcons.arrowRightLeft,
-            size: 16, color: Color(0xFF1A1A1A)),
+  const _CardContent({required this.deal, this.isDragging = false, this.isLocked = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: isDragging ? 280 : double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
       ),
-      onSelected: (newStage) {
-        context.read<DealBloc>().add(
-              UpdateDealStageSubmitted(id: deal.id, stage: newStage),
-            );
-      },
-      itemBuilder: (context) {
-        return availableStages
-            .where((s) => s['stage'] != deal.stage)
-            .map((s) => PopupMenuItem(
-                  value: s['stage'],
-                  child: Text(s['label']!),
-                ))
-            .toList();
-      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  deal.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827)),
+                ),
+              ),
+              if (isLocked)
+                const Icon(LucideIcons.lock, size: 14, color: Colors.grey)
+              else
+                const Icon(LucideIcons.moreHorizontal, size: 14, color: Colors.grey),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(LucideIcons.user, size: 12, color: Color(0xFF6B7280)),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  deal.customer?.name ?? 'Unknown Customer',
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Rp ${NumberFormat('#,###', 'id_ID').format(deal.amount ?? 0)}',
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFFE8622A)),
+              ),
+              if (deal.probability != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: const Color(0xFFE8622A).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                  child: Text('${deal.probability}%', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFE8622A))),
+                ),
+            ],
+          ),
+          if (deal.salesmanName != null && !isDragging) ...[
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                CircleAvatar(radius: 8, backgroundColor: Colors.grey[200], child: const Icon(LucideIcons.user, size: 8, color: Colors.grey)),
+                const SizedBox(width: 6),
+                Text(deal.salesmanName!, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -155,7 +155,7 @@ func (r *dealRepoImpl) List(ctx context.Context, filter repository.DealFilter) (
 	}
 	defer rows.Close()
 
-	var results []*models.Deal
+	results := []*models.Deal{}
 	for rows.Next() {
 		var d models.Deal
 		var cust models.Customer
@@ -352,7 +352,7 @@ func (r *leadRepoImpl) List(ctx context.Context, filter repository.LeadFilter) (
 	if filter.AssignedTo != nil {
 		baseQuery += fmt.Sprintf(" AND assigned_to = $%d", argCount)
 		args = append(args, *filter.AssignedTo)
-		_ = argCount
+		argCount++
 	}
 
 	baseQuery += " ORDER BY created_at DESC"
@@ -363,7 +363,7 @@ func (r *leadRepoImpl) List(ctx context.Context, filter repository.LeadFilter) (
 	}
 	defer rows.Close()
 
-	var results []*models.Lead
+	results := []*models.Lead{}
 	for rows.Next() {
 		var l models.Lead
 		err := rows.Scan(

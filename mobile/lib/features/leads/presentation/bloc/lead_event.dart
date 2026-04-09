@@ -11,10 +11,11 @@ abstract class LeadEvent extends Equatable {
 class FetchLeads extends LeadEvent {
   final String? query;
   final String? status;
-  const FetchLeads({this.query, this.status});
+  final String? salesId;
+  const FetchLeads({this.query, this.status, this.salesId});
 
   @override
-  List<Object?> get props => [query, status];
+  List<Object?> get props => [query, status, salesId];
 }
 
 class UpdateLeadStatusSubmitted extends LeadEvent {

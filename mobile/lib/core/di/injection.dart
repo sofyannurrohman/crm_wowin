@@ -86,6 +86,9 @@ import '../../features/activities/data/datasources/sales_activity_remote_data_so
 import '../../features/activities/data/repositories/sales_activity_repository_impl.dart';
 import '../../features/activities/domain/repositories/sales_activity_repository.dart';
 import '../../features/activities/presentation/bloc/sales_activity_bloc.dart';
+import '../../features/banners/data/datasources/banner_remote_data_source.dart';
+import '../../features/banners/data/repositories/banner_repository_impl.dart';
+import '../../features/banners/presentation/bloc/banner_bloc.dart';
 
 
 final sl = GetIt.instance;
@@ -135,6 +138,9 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<SalesActivityRemoteDataSource>(
     () => SalesActivityRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<BannerRemoteDataSource>(
+    () => BannerRemoteDataSourceImpl(sl()),
+  );
 
 
 
@@ -164,7 +170,10 @@ Future<void> initDependencies() async {
     () => DealRepositoryImpl(sl()),
   );
   sl.registerLazySingleton<DashboardRepository>(
-    () => DashboardRepositoryImpl(sl()),
+    () => DashboardRepositoryImpl(
+      remoteDataSource: sl(),
+      taskRemoteDataSource: sl(),
+    ),
   );
   sl.registerLazySingleton<ProductRepository>(
     () => ProductRepositoryImpl(sl()),
@@ -174,6 +183,9 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton<SalesActivityRepository>(
     () => SalesActivityRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<BannerRepository>(
+    () => BannerRepositoryImpl(remoteDataSource: sl()),
   );
 
 
@@ -267,6 +279,7 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => TaskBloc(repository: sl()));
   sl.registerFactory(() => SettingsBloc(sl()));
   sl.registerFactory(() => SalesActivityBloc(repository: sl()));
+  sl.registerFactory(() => BannerBloc(repository: sl()));
 
 
 }

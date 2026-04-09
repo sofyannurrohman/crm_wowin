@@ -13,11 +13,12 @@ class CustomerRepositoryImpl implements CustomerRepository {
 
   @override
   Future<Either<Failure, List<Customer>>> getCustomers(
-      {String? query, String? status}) async {
+      {String? query, String? status, String? salesId}) async {
     try {
       final customers = await remoteDataSource.getCustomers(
         query: query,
         status: status,
+        salesId: salesId,
       );
       return Right(customers);
     } on ServerException catch (e) {

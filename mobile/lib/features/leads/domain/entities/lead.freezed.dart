@@ -35,6 +35,10 @@ mixin _$Lead {
   String? get address;
   double? get latitude;
   double? get longitude;
+  @JsonKey(name: 'sales_id')
+  String? get salesId;
+  @JsonKey(name: 'salesman_name')
+  String? get salesmanName;
 
   /// Create a copy of Lead
   /// with the given fields replaced by the non-null parameter values.
@@ -72,7 +76,10 @@ mixin _$Lead {
             (identical(other.latitude, latitude) ||
                 other.latitude == latitude) &&
             (identical(other.longitude, longitude) ||
-                other.longitude == longitude));
+                other.longitude == longitude) &&
+            (identical(other.salesId, salesId) || other.salesId == salesId) &&
+            (identical(other.salesmanName, salesmanName) ||
+                other.salesmanName == salesmanName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -94,11 +101,13 @@ mixin _$Lead {
       convertedAt,
       address,
       latitude,
-      longitude);
+      longitude,
+      salesId,
+      salesmanName);
 
   @override
   String toString() {
-    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt, address: $address, latitude: $latitude, longitude: $longitude)';
+    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt, address: $address, latitude: $latitude, longitude: $longitude, salesId: $salesId, salesmanName: $salesmanName)';
   }
 }
 
@@ -123,7 +132,9 @@ abstract mixin class $LeadCopyWith<$Res> {
       @JsonKey(name: 'converted_at') DateTime? convertedAt,
       String? address,
       double? latitude,
-      double? longitude});
+      double? longitude,
+      @JsonKey(name: 'sales_id') String? salesId,
+      @JsonKey(name: 'salesman_name') String? salesmanName});
 }
 
 /// @nodoc
@@ -154,6 +165,8 @@ class _$LeadCopyWithImpl<$Res> implements $LeadCopyWith<$Res> {
     Object? address = freezed,
     Object? latitude = freezed,
     Object? longitude = freezed,
+    Object? salesId = freezed,
+    Object? salesmanName = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -220,6 +233,14 @@ class _$LeadCopyWithImpl<$Res> implements $LeadCopyWith<$Res> {
           ? _self.longitude
           : longitude // ignore: cast_nullable_to_non_nullable
               as double?,
+      salesId: freezed == salesId
+          ? _self.salesId
+          : salesId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      salesmanName: freezed == salesmanName
+          ? _self.salesmanName
+          : salesmanName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -334,7 +355,9 @@ extension LeadPatterns on Lead {
             @JsonKey(name: 'converted_at') DateTime? convertedAt,
             String? address,
             double? latitude,
-            double? longitude)?
+            double? longitude,
+            @JsonKey(name: 'sales_id') String? salesId,
+            @JsonKey(name: 'salesman_name') String? salesmanName)?
         $default, {
     required TResult orElse(),
   }) {
@@ -357,7 +380,9 @@ extension LeadPatterns on Lead {
             _that.convertedAt,
             _that.address,
             _that.latitude,
-            _that.longitude);
+            _that.longitude,
+            _that.salesId,
+            _that.salesmanName);
       case _:
         return orElse();
     }
@@ -395,7 +420,9 @@ extension LeadPatterns on Lead {
             @JsonKey(name: 'converted_at') DateTime? convertedAt,
             String? address,
             double? latitude,
-            double? longitude)
+            double? longitude,
+            @JsonKey(name: 'sales_id') String? salesId,
+            @JsonKey(name: 'salesman_name') String? salesmanName)
         $default,
   ) {
     final _that = this;
@@ -417,7 +444,9 @@ extension LeadPatterns on Lead {
             _that.convertedAt,
             _that.address,
             _that.latitude,
-            _that.longitude);
+            _that.longitude,
+            _that.salesId,
+            _that.salesmanName);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -454,7 +483,9 @@ extension LeadPatterns on Lead {
             @JsonKey(name: 'converted_at') DateTime? convertedAt,
             String? address,
             double? latitude,
-            double? longitude)?
+            double? longitude,
+            @JsonKey(name: 'sales_id') String? salesId,
+            @JsonKey(name: 'salesman_name') String? salesmanName)?
         $default,
   ) {
     final _that = this;
@@ -476,7 +507,9 @@ extension LeadPatterns on Lead {
             _that.convertedAt,
             _that.address,
             _that.latitude,
-            _that.longitude);
+            _that.longitude,
+            _that.salesId,
+            _that.salesmanName);
       case _:
         return null;
     }
@@ -503,7 +536,9 @@ class _Lead implements Lead {
       @JsonKey(name: 'converted_at') this.convertedAt,
       this.address,
       this.latitude,
-      this.longitude})
+      this.longitude,
+      @JsonKey(name: 'sales_id') this.salesId,
+      @JsonKey(name: 'salesman_name') this.salesmanName})
       : _potentialProducts = potentialProducts;
   factory _Lead.fromJson(Map<String, dynamic> json) => _$LeadFromJson(json);
 
@@ -553,6 +588,12 @@ class _Lead implements Lead {
   final double? latitude;
   @override
   final double? longitude;
+  @override
+  @JsonKey(name: 'sales_id')
+  final String? salesId;
+  @override
+  @JsonKey(name: 'salesman_name')
+  final String? salesmanName;
 
   /// Create a copy of Lead
   /// with the given fields replaced by the non-null parameter values.
@@ -595,7 +636,10 @@ class _Lead implements Lead {
             (identical(other.latitude, latitude) ||
                 other.latitude == latitude) &&
             (identical(other.longitude, longitude) ||
-                other.longitude == longitude));
+                other.longitude == longitude) &&
+            (identical(other.salesId, salesId) || other.salesId == salesId) &&
+            (identical(other.salesmanName, salesmanName) ||
+                other.salesmanName == salesmanName));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -617,11 +661,13 @@ class _Lead implements Lead {
       convertedAt,
       address,
       latitude,
-      longitude);
+      longitude,
+      salesId,
+      salesmanName);
 
   @override
   String toString() {
-    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt, address: $address, latitude: $latitude, longitude: $longitude)';
+    return 'Lead(id: $id, title: $title, name: $name, company: $company, email: $email, phone: $phone, source: $source, status: $status, customerId: $customerId, estimatedValue: $estimatedValue, potentialProducts: $potentialProducts, notes: $notes, convertedAt: $convertedAt, address: $address, latitude: $latitude, longitude: $longitude, salesId: $salesId, salesmanName: $salesmanName)';
   }
 }
 
@@ -647,7 +693,9 @@ abstract mixin class _$LeadCopyWith<$Res> implements $LeadCopyWith<$Res> {
       @JsonKey(name: 'converted_at') DateTime? convertedAt,
       String? address,
       double? latitude,
-      double? longitude});
+      double? longitude,
+      @JsonKey(name: 'sales_id') String? salesId,
+      @JsonKey(name: 'salesman_name') String? salesmanName});
 }
 
 /// @nodoc
@@ -678,6 +726,8 @@ class __$LeadCopyWithImpl<$Res> implements _$LeadCopyWith<$Res> {
     Object? address = freezed,
     Object? latitude = freezed,
     Object? longitude = freezed,
+    Object? salesId = freezed,
+    Object? salesmanName = freezed,
   }) {
     return _then(_Lead(
       id: null == id
@@ -744,6 +794,14 @@ class __$LeadCopyWithImpl<$Res> implements _$LeadCopyWith<$Res> {
           ? _self.longitude
           : longitude // ignore: cast_nullable_to_non_nullable
               as double?,
+      salesId: freezed == salesId
+          ? _self.salesId
+          : salesId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      salesmanName: freezed == salesmanName
+          ? _self.salesmanName
+          : salesmanName // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }

@@ -13,6 +13,10 @@ import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
 import '../bloc/customer_state.dart';
 import '../../domain/entities/customer.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
+import '../../../auth/presentation/bloc/auth_state.dart' as auth;
+import '../../../auth/presentation/bloc/auth_event.dart' as auth;
+import '../../../auth/domain/entities/user_entity.dart' as user_ent;
 
 class AddCustomerPage extends StatefulWidget {
   final Customer? initialCustomer;
@@ -34,6 +38,9 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
   LatLng? _selectedLocation;
   final MapController _mapController = MapController();
   bool _isGettingLocation = false;
+  
+  String? _selectedSalesmanId;
+  List<user_ent.UserEntity> _salesmen = [];
 
   static const Color _green = Color(0xFF0D8549);
   static const Color _navy = Color(0xFF1A237E);
@@ -54,6 +61,16 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
         _selectedLocation = LatLng(widget.initialCustomer!.latitude!,
             widget.initialCustomer!.longitude!);
       }
+      _selectedSalesmanId = widget.initialCustomer!.salesId;
+    }
+
+    // Fetch salesmen if admin
+    // Fetch salesmen if admin
+    final authState = context.read<auth.AuthBloc>().state;
+    if (authState is auth.Authenticated && authState.user.role == 'admin') {
+      context.read<auth.AuthBloc>().add(auth.FetchSalesmen());
+    } else if (authState is auth.Authenticated) {
+      _selectedSalesmanId ??= authState.user.id;
     }
   }
 
@@ -125,6 +142,12 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
       else if (industryValue == 'Cafe') typeValue = 'cafe';
       else if (industryValue == 'Lainnya') typeValue = 'lainnya';
 
+      final authState = context.read<auth.AuthBloc>().state;
+      if (authState is auth.Authenticated) {
+        debugPrint('Adding Customer - Current User ID: ${authState.user.id}');
+        debugPrint('Adding Customer - Selected Salesman ID: $_selectedSalesmanId');
+      }
+
       final customer = Customer(
         id: widget.initialCustomer?.id ?? const Uuid().v4(),
         name: _nameController.text,
@@ -137,6 +160,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
         address: _addressController.text,
         latitude: _selectedLocation?.latitude,
         longitude: _selectedLocation?.longitude,
+        salesId: _selectedSalesmanId,
       );
 
       if (widget.initialCustomer != null) {
@@ -166,45 +190,52 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
               fontSize: 18,
               fontWeight: FontWeight.w800),
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: ElevatedButton(
-              onPressed: _submitForm,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _green,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-              child: Text(isEdit ? 'Update' : 'Save Customer',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ),
-        ],
       ),
-      body: BlocListener<CustomerBloc, CustomerState>(
+      body: BlocListener<auth.AuthBloc, auth.AuthState>(
         listener: (context, state) {
-          if (state is CustomerOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: const Color(0xFF10B981)),
-            );
-            context.pop();
-          } else if (state is CustomerError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: const Color(0xFFEF4444)),
-            );
+          if (state is auth.SalesmenLoaded) {
+            setState(() {
+              _salesmen = state.salesmen;
+            });
           }
         },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionHeader(LucideIcons.building2, 'Company Information'),
+        child: BlocListener<CustomerBloc, CustomerState>(
+          listener: (context, state) {
+            if (state is CustomerOperationSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: const Color(0xFF10B981)),
+              );
+              context.pop();
+            } else if (state is CustomerError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: const Color(0xFFEF4444)),
+              );
+            }
+          },
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  BlocBuilder<auth.AuthBloc, auth.AuthState>(
+                    builder: (context, authState) {
+                       if (authState is auth.Authenticated && authState.user.role == 'admin') {
+                         return Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             _buildSectionHeader(LucideIcons.userCheck, 'Assignment (Admin Only)'),
+                             const SizedBox(height: 16),
+                             _buildSalesmanDropdown(),
+                             const SizedBox(height: 32),
+                           ],
+                         );
+                       }
+                       return const SizedBox.shrink();
+                    },
+                  ),
+                  _buildSectionHeader(LucideIcons.building2, 'Company Information'),
                 const SizedBox(height: 16),
                 _buildTextField('Company Name', _nameController, 'e.g. Acme Corp'),
                 const SizedBox(height: 16),
@@ -281,14 +312,15 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
                     style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSectionHeader(IconData icon, String title) {
     return Row(
@@ -350,6 +382,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
         Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF4B5563))),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
+          value: controller.text.isNotEmpty ? controller.text : null,
           decoration: InputDecoration(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
@@ -357,6 +390,32 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
           hint: const Text('Pilih tipe bisnis'),
           items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(),
           onChanged: (v) => controller.text = v ?? '',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSalesmanDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Assigned Salesman', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF4B5563))),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedSalesmanId,
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
+            prefixIcon: const Icon(LucideIcons.user, size: 18),
+          ),
+          hint: const Text('Assign to Salesman'),
+          items: _salesmen.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+          onChanged: (v) {
+            setState(() {
+              _selectedSalesmanId = v;
+            });
+          },
+          validator: (v) => v == null ? 'Please assign a salesman' : null,
         ),
       ],
     );

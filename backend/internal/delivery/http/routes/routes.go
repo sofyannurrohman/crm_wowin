@@ -26,6 +26,7 @@ func SetupRouter(
 	settingsHandler *handlers.SettingsHandler,
 	salesActivityHandler *handlers.SalesActivityHandler,
 	warehouseHandler *handlers.WarehouseHandler,
+	bannerHandler *handlers.BannerHandler,
 ) {
 
 	v1 := r.Group("/api/v1")
@@ -170,6 +171,11 @@ func SetupRouter(
 		activityGroup.PUT("/:id", salesActivityHandler.Update)
 		activityGroup.DELETE("/:id", salesActivityHandler.Delete)
 		
+		// Banners
+		bannerGroup := protected.Group("/banners")
+		bannerGroup.POST("", bannerHandler.Create)
+		bannerGroup.GET("", bannerHandler.List)
+
 		// Warehouses
 		warehouseHandler.RegisterRoutes(protected)
 		

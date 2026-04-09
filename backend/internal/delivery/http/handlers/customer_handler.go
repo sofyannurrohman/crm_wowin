@@ -77,10 +77,22 @@ func (h *CustomerHandler) ListCustomers(c *gin.Context) {
 	filter.Status = c.Query("status")
 	filter.Type = c.Query("type")
 	
-	if assignStr := c.Query("assigned_to"); assignStr != "" {
+	// Role-aware enforcement
+	userRole, _ := c.Get("user_role")
+	userID, _ := uuid.Parse(c.GetString("user_id"))
+
+	assignStr := c.Query("assigned_to")
+	if assignStr == "" {
+		assignStr = c.Query("sales_id")
+	}
+
+	if assignStr != "" {
 		if aid, err := uuid.Parse(assignStr); err == nil {
 			filter.AssignedTo = &aid
 		}
+	} else if userRole == models.RoleSales {
+		// Sales role restricted to their own data
+		filter.AssignedTo = &userID
 	}
 
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))

@@ -8,6 +8,7 @@ class FaceDetectorService {
   FaceDetector? _faceDetector;
 
   FaceDetectorService() {
+    if (kIsWeb) return;
     _faceDetector = FaceDetector(
       options: FaceDetectorOptions(
         enableContours: false,

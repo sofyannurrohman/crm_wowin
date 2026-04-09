@@ -140,6 +140,9 @@ func NewLeadUseCase(lr repository.LeadRepository, cr repository.CustomerReposito
 
 func (u *leadUseCaseImpl) CreateLead(ctx context.Context, l *models.Lead, reqUser uuid.UUID) (*models.Lead, error) {
 	l.CreatedBy = &reqUser
+	if l.AssignedTo == nil {
+		l.AssignedTo = &reqUser
+	}
 	if l.Status == "" {
 		l.Status = models.LeadStatusNew
 	}

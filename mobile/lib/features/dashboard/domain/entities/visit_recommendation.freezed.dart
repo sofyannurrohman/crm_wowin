@@ -27,6 +27,14 @@ mixin _$VisitRecommendation {
   String get address;
   double get latitude;
   double get longitude;
+  @JsonKey(name: 'customer_id')
+  String? get customerId;
+  @JsonKey(name: 'lead_id')
+  String? get leadId;
+  @JsonKey(name: 'task_destination_id')
+  String? get taskDestinationId;
+  @JsonKey(name: 'deal_id')
+  String? get dealId;
 
   /// Create a copy of VisitRecommendation
   /// with the given fields replaced by the non-null parameter values.
@@ -59,17 +67,38 @@ mixin _$VisitRecommendation {
             (identical(other.latitude, latitude) ||
                 other.latitude == latitude) &&
             (identical(other.longitude, longitude) ||
-                other.longitude == longitude));
+                other.longitude == longitude) &&
+            (identical(other.customerId, customerId) ||
+                other.customerId == customerId) &&
+            (identical(other.leadId, leadId) || other.leadId == leadId) &&
+            (identical(other.taskDestinationId, taskDestinationId) ||
+                other.taskDestinationId == taskDestinationId) &&
+            (identical(other.dealId, dealId) || other.dealId == dealId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, name, type, status, priority,
-      reason, lastVisitAt, daysSinceLast, address, latitude, longitude);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      name,
+      type,
+      status,
+      priority,
+      reason,
+      lastVisitAt,
+      daysSinceLast,
+      address,
+      latitude,
+      longitude,
+      customerId,
+      leadId,
+      taskDestinationId,
+      dealId);
 
   @override
   String toString() {
-    return 'VisitRecommendation(id: $id, name: $name, type: $type, status: $status, priority: $priority, reason: $reason, lastVisitAt: $lastVisitAt, daysSinceLast: $daysSinceLast, address: $address, latitude: $latitude, longitude: $longitude)';
+    return 'VisitRecommendation(id: $id, name: $name, type: $type, status: $status, priority: $priority, reason: $reason, lastVisitAt: $lastVisitAt, daysSinceLast: $daysSinceLast, address: $address, latitude: $latitude, longitude: $longitude, customerId: $customerId, leadId: $leadId, taskDestinationId: $taskDestinationId, dealId: $dealId)';
   }
 }
 
@@ -90,7 +119,11 @@ abstract mixin class $VisitRecommendationCopyWith<$Res> {
       @JsonKey(name: 'days_since_last') int daysSinceLast,
       String address,
       double latitude,
-      double longitude});
+      double longitude,
+      @JsonKey(name: 'customer_id') String? customerId,
+      @JsonKey(name: 'lead_id') String? leadId,
+      @JsonKey(name: 'task_destination_id') String? taskDestinationId,
+      @JsonKey(name: 'deal_id') String? dealId});
 }
 
 /// @nodoc
@@ -117,6 +150,10 @@ class _$VisitRecommendationCopyWithImpl<$Res>
     Object? address = null,
     Object? latitude = null,
     Object? longitude = null,
+    Object? customerId = freezed,
+    Object? leadId = freezed,
+    Object? taskDestinationId = freezed,
+    Object? dealId = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -163,6 +200,22 @@ class _$VisitRecommendationCopyWithImpl<$Res>
           ? _self.longitude
           : longitude // ignore: cast_nullable_to_non_nullable
               as double,
+      customerId: freezed == customerId
+          ? _self.customerId
+          : customerId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      leadId: freezed == leadId
+          ? _self.leadId
+          : leadId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      taskDestinationId: freezed == taskDestinationId
+          ? _self.taskDestinationId
+          : taskDestinationId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      dealId: freezed == dealId
+          ? _self.dealId
+          : dealId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -271,7 +324,11 @@ extension VisitRecommendationPatterns on VisitRecommendation {
             @JsonKey(name: 'days_since_last') int daysSinceLast,
             String address,
             double latitude,
-            double longitude)?
+            double longitude,
+            @JsonKey(name: 'customer_id') String? customerId,
+            @JsonKey(name: 'lead_id') String? leadId,
+            @JsonKey(name: 'task_destination_id') String? taskDestinationId,
+            @JsonKey(name: 'deal_id') String? dealId)?
         $default, {
     required TResult orElse(),
   }) {
@@ -289,7 +346,11 @@ extension VisitRecommendationPatterns on VisitRecommendation {
             _that.daysSinceLast,
             _that.address,
             _that.latitude,
-            _that.longitude);
+            _that.longitude,
+            _that.customerId,
+            _that.leadId,
+            _that.taskDestinationId,
+            _that.dealId);
       case _:
         return orElse();
     }
@@ -321,7 +382,11 @@ extension VisitRecommendationPatterns on VisitRecommendation {
             @JsonKey(name: 'days_since_last') int daysSinceLast,
             String address,
             double latitude,
-            double longitude)
+            double longitude,
+            @JsonKey(name: 'customer_id') String? customerId,
+            @JsonKey(name: 'lead_id') String? leadId,
+            @JsonKey(name: 'task_destination_id') String? taskDestinationId,
+            @JsonKey(name: 'deal_id') String? dealId)
         $default,
   ) {
     final _that = this;
@@ -338,7 +403,11 @@ extension VisitRecommendationPatterns on VisitRecommendation {
             _that.daysSinceLast,
             _that.address,
             _that.latitude,
-            _that.longitude);
+            _that.longitude,
+            _that.customerId,
+            _that.leadId,
+            _that.taskDestinationId,
+            _that.dealId);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -369,7 +438,11 @@ extension VisitRecommendationPatterns on VisitRecommendation {
             @JsonKey(name: 'days_since_last') int daysSinceLast,
             String address,
             double latitude,
-            double longitude)?
+            double longitude,
+            @JsonKey(name: 'customer_id') String? customerId,
+            @JsonKey(name: 'lead_id') String? leadId,
+            @JsonKey(name: 'task_destination_id') String? taskDestinationId,
+            @JsonKey(name: 'deal_id') String? dealId)?
         $default,
   ) {
     final _that = this;
@@ -386,7 +459,11 @@ extension VisitRecommendationPatterns on VisitRecommendation {
             _that.daysSinceLast,
             _that.address,
             _that.latitude,
-            _that.longitude);
+            _that.longitude,
+            _that.customerId,
+            _that.leadId,
+            _that.taskDestinationId,
+            _that.dealId);
       case _:
         return null;
     }
@@ -407,7 +484,11 @@ class _VisitRecommendation implements VisitRecommendation {
       @JsonKey(name: 'days_since_last') required this.daysSinceLast,
       required this.address,
       required this.latitude,
-      required this.longitude});
+      required this.longitude,
+      @JsonKey(name: 'customer_id') this.customerId,
+      @JsonKey(name: 'lead_id') this.leadId,
+      @JsonKey(name: 'task_destination_id') this.taskDestinationId,
+      @JsonKey(name: 'deal_id') this.dealId});
   factory _VisitRecommendation.fromJson(Map<String, dynamic> json) =>
       _$VisitRecommendationFromJson(json);
 
@@ -438,6 +519,18 @@ class _VisitRecommendation implements VisitRecommendation {
   final double latitude;
   @override
   final double longitude;
+  @override
+  @JsonKey(name: 'customer_id')
+  final String? customerId;
+  @override
+  @JsonKey(name: 'lead_id')
+  final String? leadId;
+  @override
+  @JsonKey(name: 'task_destination_id')
+  final String? taskDestinationId;
+  @override
+  @JsonKey(name: 'deal_id')
+  final String? dealId;
 
   /// Create a copy of VisitRecommendation
   /// with the given fields replaced by the non-null parameter values.
@@ -475,17 +568,38 @@ class _VisitRecommendation implements VisitRecommendation {
             (identical(other.latitude, latitude) ||
                 other.latitude == latitude) &&
             (identical(other.longitude, longitude) ||
-                other.longitude == longitude));
+                other.longitude == longitude) &&
+            (identical(other.customerId, customerId) ||
+                other.customerId == customerId) &&
+            (identical(other.leadId, leadId) || other.leadId == leadId) &&
+            (identical(other.taskDestinationId, taskDestinationId) ||
+                other.taskDestinationId == taskDestinationId) &&
+            (identical(other.dealId, dealId) || other.dealId == dealId));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, id, name, type, status, priority,
-      reason, lastVisitAt, daysSinceLast, address, latitude, longitude);
+  int get hashCode => Object.hash(
+      runtimeType,
+      id,
+      name,
+      type,
+      status,
+      priority,
+      reason,
+      lastVisitAt,
+      daysSinceLast,
+      address,
+      latitude,
+      longitude,
+      customerId,
+      leadId,
+      taskDestinationId,
+      dealId);
 
   @override
   String toString() {
-    return 'VisitRecommendation(id: $id, name: $name, type: $type, status: $status, priority: $priority, reason: $reason, lastVisitAt: $lastVisitAt, daysSinceLast: $daysSinceLast, address: $address, latitude: $latitude, longitude: $longitude)';
+    return 'VisitRecommendation(id: $id, name: $name, type: $type, status: $status, priority: $priority, reason: $reason, lastVisitAt: $lastVisitAt, daysSinceLast: $daysSinceLast, address: $address, latitude: $latitude, longitude: $longitude, customerId: $customerId, leadId: $leadId, taskDestinationId: $taskDestinationId, dealId: $dealId)';
   }
 }
 
@@ -508,7 +622,11 @@ abstract mixin class _$VisitRecommendationCopyWith<$Res>
       @JsonKey(name: 'days_since_last') int daysSinceLast,
       String address,
       double latitude,
-      double longitude});
+      double longitude,
+      @JsonKey(name: 'customer_id') String? customerId,
+      @JsonKey(name: 'lead_id') String? leadId,
+      @JsonKey(name: 'task_destination_id') String? taskDestinationId,
+      @JsonKey(name: 'deal_id') String? dealId});
 }
 
 /// @nodoc
@@ -535,6 +653,10 @@ class __$VisitRecommendationCopyWithImpl<$Res>
     Object? address = null,
     Object? latitude = null,
     Object? longitude = null,
+    Object? customerId = freezed,
+    Object? leadId = freezed,
+    Object? taskDestinationId = freezed,
+    Object? dealId = freezed,
   }) {
     return _then(_VisitRecommendation(
       id: null == id
@@ -581,6 +703,22 @@ class __$VisitRecommendationCopyWithImpl<$Res>
           ? _self.longitude
           : longitude // ignore: cast_nullable_to_non_nullable
               as double,
+      customerId: freezed == customerId
+          ? _self.customerId
+          : customerId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      leadId: freezed == leadId
+          ? _self.leadId
+          : leadId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      taskDestinationId: freezed == taskDestinationId
+          ? _self.taskDestinationId
+          : taskDestinationId // ignore: cast_nullable_to_non_nullable
+              as String?,
+      dealId: freezed == dealId
+          ? _self.dealId
+          : dealId // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }

@@ -12,6 +12,7 @@ abstract class AuthRemoteDataSource {
     required String password,
     String companyName,
   });
+  Future<List<UserEntity>> getSalesmen();
   Future<UserEntity> getMe();
   Future<UserEntity> updateProfile({String? name, String? phone});
 }
@@ -33,7 +34,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       if (response.statusCode == 200 && response.data['data'] != null) {
-        return AuthModel.fromJson(response.data['data']);
+        final data = Map<String, dynamic>.from(response.data['data']);
+        if (data['user'] != null) {
+          data['user'] = _mapToUser(data['user'] as Map<String, dynamic>);
+        }
+        return AuthModel.fromJson(data);
       } else {
         throw ServerException(
             response.data['message'] ?? 'Unknown authentication error');
@@ -83,11 +88,27 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
+  Future<List<UserEntity>> getSalesmen() async {
+    try {
+      final response = await dio.get('/users', queryParameters: {'role': 'salesman'});
+      if (response.statusCode == 200 && response.data['data'] != null) {
+        final List data = response.data['data'];
+        return data.map((e) => UserEntity.fromJson(e)).toList();
+      } else {
+        throw ServerException('Gagal mengambil data salesman');
+      }
+    } on DioException catch (e) {
+      throw ServerException(e.message ?? 'Server error occurred');
+    }
+  }
+
+  @override
   Future<UserEntity> getMe() async {
     try {
       final response = await dio.get(ApiEndpoints.getMe);
       if (response.statusCode == 200 && response.data['data'] != null) {
-        return UserEntity.fromJson(response.data['data']);
+        final data = _mapToUser(response.data['data'] as Map<String, dynamic>);
+        return UserEntity.fromJson(data);
       } else {
         throw ServerException('Gagal mengambil data profil');
       }
@@ -107,7 +128,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         },
       );
       if (response.statusCode == 200 && response.data['data'] != null) {
-        return UserEntity.fromJson(response.data['data']);
+        final data = _mapToUser(response.data['data'] as Map<String, dynamic>);
+        return UserEntity.fromJson(data);
       } else {
         throw ServerException(
             response.data['message'] ?? 'Gagal memperbarui profil');
@@ -115,5 +137,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on DioException catch (e) {
       throw ServerException(e.message ?? 'Server error occurred');
     }
+  }
+
+  Map<String, dynamic> _mapToUser(Map<String, dynamic> json) {
+    final Map<String, dynamic> normalized = Map<String, dynamic>.from(json);
+    if (normalized['id'] != null) {
+      normalized['id'] = normalized['id'].toString();
+    }
+    return normalized;
   }
 }

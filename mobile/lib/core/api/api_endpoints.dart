@@ -44,4 +44,5 @@ class ApiEndpoints {
   static const String analytics = '/reports/analytics';
   static const String visitRecommendations = '/reports/recommendations';
   static const String warehouses = '/warehouses';
+  static const String banners = '/banners';
 }

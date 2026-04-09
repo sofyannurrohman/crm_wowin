@@ -6,7 +6,7 @@ import 'package:wowin_crm/features/visits/domain/entities/visit_activity.dart';
 import 'package:wowin_crm/features/visits/domain/entities/visit_schedule.dart';
 
 abstract class CustomerRemoteDataSource {
-  Future<List<Customer>> getCustomers({String? query, String? status});
+  Future<List<Customer>> getCustomers({String? query, String? status, String? salesId});
   Future<CustomerDetailResponse> getCustomerDetail(String id);
   Future<Customer> createCustomer(Customer customer);
   Future<Customer> updateCustomer(Customer customer);
@@ -19,11 +19,14 @@ class CustomerRemoteDataSourceImpl implements CustomerRemoteDataSource {
   CustomerRemoteDataSourceImpl(this._dio);
 
   @override
-  Future<List<Customer>> getCustomers({String? query, String? status}) async {
+  Future<List<Customer>> getCustomers({String? query, String? status, String? salesId}) async {
     final queryParams = <String, dynamic>{};
     if (query != null && query.isNotEmpty) queryParams['search'] = query;
     if (status != null && status.isNotEmpty && status.toLowerCase() != 'all') {
       queryParams['status'] = status.toLowerCase();
+    }
+    if (salesId != null && salesId.isNotEmpty) {
+      queryParams['sales_id'] = salesId;
     }
 
     final response = await _dio.get(
@@ -127,6 +130,14 @@ class CustomerRemoteDataSourceImpl implements CustomerRemoteDataSource {
       } else if (normalized['checkin_radius'] is double) {
         normalized['checkin_radius'] = (normalized['checkin_radius'] as double).toInt();
       }
+    }
+
+    if (normalized['sales_id'] != null) {
+      normalized['sales_id'] = normalized['sales_id'].toString();
+    }
+    
+    if (normalized['salesman_name'] != null) {
+      normalized['salesman_name'] = normalized['salesman_name'].toString();
     }
 
     return Customer.fromJson(normalized);

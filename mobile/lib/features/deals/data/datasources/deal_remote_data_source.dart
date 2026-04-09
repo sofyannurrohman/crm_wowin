@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 import '../../domain/entities/deal.dart';
 import '../../domain/entities/deal_item.dart';
+import '../../../customers/domain/entities/customer.dart';
 
 abstract class DealRemoteDataSource {
-  Future<List<Deal>> getDeals({String? customerId});
+  Future<List<Deal>> getDeals({String? customerId, String? salesId});
   Future<Deal> getDeal(String id);
   Future<Deal> createDeal(Deal deal);
   Future<Deal> updateDeal(Deal deal);
@@ -20,27 +21,39 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
   DealRemoteDataSourceImpl(this._dio);
 
   @override
-  Future<List<Deal>> getDeals({String? customerId}) async {
+  Future<List<Deal>> getDeals({String? customerId, String? salesId}) async {
     final response = await _dio.get('/deals', queryParameters: {
       if (customerId != null) 'customer_id': customerId,
+      if (salesId != null) 'sales_id': salesId,
     });
     final List data = response.data['data'] ?? [];
-    return data.map((e) => Deal.fromJson(e as Map<String, dynamic>)).toList();
+    return data.map((e) {
+      final Map<String, dynamic> normalized = Map<String, dynamic>.from(e as Map);
+      if (normalized['sales_id'] != null) normalized['sales_id'] = normalized['sales_id'].toString();
+      if (normalized['salesman_name'] != null) normalized['salesman_name'] = normalized['salesman_name'].toString();
+      return Deal.fromJson(normalized);
+    }).toList();
   }
 
   @override
   Future<Deal> getDeal(String id) async {
     final response = await _dio.get('/deals/$id');
     final data = response.data['data'];
-    
-    // Some endpoints wrap the deal in a "deal" key
+    Customer? customer;
+    if (data['customer'] != null) {
+      customer = Customer.fromJson(data['customer']);
+    }
+
     final Map<String, dynamic> dealPart = data['deal'] ?? data;
+    final Map<String, dynamic> normalized = Map<String, dynamic>.from(dealPart);
     
-    if (data['customer'] != null && dealPart['customer'] == null) {
-      dealPart['customer'] = data['customer'];
+    if (normalized['sales_id'] != null) normalized['sales_id'] = normalized['sales_id'].toString();
+    if (normalized['salesman_name'] != null) normalized['salesman_name'] = normalized['salesman_name'].toString();
+    if (customer != null && normalized['customer'] == null) {
+      normalized['customer'] = data['customer'];
     }
     
-    return Deal.fromJson(dealPart);
+    return Deal.fromJson(normalized);
   }
 
   @override
@@ -76,8 +89,12 @@ class DealRemoteDataSourceImpl implements DealRemoteDataSource {
     final Map<String, dynamic> dealData = data is Map && data.containsKey('deal') 
         ? data['deal'] 
         : (data ?? response.data);
+    
+    final Map<String, dynamic> normalized = Map<String, dynamic>.from(dealData as Map);
+    if (normalized['sales_id'] != null) normalized['sales_id'] = normalized['sales_id'].toString();
+    if (normalized['salesman_name'] != null) normalized['salesman_name'] = normalized['salesman_name'].toString();
         
-    return Deal.fromJson(dealData as Map<String, dynamic>);
+    return Deal.fromJson(normalized);
   }
 
   @override

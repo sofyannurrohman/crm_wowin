@@ -17,6 +17,10 @@ abstract class VisitRecommendation with _$VisitRecommendation {
     required String address,
     required double latitude,
     required double longitude,
+    @JsonKey(name: 'customer_id') String? customerId,
+    @JsonKey(name: 'lead_id') String? leadId,
+    @JsonKey(name: 'task_destination_id') String? taskDestinationId,
+    @JsonKey(name: 'deal_id') String? dealId,
   }) = _VisitRecommendation;
 
   factory VisitRecommendation.fromJson(Map<String, dynamic> json) =>

@@ -20,6 +20,8 @@ abstract class Customer with _$Customer {
     double? latitude,
     double? longitude,
     @JsonKey(name: 'checkin_radius') int? checkinRadius,
+    @JsonKey(name: 'sales_id') String? salesId,
+    @JsonKey(name: 'salesman_name') String? salesmanName,
   }) = _Customer;
 
   factory Customer.fromJson(Map<String, dynamic> json) =>

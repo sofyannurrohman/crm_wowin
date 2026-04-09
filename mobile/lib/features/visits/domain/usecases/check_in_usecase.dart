@@ -10,7 +10,7 @@ class CheckInUseCase {
 
   Future<Either<Failure, void>> call(CheckInRequest request) async {
     // Validasi file foto harus selalu ada karena Checkin wajib photo
-    if (!request.photoFile.existsSync()) {
+    if (request.photoFile.path.isEmpty) {
       return const Left(
           ValidationFailure('File foto tidak ditemukan atau rusak.'));
     }

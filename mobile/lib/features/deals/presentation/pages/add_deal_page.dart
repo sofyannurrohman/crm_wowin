@@ -10,11 +10,15 @@ import '../bloc/deal_bloc.dart';
 import '../bloc/deal_event.dart';
 import '../bloc/deal_state.dart';
 import '../../../customers/presentation/bloc/customer_state.dart';
+import '../../../customers/presentation/bloc/customer_event.dart';
 import '../../../products/presentation/bloc/product_bloc.dart';
 import '../../../products/presentation/bloc/product_event.dart';
 import '../../../products/presentation/bloc/product_state.dart';
 import '../../../customers/presentation/bloc/customer_bloc.dart';
-import '../../../customers/presentation/bloc/customer_event.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
+import '../../../auth/presentation/bloc/auth_state.dart' as auth;
+import '../../../auth/presentation/bloc/auth_event.dart' as auth;
+import '../../../auth/domain/entities/user_entity.dart' as user_ent;
 import '../../../products/domain/entities/product.dart';
 import '../../domain/entities/deal_item.dart';
 
@@ -48,6 +52,9 @@ class _AddDealPageState extends State<AddDealPage> {
   DateTime? _expectedCloseDate;
   List<DealItem> _items = [];
   String? _submittedDealId;
+  
+  String? _selectedSalesmanId;
+  List<user_ent.UserEntity> _salesmen = [];
 
   final List<String> _stages = [
     'prospect',
@@ -74,9 +81,19 @@ class _AddDealPageState extends State<AddDealPage> {
     _selectedCustomerName = deal?.customer?.name ?? widget.initialCustomerName;
     _selectedStage = deal?.stage ?? 'prospect';
     _items = deal?.items ?? [];
+    _selectedSalesmanId = deal?.salesId;
     
     // Fetch products for the picker
     context.read<ProductBloc>().add(const FetchProducts());
+
+    // Fetch salesmen if admin
+    // Fetch salesmen if admin
+    final authState = context.read<auth.AuthBloc>().state;
+    if (authState is auth.Authenticated && authState.user.role == 'admin') {
+      context.read<auth.AuthBloc>().add(auth.FetchSalesmen());
+    } else if (authState is auth.Authenticated) {
+      _selectedSalesmanId ??= authState.user.id;
+    }
   }
 
   @override
@@ -236,7 +253,7 @@ class _AddDealPageState extends State<AddDealPage> {
   }
 
   void _showCustomerPicker() {
-    context.read<CustomerBloc>().add(const FetchCustomers());
+    context.read<CustomerBloc>().add(FetchCustomers());
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -322,6 +339,7 @@ class _AddDealPageState extends State<AddDealPage> {
         description: _descriptionController.text,
         status: 'open',
         items: _items,
+        salesId: _selectedSalesmanId,
       );
       
       _submittedDealId = deal.id;
@@ -345,27 +363,51 @@ class _AddDealPageState extends State<AddDealPage> {
         backgroundColor: const Color(0xFF1A1A1A),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: BlocListener<DealBloc, DealState>(
+      body: BlocListener<auth.AuthBloc, auth.AuthState>(
         listener: (context, state) {
-          if (state is DealOperationSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.green),
-            );
-            context.pop(_submittedDealId); // Return the deal ID to the caller
-          } else if (state is DealError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
-            );
+          if (state is auth.SalesmenLoaded) {
+            setState(() {
+              _salesmen = state.salesmen;
+            });
           }
         },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildSectionHeader('Informasi Dasar', LucideIcons.briefcase),
+        child: BlocListener<DealBloc, DealState>(
+          listener: (context, state) {
+            if (state is DealOperationSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+              );
+              context.pop(_submittedDealId); // Return the deal ID to the caller
+            } else if (state is DealError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              );
+            }
+          },
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   BlocBuilder<auth.AuthBloc, auth.AuthState>(
+                    builder: (context, authState) {
+                       if (authState is auth.Authenticated && authState.user.role == 'admin') {
+                         return Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             _buildSectionHeader('Assignment (Admin Only)', LucideIcons.userCheck),
+                             const SizedBox(height: 16),
+                             _buildSalesmanDropdown(),
+                             const SizedBox(height: 32),
+                           ],
+                         );
+                       }
+                       return const SizedBox.shrink();
+                    },
+                  ),
+                  _buildSectionHeader('Informasi Dasar', LucideIcons.briefcase),
                 const SizedBox(height: 16),
                 _buildTextField(
                   controller: _titleController,
@@ -488,8 +530,9 @@ class _AddDealPageState extends State<AddDealPage> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
@@ -642,6 +685,36 @@ class _AddDealPageState extends State<AddDealPage> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildSalesmanDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Assigned Salesman', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF4B5563))),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedSalesmanId,
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            prefixIcon: const Icon(LucideIcons.user, size: 18),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFE8622A), width: 2),
+            ),
+          ),
+          hint: const Text('Assign to Salesman'),
+          items: _salesmen.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
+          onChanged: (v) {
+            setState(() {
+              _selectedSalesmanId = v;
+            });
+          },
+          validator: (v) => v == null ? 'Please assign a salesman' : null,
+        ),
+      ],
     );
   }
 }

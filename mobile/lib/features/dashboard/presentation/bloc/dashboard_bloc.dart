@@ -25,22 +25,20 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     emit(DashboardLoading());
 
     final kpiResult = await getKpiSummary();
-    final recsResult = await repository.getVisitRecommendations();
+    final routeResult = await repository.getRouteTasks(salesId: event.salesId);
 
     kpiResult.fold(
       (failure) => emit(DashboardError(failure.message)),
       (dashboard) {
-        final List<VisitRecommendation> recommendations = [];
-        recsResult.fold(
-          (_) => null,
-          (data) {
-            recommendations.addAll(
-              data.map((e) => VisitRecommendation.fromJson(e)).toList(),
-            );
+        routeResult.fold(
+          (failure) => emit(DashboardError(failure.message)),
+          (tasks) {
+            emit(DashboardLoaded(
+              dashboard,
+              routeTasks: tasks,
+            ));
           },
         );
-
-        emit(DashboardLoaded(dashboard, recommendations: recommendations));
       },
     );
   }

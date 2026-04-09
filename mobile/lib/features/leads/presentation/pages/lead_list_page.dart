@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../bloc/lead_bloc.dart';
 import '../bloc/lead_event.dart';
 import '../bloc/lead_state.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
 import '../../../../core/utils/animation_extensions.dart';
@@ -52,10 +54,18 @@ class _LeadListPageState extends State<LeadListPage> {
         status = 'qualified';
         break;
     }
+
+    final authState = context.read<AuthBloc>().state;
+    String? salesId;
+    if (authState is Authenticated && authState.user.role == 'sales') {
+      salesId = authState.user.id;
+    }
+
     context.read<LeadBloc>().add(
           FetchLeads(
             query: _searchController.text,
             status: status,
+            salesId: salesId,
           ),
         );
   }

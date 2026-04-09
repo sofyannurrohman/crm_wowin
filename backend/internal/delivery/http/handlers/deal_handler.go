@@ -58,10 +58,22 @@ func (h *LeadHandler) ListLeads(c *gin.Context) {
 	filter.Search = c.Query("search")
 	filter.Status = c.Query("status")
 	
-	if assignStr := c.Query("assigned_to"); assignStr != "" {
+	// Role-aware enforcement
+	userRole, _ := c.Get("user_role")
+	userID, _ := uuid.Parse(c.GetString("user_id"))
+
+	assignStr := c.Query("assigned_to")
+	if assignStr == "" {
+		assignStr = c.Query("sales_id")
+	}
+
+	if assignStr != "" {
 		if aid, err := uuid.Parse(assignStr); err == nil {
 			filter.AssignedTo = &aid
 		}
+	} else if userRole == models.RoleSales {
+		// Enforce ownership for sales role
+		filter.AssignedTo = &userID
 	}
 
 	leads, err := h.uc.ListLeads(c.Request.Context(), filter)
@@ -171,10 +183,23 @@ func (h *DealHandler) ListDeals(c *gin.Context) {
 			filter.CustomerID = &cid
 		}
 	}
-	if assignStr := c.Query("assigned_to"); assignStr != "" {
+
+	// Role-aware enforcement
+	userRole, _ := c.Get("user_role")
+	userID, _ := uuid.Parse(c.GetString("user_id"))
+
+	assignStr := c.Query("assigned_to")
+	if assignStr == "" {
+		assignStr = c.Query("sales_id")
+	}
+
+	if assignStr != "" {
 		if aid, err := uuid.Parse(assignStr); err == nil {
 			filter.AssignedTo = &aid
 		}
+	} else if userRole == models.RoleSales {
+		// Enforce ownership for sales role
+		filter.AssignedTo = &userID
 	}
 
 	deals, err := h.uc.ListDeals(c.Request.Context(), filter)

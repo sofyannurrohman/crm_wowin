@@ -161,6 +161,7 @@ func main() {
 	settingsRepo := postgres.NewSettingsRepository(dbpool)
 	salesActivityRepo := postgres.NewSalesActivityRepository(dbpool)
 	warehouseRepo := postgres.NewWarehouseRepository(dbpool)
+	bannerRepo := postgres.NewBannerRepository(dbpool)
 	
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -187,6 +188,7 @@ func main() {
 	taskUC := usecase.NewTaskUseCase(taskRepo)
 	settingsUC := usecase.NewSettingsUseCase(settingsRepo)
 	warehouseUC := usecase.NewWarehouseUseCase(warehouseRepo)
+	bannerUC := usecase.NewBannerUseCase(bannerRepo)
 	
 	authHandler := handlers.NewAuthHandler(userUC)
 	customerHandler := handlers.NewCustomerHandler(customerUC)
@@ -204,9 +206,10 @@ func main() {
 	settingsHandler := handlers.NewSettingsHandler(settingsUC)
 	salesActivityHandler := handlers.NewSalesActivityHandler(salesActivityRepo)
 	warehouseHandler := handlers.NewWarehouseHandler(warehouseUC)
+	bannerHandler := handlers.NewBannerHandler(bannerUC, uploadDir)
 
 	// Setup Routes
-	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler, targetHandler, taskHandler, settingsHandler, salesActivityHandler, warehouseHandler)
+	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler, targetHandler, taskHandler, settingsHandler, salesActivityHandler, warehouseHandler, bannerHandler)
 
 	// Additionally inject basic health check underneath v1
 	router.GET("/api/v1/health", func(c *gin.Context) {

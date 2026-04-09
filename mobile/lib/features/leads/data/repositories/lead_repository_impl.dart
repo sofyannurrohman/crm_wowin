@@ -12,11 +12,12 @@ class LeadRepositoryImpl implements LeadRepository {
 
   @override
   Future<Either<Failure, List<Lead>>> getLeads(
-      {String? query, String? status}) async {
+      {String? query, String? status, String? salesId}) async {
     try {
       final leads = await remoteDataSource.getLeads(
         query: query,
         status: status,
+        salesId: salesId,
       );
       return Right(leads);
     } on ServerException catch (e) {

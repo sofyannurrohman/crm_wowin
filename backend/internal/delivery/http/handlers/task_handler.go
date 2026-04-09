@@ -41,16 +41,20 @@ func (h *TaskHandler) Create(c *gin.Context) {
 func (h *TaskHandler) List(c *gin.Context) {
 	var filter repository.TaskFilter
 	
+	// Role-aware default filtering
+	userRole, _ := c.Get("user_role")
+	userID, _ := uuid.Parse(c.GetString("user_id"))
+
 	salesIDStr := c.Query("sales_id")
 	if salesIDStr != "" {
 		if u, err := uuid.Parse(salesIDStr); err == nil {
 			filter.SalesID = &u
 		}
-	} else {
-		// Default to current user
-		u, _ := uuid.Parse(c.GetString("user_id"))
-		filter.SalesID = &u
+	} else if userRole == models.RoleSales {
+		// Sales role is forced to their own assigned data
+		filter.SalesID = &userID
 	}
+	// For Admin/Manager/Supervisor, if no sales_id is provided, filter remains nil (show all)
 
 	if cID := c.Query("customer_id"); cID != "" {
 		if u, err := uuid.Parse(cID); err == nil {
