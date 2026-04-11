@@ -43,8 +43,15 @@ class CheckOutRequest {
   final String? taskDestinationId;
   final String? customerId;
   final String? leadId;
+  final String? outcome;
   final double? priceOverride;
   final String? priceOverrideNote;
+  final String? dealId;
+
+  final List<Map<String, dynamic>>? dealItems;
+  final String? paymentMethod;
+  final String? paymentRef;
+  final dynamic signatureBytes;
 
   CheckOutRequest({
     required this.scheduleId,
@@ -59,9 +66,12 @@ class CheckOutRequest {
     this.dealId,
     this.customerId,
     this.leadId,
+    this.outcome,
     this.priceOverride,
     this.priceOverrideNote,
+    this.dealItems,
+    this.paymentMethod,
+    this.paymentRef,
+    this.signatureBytes,
   });
-
-  final String? dealId;
 }

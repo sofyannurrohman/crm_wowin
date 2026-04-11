@@ -24,6 +24,7 @@ type LeadRepository interface {
 
 type DealFilter struct {
 	CustomerID *uuid.UUID
+	LeadID     *uuid.UUID
 	AssignedTo *uuid.UUID
 	Stage      string
 	Status     string

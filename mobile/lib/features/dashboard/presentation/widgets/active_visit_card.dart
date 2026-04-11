@@ -5,6 +5,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../features/visits/presentation/widgets/check_out_sheet.dart';
 import '../../../../features/visits/presentation/bloc/visit_bloc.dart';
+import '../../../../features/visits/presentation/bloc/visit_state.dart';
+import '../../../../core/router/route_constants.dart';
 import '../../../../features/visits/presentation/bloc/visit_event.dart';
 import 'dart:async';
 import 'dart:ui';
@@ -13,18 +15,19 @@ class ActiveVisitCard extends StatefulWidget {
   final String scheduleId;
   final String customerName;
   final DateTime startTime;
+  final String? customerId;
+  final String? leadId;
+  final String? taskDestinationId;
 
   const ActiveVisitCard({
     super.key,
     required this.scheduleId,
     required this.customerId,
     this.leadId,
+    this.taskDestinationId,
     required this.customerName,
     required this.startTime,
   });
-
-  final String customerId;
-  final String? leadId;
 
   @override
   State<ActiveVisitCard> createState() => _ActiveVisitCardState();
@@ -184,6 +187,7 @@ class _ActiveVisitCardState extends State<ActiveVisitCard> {
                               extra: {
                                 'initialCustomerId': widget.customerId,
                                 'initialCustomerName': widget.customerName,
+                                'initialLeadId': widget.leadId,
                               },
                             );
 
@@ -209,20 +213,28 @@ class _ActiveVisitCardState extends State<ActiveVisitCard> {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (context) => CheckOutSheet(
-                                scheduleId: widget.scheduleId,
-                                customerName: widget.customerName,
-                                visitStartTime: widget.startTime,
-                                leadId: widget.leadId,
-                              ),
+                            // Unify flow: Navigate to OngoingVisitPage instead of bottom sheet
+                            final visitState = context.read<VisitBloc>().state;
+                            String? currentDealId;
+                            if (visitState is VisitSuccess) {
+                               currentDealId = visitState.currentDealId;
+                            }
+
+                            context.pushNamed(
+                              kRouteOngoingVisit,
+                              extra: {
+                                'scheduleId': widget.scheduleId,
+                                'customerId': widget.customerId,
+                                'leadId': widget.leadId,
+                                'customerName': widget.customerName,
+                                'taskDestinationId': widget.taskDestinationId,
+                                'checkInTime': widget.startTime,
+                                'dealId': currentDealId,
+                              },
                             );
                           },
-                          icon: const Icon(LucideIcons.logOut, size: 18),
-                          label: const Text('SELESAI'),
+                          icon: const Icon(LucideIcons.timer, size: 18),
+                          label: const Text('LIHAT TIMER'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: const Color(0xFF1A237E),

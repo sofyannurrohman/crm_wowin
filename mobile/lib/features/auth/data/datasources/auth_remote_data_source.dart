@@ -10,7 +10,7 @@ abstract class AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
-    String companyName,
+    required String salesType,
   });
   Future<List<UserEntity>> getSalesmen();
   Future<UserEntity> getMe();
@@ -56,7 +56,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String name,
     required String email,
     required String password,
-    String companyName = '',
+    required String salesType,
   }) async {
     try {
       final response = await dio.post(
@@ -65,7 +65,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'name': name,
           'email': email,
           'password': password,
-          if (companyName.isNotEmpty) 'company_name': companyName,
+          'sales_type': salesType,
+          'company_name': 'PT Wowin Purnomo Putera',
         },
       );
 

@@ -227,13 +227,25 @@ func (r *taskRepoImpl) Update(ctx context.Context, t *models.Task) error {
 		return err
 	}
 
-	// Delete existing destinations to perform a clean re-sync
-	_, err = tx.Exec(ctx, "DELETE FROM task_destinations WHERE task_id = $1", t.ID)
-	if err != nil {
-		return err
+	// Surgical Update for destinations to maintain stable IDs
+	var existingIDs []uuid.UUID
+	for _, dest := range t.Destinations {
+		if dest.ID != uuid.Nil {
+			existingIDs = append(existingIDs, dest.ID)
+		}
 	}
 
-	// Insert current destinations
+	// Delete destinations that are no longer in the list
+	if len(existingIDs) > 0 {
+		_, err = tx.Exec(ctx, "DELETE FROM task_destinations WHERE task_id = $1 AND id != ALL($2)", t.ID, existingIDs)
+	} else {
+		_, err = tx.Exec(ctx, "DELETE FROM task_destinations WHERE task_id = $1", t.ID)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to delete removed destinations: %w", err)
+	}
+
+	// Upsert current destinations
 	for i := range t.Destinations {
 		t.Destinations[i].TaskID = t.ID
 		t.Destinations[i].SequenceOrder = i + 1
@@ -242,14 +254,26 @@ func (r *taskRepoImpl) Update(ctx context.Context, t *models.Task) error {
 			qStatus = models.TaskStatusTodo
 		}
 
-		dQuery := `INSERT INTO task_destinations (task_id, lead_id, customer_id, deal_id, sequence_order, status)
-				   VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at, updated_at`
-		err = tx.QueryRow(ctx, dQuery, t.ID, t.Destinations[i].LeadID, t.Destinations[i].CustomerID, t.Destinations[i].DealID, t.Destinations[i].SequenceOrder, qStatus).
-			Scan(&t.Destinations[i].ID, &t.Destinations[i].CreatedAt, &t.Destinations[i].UpdatedAt)
+		if t.Destinations[i].ID == uuid.Nil {
+			// New destination
+			dQuery := `INSERT INTO task_destinations (task_id, lead_id, customer_id, deal_id, sequence_order, status)
+					   VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at, updated_at`
+			err = tx.QueryRow(ctx, dQuery, t.ID, t.Destinations[i].LeadID, t.Destinations[i].CustomerID, t.Destinations[i].DealID, t.Destinations[i].SequenceOrder, qStatus).
+				Scan(&t.Destinations[i].ID, &t.Destinations[i].CreatedAt, &t.Destinations[i].UpdatedAt)
+		} else {
+			// Update existing destination
+			dQuery := `UPDATE task_destinations 
+					   SET lead_id = $1, customer_id = $2, deal_id = $3, sequence_order = $4, status = $5, updated_at = CURRENT_TIMESTAMP
+					   WHERE id = $6 RETURNING created_at, updated_at`
+			err = tx.QueryRow(ctx, dQuery, t.Destinations[i].LeadID, t.Destinations[i].CustomerID, t.Destinations[i].DealID, t.Destinations[i].SequenceOrder, qStatus, t.Destinations[i].ID).
+				Scan(&t.Destinations[i].CreatedAt, &t.Destinations[i].UpdatedAt)
+		}
+		
 		if err != nil {
-			return fmt.Errorf("failed to re-sync destination %d: %w", i, err)
+			return fmt.Errorf("failed to sync destination %d: %w", i, err)
 		}
 	}
+
 
 	return tx.Commit(ctx)
 }

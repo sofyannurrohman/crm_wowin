@@ -23,13 +23,13 @@ func NewUserRepository(db *pgxpool.Pool) repository.UserRepository {
 
 func (r *userRepositoryImpl) Create(ctx context.Context, user *models.User) error {
 	query := `
-		INSERT INTO users (name, email, phone, password_hash, role, status, avatar_path, manager_id, employee_code, joined_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO users (name, email, phone, password_hash, role, status, avatar_path, sales_type, manager_id, employee_code, joined_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, created_at, updated_at
 	`
 	err := r.db.QueryRow(ctx, query,
 		user.Name, user.Email, user.Phone, user.PasswordHash,
-		user.Role, user.Status, user.AvatarPath, user.ManagerID,
+		user.Role, user.Status, user.AvatarPath, user.SalesType, user.ManagerID,
 		user.EmployeeCode, user.JoinedAt,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
@@ -43,14 +43,14 @@ func (r *userRepositoryImpl) Create(ctx context.Context, user *models.User) erro
 
 func (r *userRepositoryImpl) FindByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT id, name, email, phone, password_hash, role, status, avatar_path, manager_id, employee_code, joined_at, last_login_at, created_at, updated_at
+		SELECT id, name, email, phone, password_hash, role, status, avatar_path, sales_type, manager_id, employee_code, joined_at, last_login_at, created_at, updated_at
 		FROM users
 		WHERE email = $1 AND status != 'suspended'
 	`
 	var usr models.User
 	err := r.db.QueryRow(ctx, query, email).Scan(
 		&usr.ID, &usr.Name, &usr.Email, &usr.Phone, &usr.PasswordHash,
-		&usr.Role, &usr.Status, &usr.AvatarPath, &usr.ManagerID,
+		&usr.Role, &usr.Status, &usr.AvatarPath, &usr.SalesType, &usr.ManagerID,
 		&usr.EmployeeCode, &usr.JoinedAt, &usr.LastLoginAt,
 		&usr.CreatedAt, &usr.UpdatedAt,
 	)
@@ -66,14 +66,14 @@ func (r *userRepositoryImpl) FindByEmail(ctx context.Context, email string) (*mo
 
 func (r *userRepositoryImpl) FindByID(ctx context.Context, id uuid.UUID) (*models.User, error) {
 	query := `
-		SELECT id, name, email, phone, password_hash, role, status, avatar_path, manager_id, employee_code, joined_at, last_login_at, created_at, updated_at
+		SELECT id, name, email, phone, password_hash, role, status, avatar_path, sales_type, manager_id, employee_code, joined_at, last_login_at, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
 	var usr models.User
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&usr.ID, &usr.Name, &usr.Email, &usr.Phone, &usr.PasswordHash,
-		&usr.Role, &usr.Status, &usr.AvatarPath, &usr.ManagerID,
+		&usr.Role, &usr.Status, &usr.AvatarPath, &usr.SalesType, &usr.ManagerID,
 		&usr.EmployeeCode, &usr.JoinedAt, &usr.LastLoginAt,
 		&usr.CreatedAt, &usr.UpdatedAt,
 	)
@@ -90,12 +90,12 @@ func (r *userRepositoryImpl) FindByID(ctx context.Context, id uuid.UUID) (*model
 func (r *userRepositoryImpl) Update(ctx context.Context, user *models.User) error {
 	query := `
 		UPDATE users
-		SET name = $1, phone = $2, role = $3, status = $4, avatar_path = $5, last_login_at = $6, updated_at = NOW()
-		WHERE id = $7
+		SET name = $1, phone = $2, role = $3, status = $4, avatar_path = $5, sales_type = $6, last_login_at = $7, updated_at = NOW()
+		WHERE id = $8
 		RETURNING updated_at
 	`
 	err := r.db.QueryRow(ctx, query,
-		user.Name, user.Phone, user.Role, user.Status, user.AvatarPath, user.LastLoginAt, user.ID,
+		user.Name, user.Phone, user.Role, user.Status, user.AvatarPath, user.SalesType, user.LastLoginAt, user.ID,
 	).Scan(&user.UpdatedAt)
 
 	if err != nil {
@@ -109,7 +109,7 @@ func (r *userRepositoryImpl) Update(ctx context.Context, user *models.User) erro
 
 func (r *userRepositoryImpl) FindAll(ctx context.Context) ([]*models.User, error) {
 	query := `
-		SELECT id, name, email, phone, role, status, avatar_path, manager_id, employee_code, joined_at, last_login_at, created_at, updated_at
+		SELECT id, name, email, phone, role, status, avatar_path, sales_type, manager_id, employee_code, joined_at, last_login_at, created_at, updated_at
 		FROM users
 		ORDER BY name ASC
 	`
@@ -123,7 +123,7 @@ func (r *userRepositoryImpl) FindAll(ctx context.Context) ([]*models.User, error
 	for rows.Next() {
 		var u models.User
 		err := rows.Scan(
-			&u.ID, &u.Name, &u.Email, &u.Phone, &u.Role, &u.Status, &u.AvatarPath, &u.ManagerID,
+			&u.ID, &u.Name, &u.Email, &u.Phone, &u.Role, &u.Status, &u.AvatarPath, &u.SalesType, &u.ManagerID,
 			&u.EmployeeCode, &u.JoinedAt, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt,
 		)
 		if err != nil {

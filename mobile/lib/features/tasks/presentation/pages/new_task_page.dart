@@ -237,7 +237,7 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
             if (state is dl.DealsLoaded) {
                if (state.deals.isNotEmpty) {
                  final cid = state.deals.first.customerId;
-                 if (cid.isNotEmpty) {
+                 if (cid != null && cid.isNotEmpty) {
                    setState(() {
                      _customerDeals[cid] = state.deals;
                    });

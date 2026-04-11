@@ -12,6 +12,9 @@ _KpiSummary _$KpiSummaryFromJson(Map<String, dynamic> json) => _KpiSummary(
       activeDeals: (json['active_deals'] as num).toInt(),
       visitsToday: (json['visits_today'] as num).toInt(),
       targetMetPercentage: (json['target_met_percentage'] as num).toDouble(),
+      monthlyRevenue: (json['monthly_revenue'] as num).toDouble(),
+      monthlyTarget: (json['monthly_target'] as num).toDouble(),
+      visitsTarget: (json['visits_target'] as num).toInt(),
       nextStop: json['next_stop'] == null
           ? null
           : VisitRecommendation.fromJson(
@@ -25,5 +28,8 @@ Map<String, dynamic> _$KpiSummaryToJson(_KpiSummary instance) =>
       'active_deals': instance.activeDeals,
       'visits_today': instance.visitsToday,
       'target_met_percentage': instance.targetMetPercentage,
+      'monthly_revenue': instance.monthlyRevenue,
+      'monthly_target': instance.monthlyTarget,
+      'visits_target': instance.visitsTarget,
       'next_stop': instance.nextStop,
     };

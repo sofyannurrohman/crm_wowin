@@ -39,14 +39,14 @@ class AuthRepositoryImpl implements AuthRepository {
     required String name,
     required String email,
     required String password,
-    String companyName = '',
+    required String salesType,
   }) async {
     try {
       await remoteDataSource.register(
         name: name,
         email: email,
         password: password,
-        companyName: companyName,
+        salesType: salesType,
       );
       // After registration, automatically log the user in
       final authModel = await remoteDataSource.login(email, password);

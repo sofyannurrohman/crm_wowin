@@ -30,14 +30,14 @@ func (r *dealRepoImpl) Create(ctx context.Context, d *models.Deal) error {
 
 	query := `
 		INSERT INTO deals (
-			title, customer_id, contact_id, assigned_to, stage, status, 
+			title, customer_id, lead_id, contact_id, assigned_to, stage, status, 
 			amount, probability, expected_close, description, created_by
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 		) RETURNING id, created_at, updated_at
 	`
 	err = tx.QueryRow(ctx, query,
-		d.Title, d.CustomerID, d.ContactID, d.AssignedTo, d.Stage, d.Status,
+		d.Title, d.CustomerID, d.LeadID, d.ContactID, d.AssignedTo, d.Stage, d.Status,
 		d.Amount, d.Probability, d.ExpectedClose, d.Description, d.CreatedBy,
 	).Scan(&d.ID, &d.CreatedAt, &d.UpdatedAt)
 
@@ -65,18 +65,18 @@ func (r *dealRepoImpl) Create(ctx context.Context, d *models.Deal) error {
 
 func (r *dealRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Deal, error) {
 	query := `
-		SELECT 	d.id, d.title, d.customer_id, d.contact_id, d.assigned_to, d.stage, d.status, d.amount, 
+		SELECT 	d.id, d.title, d.customer_id, d.lead_id, d.contact_id, d.assigned_to, d.stage, d.status, d.amount, 
 				d.probability, d.expected_close, d.closed_at, d.lost_reason, d.description, 
 				d.created_by, d.created_at, d.updated_at,
 				c.id, c.name, c.company_name, c.email, c.phone, c.address
 		FROM deals d
-		JOIN customers c ON d.customer_id = c.id
+		LEFT JOIN customers c ON d.customer_id = c.id
 		WHERE d.id = $1
 	`
 	var d models.Deal
 	var cust models.Customer
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&d.ID, &d.Title, &d.CustomerID, &d.ContactID, &d.AssignedTo, &d.Stage, &d.Status, &d.Amount,
+		&d.ID, &d.Title, &d.CustomerID, &d.LeadID, &d.ContactID, &d.AssignedTo, &d.Stage, &d.Status, &d.Amount,
 		&d.Probability, &d.ExpectedClose, &d.ClosedAt, &d.LostReason, &d.Description,
 		&d.CreatedBy, &d.CreatedAt, &d.UpdatedAt,
 		&cust.ID, &cust.Name, &cust.CompanyName, &cust.Email, &cust.Phone, &cust.Address,
@@ -116,23 +116,28 @@ func (r *dealRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Deal,
 }
 
 func (r *dealRepoImpl) List(ctx context.Context, filter repository.DealFilter) ([]*models.Deal, error) {
-	baseQuery := `SELECT d.id, d.title, d.customer_id, d.contact_id, d.assigned_to, d.stage, d.status, d.amount, 
+	baseQuery := `SELECT d.id, d.title, d.customer_id, d.lead_id, d.contact_id, d.assigned_to, d.stage, d.status, d.amount, 
 				d.probability, d.expected_close, d.closed_at, d.created_by, d.created_at,
 				c.name, c.company_name
 				FROM deals d
-				JOIN customers c ON d.customer_id = c.id
+				LEFT JOIN customers c ON d.customer_id = c.id
 				WHERE 1=1 `
 	
 	args := []interface{}{}
 	argCount := 1
 
 	if filter.CustomerID != nil {
-		baseQuery += fmt.Sprintf(" AND customer_id = $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND d.customer_id = $%d", argCount)
 		args = append(args, *filter.CustomerID)
 		argCount++
 	}
+	if filter.LeadID != nil {
+		baseQuery += fmt.Sprintf(" AND d.lead_id = $%d", argCount)
+		args = append(args, *filter.LeadID)
+		argCount++
+	}
 	if filter.AssignedTo != nil {
-		baseQuery += fmt.Sprintf(" AND assigned_to = $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND d.assigned_to = $%d", argCount)
 		args = append(args, *filter.AssignedTo)
 		argCount++
 	}
@@ -158,16 +163,21 @@ func (r *dealRepoImpl) List(ctx context.Context, filter repository.DealFilter) (
 	results := []*models.Deal{}
 	for rows.Next() {
 		var d models.Deal
-		var cust models.Customer
+		var custName, custCompany *string
 		err := rows.Scan(
-			&d.ID, &d.Title, &d.CustomerID, &d.ContactID, &d.AssignedTo, &d.Stage, &d.Status, &d.Amount,
+			&d.ID, &d.Title, &d.CustomerID, &d.LeadID, &d.ContactID, &d.AssignedTo, &d.Stage, &d.Status, &d.Amount,
 			&d.Probability, &d.ExpectedClose, &d.ClosedAt, &d.CreatedBy, &d.CreatedAt,
-			&cust.Name, &cust.CompanyName,
+			&custName, &custCompany,
 		)
 		if err != nil {
 			return nil, err
 		}
-		d.Customer = &cust
+		if custName != nil {
+			d.Customer = &models.Customer{
+				Name:        *custName,
+				CompanyName: custCompany,
+			}
+		}
 		results = append(results, &d)
 	}
 	return results, nil
@@ -182,14 +192,14 @@ func (r *dealRepoImpl) Update(ctx context.Context, d *models.Deal) error {
 
 	query := `
 		UPDATE deals SET
-			title = $1, customer_id = $2, contact_id = $3, assigned_to = $4,
-			status = $5, amount = $6, probability = $7, expected_close = $8,
-			closed_at = $9, lost_reason = $10, description = $11, updated_at = NOW()
-		WHERE id = $12
+			title = $1, customer_id = $2, lead_id = $3, contact_id = $4, assigned_to = $5,
+			stage = $6, status = $7, amount = $8, probability = $9, expected_close = $10,
+			closed_at = $11, lost_reason = $12, description = $13, updated_at = NOW()
+		WHERE id = $14
 		RETURNING updated_at
 	`
 	err = tx.QueryRow(ctx, query,
-		d.Title, d.CustomerID, d.ContactID, d.AssignedTo, d.Status,
+		d.Title, d.CustomerID, d.LeadID, d.ContactID, d.AssignedTo, d.Stage, d.Status,
 		d.Amount, d.Probability, d.ExpectedClose, d.ClosedAt, d.LostReason, d.Description, d.ID,
 	).Scan(&d.UpdatedAt)
 
@@ -243,7 +253,24 @@ func (r *dealRepoImpl) UpdateStage(ctx context.Context, dealID uuid.UUID, newSta
 	defer tx.Rollback(ctx)
 
 	// Shift Stage in Deals Table
-	_, err = tx.Exec(ctx, "UPDATE deals SET stage = $1, updated_at = NOW() WHERE id = $2", newStage, dealID)
+	status := models.DealStatusOpen
+	var closedAt interface{} = nil
+	if newStage == models.DealStageClosedWon {
+		status = models.DealStatusWon
+		closedAt = "NOW()"
+	} else if newStage == models.DealStageClosedLost {
+		status = models.DealStatusLost
+		closedAt = "NOW()"
+	}
+
+	updateQuery := `UPDATE deals SET stage = $1, status = $2, updated_at = NOW()`
+	if closedAt != nil {
+		updateQuery += `, closed_at = NOW() WHERE id = $3`
+		_, err = tx.Exec(ctx, updateQuery, newStage, status, dealID)
+	} else {
+		updateQuery += ` WHERE id = $3`
+		_, err = tx.Exec(ctx, updateQuery, newStage, status, dealID)
+	}
 	if err != nil {
 		return err
 	}

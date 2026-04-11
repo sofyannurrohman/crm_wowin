@@ -25,6 +25,15 @@ const (
 	UserStatusSuspended UserStatus = "suspended"
 )
 
+// SalesType defines the type of sales person
+type SalesType string
+
+const (
+	SalesTypeMotoris   SalesType = "motoris"
+	SalesTypeTaskOrder SalesType = "task_order"
+	SalesTypeCanvas    SalesType = "canvas"
+)
+
 // User represents the users table in the database
 type User struct {
 	ID           uuid.UUID   `json:"id"`
@@ -37,6 +46,7 @@ type User struct {
 	Role         UserRole    `json:"role"`
 	Status       UserStatus  `json:"status"`
 	AvatarPath   *string     `json:"avatar_path,omitempty"`
+	SalesType    *SalesType  `json:"sales_type,omitempty"`
 	ManagerID    *uuid.UUID  `json:"manager_id,omitempty"`
 	EmployeeCode *string     `json:"employee_code,omitempty"`
 	JoinedAt     *utils.FlexTime `json:"joined_at,omitempty"`
@@ -70,6 +80,7 @@ type RegisterRequest struct {
 	Password    string `json:"password" binding:"required,min=8"`
 	CompanyName string `json:"company_name"`
 	Role        string `json:"role"`
+	SalesType   string `json:"sales_type"`
 }
 
 // TokenResponse defines the auth payload given back to clients

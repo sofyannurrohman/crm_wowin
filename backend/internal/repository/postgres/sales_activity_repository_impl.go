@@ -92,13 +92,20 @@ func (r *salesActivityRepoImpl) List(ctx context.Context, filter repository.Sale
 		argPos++
 	}
 
-	query := `SELECT id, user_id, lead_id, customer_id, deal_id, task_destination_id, type, title, notes, latitude, longitude, 
-	            check_in_time, check_out_time, selfie_photo_path, place_photo_path, address, outcome, activity_at, created_at, updated_at, distance, is_offline
-			  FROM sales_activities`
+	query := `SELECT sa.id, sa.user_id, sa.lead_id, sa.customer_id, sa.deal_id, sa.task_destination_id, sa.type, sa.title, sa.notes, sa.latitude, sa.longitude, 
+	            sa.check_in_time, sa.check_out_time, sa.selfie_photo_path, sa.place_photo_path, sa.address, sa.outcome, sa.activity_at, sa.created_at, sa.updated_at, sa.distance, sa.is_offline,
+				d.title as deal_title
+			  FROM sales_activities sa
+			  LEFT JOIN deals d ON sa.deal_id = d.id`
 	if len(where) > 0 {
-		query += " WHERE " + strings.Join(where, " AND ")
+		w := strings.Join(where, " AND ")
+		w = strings.ReplaceAll(w, "user_id", "sa.user_id")
+		w = strings.ReplaceAll(w, "lead_id", "sa.lead_id") // also ambiguity fixes
+		w = strings.ReplaceAll(w, "customer_id", "sa.customer_id")
+		w = strings.ReplaceAll(w, "activity_at", "sa.activity_at")
+		query += " WHERE " + w
 	}
-	query += " ORDER BY activity_at DESC"
+	query += " ORDER BY sa.activity_at DESC"
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
@@ -114,6 +121,7 @@ func (r *salesActivityRepoImpl) List(ctx context.Context, filter repository.Sale
 			&a.Type, &a.Title, &a.Notes, &a.Latitude, &a.Longitude,
 			&a.CheckInTime, &a.CheckOutTime, &a.SelfiePhotoPath, &a.PlacePhotoPath, &a.Address, &a.Outcome,
 			&a.ActivityAt, &a.CreatedAt, &a.UpdatedAt, &a.Distance, &a.IsOffline,
+			&a.DealTitle,
 		)
 		if err != nil {
 			return nil, err

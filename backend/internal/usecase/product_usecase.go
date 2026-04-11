@@ -115,9 +115,11 @@ func (u *productUseCaseImpl) DeleteProduct(ctx context.Context, id uuid.UUID) er
 // === Deal Items ===
 func (u *productUseCaseImpl) AddDealItem(ctx context.Context, item *models.DealItem) (*models.DealItem, error) {
 	// Verification checks
-	_, err := u.dealRepo.GetByID(ctx, item.DealID)
-	if err != nil {
-		return nil, dberrors.ErrInvalidInput // Parent deal must exist
+	if item.DealID != nil {
+		_, err := u.dealRepo.GetByID(ctx, *item.DealID)
+		if err != nil {
+			return nil, dberrors.ErrInvalidInput // Parent deal must exist
+		}
 	}
 	
 	product, err := u.productRepo.GetByID(ctx, item.ProductID)

@@ -7,8 +7,9 @@ import '../models/visit_activity_model.dart';
 
 abstract class VisitRemoteDataSource {
   Future<void> checkIn(CheckInRequest request);
-  Future<void> checkOut(CheckOutRequest request);
+  Future<Map<String, dynamic>> checkOut(CheckOutRequest request);
   Future<List<VisitActivityModel>> getActivities({String? salesId, String? customerId, String? leadId});
+  Future<VisitActivityModel?> getActiveVisit();
 }
 
 class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
@@ -32,6 +33,18 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
       return data.map((json) => VisitActivityModel.fromJson(json)).toList();
     } else {
       throw ServerException('Gagal mengambil log aktivitas');
+    }
+  }
+
+  @override
+  Future<VisitActivityModel?> getActiveVisit() async {
+    final response = await dio.get('/visits/active');
+
+    if (response.statusCode == 200) {
+      if (response.data['data'] == null) return null;
+      return VisitActivityModel.fromJson(response.data['data']);
+    } else {
+      throw ServerException('Gagal mengambil status kunjungan aktif');
     }
   }
 
@@ -88,8 +101,9 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
   }
 
   @override
-  Future<void> checkOut(CheckOutRequest request) async {
+  Future<Map<String, dynamic>> checkOut(CheckOutRequest request) async {
     try {
+      // ... same implementation ...
       final formMap = <String, dynamic>{
         'schedule_id': request.scheduleId == 'adhoc' ? null : request.scheduleId,
         'type': 'check-out',
@@ -103,12 +117,20 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
         'deal_id': request.dealId,
         'customer_id': request.customerId,
         'lead_id': request.leadId,
+        'deal_items': request.dealItems != null ? jsonEncode(request.dealItems) : null,
+        'outcome': request.outcome,
         'total_price_override': request.priceOverride,
         'override_note': request.priceOverrideNote,
+        'payment_method': request.paymentMethod,
+        'payment_ref': request.paymentRef,
       };
 
-      // Attach signature image if captured
-      if (request.signaturePath != null && request.signaturePath!.isNotEmpty) {
+      if (request.signatureBytes != null) {
+        formMap['signature_photo'] = MultipartFile.fromBytes(
+          request.signatureBytes,
+          filename: 'signature_${DateTime.now().millisecondsSinceEpoch}.png',
+        );
+      } else if (request.signaturePath != null && request.signaturePath!.isNotEmpty) {
         formMap['signature_photo'] = await MultipartFile.fromFile(
           request.signaturePath!,
           filename: request.signaturePath!.split('/').last,
@@ -123,7 +145,9 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
         options: Options(contentType: 'multipart/form-data'),
       );
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return (response.data['data'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+      } else {
         throw ServerException(response.data['message'] ?? 'Check-out gagal');
       }
     } on DioException catch (e) {

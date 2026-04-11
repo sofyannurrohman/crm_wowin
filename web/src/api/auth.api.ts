@@ -17,3 +17,7 @@ export async function logout() {
 export async function fetchUsers() {
   return client.get<ApiResponse<any[]>>('/users')
 }
+
+export async function updateUser(userId: string, data: any) {
+  return client.patch(`/users/${userId}`, data)
+}

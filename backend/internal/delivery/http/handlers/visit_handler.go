@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"crm_wowin_backend/internal/domain/dberrors"
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
 	"crm_wowin_backend/internal/usecase"
 	"crm_wowin_backend/pkg/response"
 	"crm_wowin_backend/pkg/utils"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -137,48 +140,70 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 		return
 	}
 
-	// 2. Extract strictly structured File and Form attributes
-	// Support dual photos: selfie and place
-	selfieFile, selfieHeader, errSelfie := c.Request.FormFile("selfie")
-	placeFile, placeHeader, errPlace := c.Request.FormFile("place")
+	// Extract activity type early
+	activityType := models.VisitType(c.Request.FormValue("type"))
+	if activityType != models.VisitTypeCheckIn && activityType != models.VisitTypeCheckOut {
+		response.Fail(c, http.StatusBadRequest, "activity type must be check-in or check-out")
+		return
+	}
 
-	var selfiePath, placePath string
+	var selfiePath, placePath, signaturePath string
 
-	if errSelfie == nil && errPlace == nil {
-		defer selfieFile.Close()
-		defer placeFile.Close()
+	// Extract strictly structured File and Form attributes for check-in
+	if activityType == models.VisitTypeCheckIn {
+		// Support dual photos: selfie and place
+		selfieFile, selfieHeader, errSelfie := c.Request.FormFile("selfie")
+		placeFile, placeHeader, errPlace := c.Request.FormFile("place")
 
-		// Save & Compress Selfie
-		selfieSavePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
-		if err := utils.ProcessAndSaveImage(selfieHeader, selfieSavePath, 1080, 1080, 75); err != nil {
-			response.Fail(c, http.StatusInternalServerError, "failed processing selfie: "+err.Error())
-			return
+		if errSelfie == nil && errPlace == nil {
+			defer selfieFile.Close()
+			defer placeFile.Close()
+
+			// Save & Compress Selfie
+			selfieSavePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
+			if err := utils.ProcessAndSaveImage(selfieHeader, selfieSavePath, 1080, 1080, 75); err != nil {
+				response.Fail(c, http.StatusInternalServerError, "failed processing selfie: "+err.Error())
+				return
+			}
+			selfiePath = "/uploads/visits/" + filepath.Base(selfieSavePath)
+
+			// Save & Compress Place
+			placeSavePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
+			if err := utils.ProcessAndSaveImage(placeHeader, placeSavePath, 1080, 1080, 75); err != nil {
+				response.Fail(c, http.StatusInternalServerError, "failed processing place photo: "+err.Error())
+				return
+			}
+			placePath = "/uploads/visits/" + filepath.Base(placeSavePath)
+		} else {
+			// FALLBACK: Legacy single 'photo'
+			file, fileHeader, err := c.Request.FormFile("photo")
+			if err != nil {
+				response.Fail(c, http.StatusBadRequest, "selfie and place photos (or legacy photo) are required for check-in")
+				return
+			}
+			defer file.Close()
+
+			savePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
+			if err := utils.ProcessAndSaveImage(fileHeader, savePath, 1080, 1080, 75); err != nil {
+				response.Fail(c, http.StatusInternalServerError, "failed processing photo: "+err.Error())
+				return
+			}
+			selfiePath = "/uploads/visits/" + filepath.Base(savePath)
+			placePath = selfiePath
 		}
-		selfiePath = "/uploads/visits/" + filepath.Base(selfieSavePath)
-
-		// Save & Compress Place
-		placeSavePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
-		if err := utils.ProcessAndSaveImage(placeHeader, placeSavePath, 1080, 1080, 75); err != nil {
-			response.Fail(c, http.StatusInternalServerError, "failed processing place photo: "+err.Error())
-			return
+	} else if activityType == models.VisitTypeCheckOut {
+		// Capture Signature if provided
+		sigFile, sigHeader, errSig := c.Request.FormFile("signature_photo")
+		if errSig == nil {
+			defer sigFile.Close()
+			sigSavePath := filepath.Join(h.upldir, "signatures", uuid.New().String()+".png")
+			if _, err := os.Stat(filepath.Dir(sigSavePath)); os.IsNotExist(err) {
+				_ = os.MkdirAll(filepath.Dir(sigSavePath), 0755)
+			}
+			if err := utils.ProcessAndSaveImage(sigHeader, sigSavePath, 1080, 1080, 85); err == nil {
+				signaturePath = "/uploads/signatures/" + filepath.Base(sigSavePath)
+			}
 		}
-		placePath = "/uploads/visits/" + filepath.Base(placeSavePath)
-	} else {
-		// FALLBACK: Legacy single 'photo'
-		file, fileHeader, err := c.Request.FormFile("photo")
-		if err != nil {
-			response.Fail(c, http.StatusBadRequest, "selfie and place photos (or legacy photo) are required")
-			return
-		}
-		defer file.Close()
-
-		savePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
-		if err := utils.ProcessAndSaveImage(fileHeader, savePath, 1080, 1080, 75); err != nil {
-			response.Fail(c, http.StatusInternalServerError, "failed processing photo: "+err.Error())
-			return
-		}
-		selfiePath = "/uploads/visits/" + filepath.Base(savePath)
-		placePath = selfiePath
 	}
 
 	lat, _ := strconv.ParseFloat(c.Request.FormValue("latitude"), 64)
@@ -246,11 +271,7 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	}
 
 	var activity models.VisitActivity
-	activity.Type = models.VisitType(c.Request.FormValue("type"))
-	if activity.Type != models.VisitTypeCheckIn && activity.Type != models.VisitTypeCheckOut {
-		response.Fail(c, http.StatusBadRequest, "activity type must be check-in or check-out")
-		return
-	}
+	activity.Type = activityType
 
 	activity.SalesID = salesID
 	activity.CustomerID = customerID
@@ -260,6 +281,7 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	activity.SelfiePhotoPath = selfiePath
 	activity.PlacePhotoPath = placePath
 	activity.PhotoPath = selfiePath // for legacy DB column support if needed
+	activity.SignaturePath = signaturePath
 
 	// Notes and Offline status are optional overrides
 	notesParams := c.Request.FormValue("notes")
@@ -268,6 +290,11 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	}
 	if c.Request.FormValue("is_offline") == "true" {
 		activity.IsOffline = true
+	}
+	
+	outcome := c.Request.FormValue("outcome")
+	if outcome != "" {
+		activity.Outcome = &outcome
 	}
 
 	if sID := c.Request.FormValue("schedule_id"); sID != "" {
@@ -279,6 +306,13 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	if dID := c.Request.FormValue("deal_id"); dID != "" {
 		if u, err := uuid.Parse(dID); err == nil {
 			activity.DealID = &u
+		}
+	}
+
+	if itemsJSON := c.Request.FormValue("deal_items"); itemsJSON != "" {
+		var items []models.DealItem
+		if err := json.Unmarshal([]byte(itemsJSON), &items); err == nil {
+			activity.DealItems = items
 		}
 	}
 
@@ -355,4 +389,20 @@ func (h *VisitHandler) ListActivities(c *gin.Context) {
 	}
 
 	response.OK(c, acts)
+}
+func (h *VisitHandler) GetActiveActivity(c *gin.Context) {
+	userIDStr := c.GetString("user_id")
+	userID, _ := uuid.Parse(userIDStr)
+
+	act, err := h.uc.GetActiveActivity(c.Request.Context(), userID)
+	if err != nil {
+		if errors.Is(err, dberrors.ErrNotFound) {
+			response.OK(c, nil, "no active visit")
+			return
+		}
+		response.MapDBError(c, err)
+		return
+	}
+
+	response.OK(c, act)
 }

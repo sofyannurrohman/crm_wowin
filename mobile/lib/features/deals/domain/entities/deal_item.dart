@@ -9,7 +9,7 @@ abstract class DealItem with _$DealItem {
 
   const factory DealItem({
     required String id,
-    @JsonKey(name: 'deal_id') required String dealId,
+    @JsonKey(name: 'deal_id') String? dealId,
     @JsonKey(name: 'product_id') required String productId,
     required String name,
     required double quantity,

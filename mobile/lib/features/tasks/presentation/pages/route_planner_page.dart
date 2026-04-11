@@ -5,6 +5,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:http/http.dart' as http;
 import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../bloc/task_bloc.dart';
+import '../bloc/task_state.dart';
+import '../bloc/task_event.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../domain/entities/task.dart';
 import '../../domain/entities/task_destination.dart';
@@ -20,9 +24,13 @@ class RoutePlannerPage extends StatefulWidget {
 }
 
 class _RoutePlannerPageState extends State<RoutePlannerPage> {
+  late Task _currentTask;
+  bool _isProcessing = false;
+
+
   LatLng get _warehouseLocation {
-    if (widget.task.warehouse?.latitude != null && widget.task.warehouse?.longitude != null) {
-      return LatLng(widget.task.warehouse!.latitude!, widget.task.warehouse!.longitude!);
+    if (_currentTask.warehouse?.latitude != null && _currentTask.warehouse?.longitude != null) {
+      return LatLng(_currentTask.warehouse!.latitude!, _currentTask.warehouse!.longitude!);
     }
     return const LatLng(-6.1754, 106.8272);
   }
@@ -35,6 +43,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
   @override
   void initState() {
     super.initState();
+    _currentTask = widget.task;
     _calculateAndFetchRoute();
   }
 
@@ -54,8 +63,8 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
       }
 
       // Separate completed vs unvisited
-      List<TaskDestination> doneDests = widget.task.destinations.where((d) => d.status == TaskStatus.done).toList();
-      List<TaskDestination> unvisited = widget.task.destinations.where((d) => d.status != TaskStatus.done).toList();
+      List<TaskDestination> doneDests = _currentTask.destinations.where((d) => d.status == TaskStatus.done).toList();
+      List<TaskDestination> unvisited = _currentTask.destinations.where((d) => d.status != TaskStatus.done).toList();
       
       List<TaskDestination> optimized = [];
       List<LatLng> waypoints = [_warehouseLocation];
@@ -130,7 +139,7 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
 
     } catch (e) {
       debugPrint('Error fetching OSRM route: $e');
-      final safeList = widget.task.destinations.where((d) => d.targetLatitude != null && d.targetLongitude != null).toList();
+      final safeList = _currentTask.destinations.where((d) => d.targetLatitude != null && d.targetLongitude != null).toList();
       setState(() {
         _isLoadingRoute = false;
         if (_optimizedRoute.isEmpty) _optimizedRoute = safeList;
@@ -142,102 +151,129 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        title: Text(widget.task.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.refreshCw, size: 20),
-            onPressed: _calculateAndFetchRoute,
-          )
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Stack(
-              children: [
-                FlutterMap(
-                  options: MapOptions(
-                    initialCenter: _warehouseLocation,
-                    initialZoom: 12,
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.wowin.crm',
+    return BlocListener<TaskBloc, TaskState>(
+      listener: (context, state) {
+        if (state is TasksLoaded) {
+          // If the tasks are reloaded, find our specific task and update it
+          try {
+            final updatedTask = state.tasks.firstWhere((t) => t.id == _currentTask.id);
+            // Deep check or just check status/destinations
+            if (updatedTask.destinations.length != _currentTask.destinations.length || 
+                updatedTask.destinations.any((d) => d.status != _currentTask.destinations.firstWhere((old) => old.id == d.id).status)) {
+              setState(() {
+                _currentTask = updatedTask;
+              });
+              _calculateAndFetchRoute();
+            }
+          } catch (e) {
+            // Task might have been deleted or not in this list anymore
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF9FAFB),
+        appBar: AppBar(
+          title: Text(_currentTask.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(LucideIcons.refreshCw, size: 20),
+              onPressed: () {
+                context.read<TaskBloc>().add(const FetchTasks());
+                _calculateAndFetchRoute();
+              },
+            )
+          ],
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              flex: 3,
+              child: Stack(
+                children: [
+                  FlutterMap(
+                    options: MapOptions(
+                      initialCenter: _warehouseLocation,
+                      initialZoom: 12,
                     ),
-                    if (_routePoints.isNotEmpty)
-                      PolylineLayer(
-                        polylines: [
-                          Polyline(
-                            points: _routePoints,
-                            strokeWidth: 5.0,
-                            color: const Color(0xFF3B82F6),
-                            borderColor: Colors.white,
-                            borderStrokeWidth: 1.0,
+                    children: [
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.wowin.crm',
+                      ),
+                      if (_routePoints.isNotEmpty)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: _routePoints,
+                              strokeWidth: 5.0,
+                              color: const Color(0xFF3B82F6),
+                              borderColor: Colors.white,
+                              borderStrokeWidth: 1.0,
+                            ),
+                          ],
+                        ),
+                      MarkerLayer(
+                        markers: [
+                          Marker(
+                            point: _warehouseLocation,
+                            width: 45,
+                            height: 45,
+                            child: Container(
+                              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.2), shape: BoxShape.circle),
+                              child: const Icon(LucideIcons.warehouse, color: Colors.orange, size: 28),
+                            ),
                           ),
+                          ...List.generate(_optimizedRoute.length, (idx) {
+                            final dest = _optimizedRoute[idx];
+                            if (dest.targetLatitude == null || dest.targetLongitude == null) return null;
+                            return Marker(
+                              point: LatLng(dest.targetLatitude!, dest.targetLongitude!),
+                              width: 35,
+                              height: 35,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: dest.status == TaskStatus.done 
+                                      ? Colors.green 
+                                      : (dest.status == TaskStatus.in_progress ? Colors.orange : Colors.red),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: Center(
+                                  child: dest.status == TaskStatus.in_progress
+                                      ? const Icon(LucideIcons.activity, color: Colors.white, size: 14)
+                                      : Text('${idx + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                                ),
+                              ),
+                            );
+                          }).whereType<Marker>(),
                         ],
                       ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: _warehouseLocation,
-                          width: 45,
-                          height: 45,
-                          child: Container(
-                            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.2), shape: BoxShape.circle),
-                            child: const Icon(LucideIcons.warehouse, color: Colors.orange, size: 28),
-                          ),
-                        ),
-                        ...List.generate(_optimizedRoute.length, (idx) {
-                          final dest = _optimizedRoute[idx];
-                          if (dest.targetLatitude == null || dest.targetLongitude == null) return null;
-                          return Marker(
-                            point: LatLng(dest.targetLatitude!, dest.targetLongitude!),
-                            width: 35,
-                            height: 35,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: dest.status == TaskStatus.done ? Colors.green : Colors.red,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
-                              ),
-                              child: Center(
-                                child: Text('${idx + 1}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-                              ),
-                            ),
-                          );
-                        }).whereType<Marker>(),
-                      ],
-                    ),
-                  ],
-                ),
-                if (_isLoadingRoute)
-                  Container(
-                    color: Colors.black.withOpacity(0.1),
-                    child: const Center(child: CircularProgressIndicator()),
+                    ],
                   ),
-                if (_routeError != null)
-                   Positioned(
-                     top: 10, left: 10, right: 10,
-                     child: Container(
-                       padding: const EdgeInsets.all(8),
-                       decoration: BoxDecoration(color: Colors.amber.withOpacity(0.9), borderRadius: BorderRadius.circular(8)),
-                       child: Text(_routeError!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  if (_isLoadingRoute)
+                    Container(
+                      color: Colors.black.withOpacity(0.1),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                  if (_routeError != null)
+                     Positioned(
+                       top: 10, left: 10, right: 10,
+                       child: Container(
+                         padding: const EdgeInsets.all(8),
+                         decoration: BoxDecoration(color: Colors.amber.withOpacity(0.9), borderRadius: BorderRadius.circular(8)),
+                         child: Text(_routeError!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                       ),
                      ),
-                   ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: _buildRouteList(),
-          ),
-        ],
+            Expanded(
+              flex: 2,
+              child: _buildRouteList(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -262,9 +298,10 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return _buildListTile(
-                    title: 'Start: ${widget.task.warehouse?.name ?? "Gudang Asal"}',
-                    subtitle: widget.task.warehouse?.address ?? 'Titik Keberangkatan',
+                    title: 'Start: ${_currentTask.warehouse?.name ?? "Gudang Asal"}',
+                    subtitle: _currentTask.warehouse?.address ?? 'Titik Keberangkatan',
                     leading: const Icon(LucideIcons.warehouse, color: Colors.orange, size: 20),
+                    status: TaskStatus.pending,
                     isFirst: true,
                   );
                 }
@@ -281,22 +318,38 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                     child: Text('$index', style: TextStyle(color: dest.status == TaskStatus.done ? Colors.green : const Color(0xFF3B82F6), fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                   dealTitle: dest.dealTitle,
-                  statusIcon: dest.status == TaskStatus.done 
-                      ? const Icon(LucideIcons.checkCircle, color: Colors.green, size: 20)
-                      : const Icon(LucideIcons.clock, color: Colors.grey, size: 20),
-                  onTap: () {
-                    if (dest.status != TaskStatus.done) {
-                      context.pushNamed(kRouteCheckIn, extra: {
+                  status: dest.status,
+                  onTap: () async {
+                    if (dest.status == TaskStatus.done || _isProcessing) return;
+                    
+                    setState(() => _isProcessing = true);
+                    
+                    if (dest.status == TaskStatus.in_progress) {
+                      await context.pushNamed(kRouteOngoingVisit, extra: {
                         'scheduleId': 'task',
                         'customerName': destName,
-                        'customerAddress': destAddress,
-                        'targetLat': dest.targetLatitude,
-                        'targetLng': dest.targetLongitude,
+                        'leadId': dest.leadId,
+                        'customerId': dest.customerId,
                         'taskDestinationId': dest.id,
+                        'checkInTime': dest.updatedAt, // Fallback to last update
                         'dealId': dest.dealId,
                       });
+                      if (mounted) setState(() => _isProcessing = false);
+                      return;
                     }
+
+                    await context.pushNamed(kRouteCheckIn, extra: {
+                      'scheduleId': 'task',
+                      'customerName': destName,
+                      'customerAddress': destAddress,
+                      'targetLat': dest.targetLatitude,
+                      'targetLng': dest.targetLongitude,
+                      'taskDestinationId': dest.id,
+                      'dealId': dest.dealId,
+                    });
+                    if (mounted) setState(() => _isProcessing = false);
                   },
+
                 );
               },
             ),
@@ -306,42 +359,90 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
     );
   }
 
-  Widget _buildListTile({required String title, required String subtitle, required Widget leading, Widget? statusIcon, String? dealTitle, bool isFirst = false, VoidCallback? onTap}) {
+  Widget _buildListTile({
+    required String title, 
+    required String subtitle, 
+    required Widget leading, 
+    required TaskStatus status,
+    String? dealTitle, 
+    bool isFirst = false, 
+    VoidCallback? onTap
+  }) {
+    Color bgColor = Colors.white;
+    Widget? statusIcon;
+    bool isDone = status == TaskStatus.done;
+    bool isInProgress = status == TaskStatus.in_progress;
+
+    if (isFirst) {
+      bgColor = const Color(0xFFF3FBF7);
+    } else if (isDone) {
+      bgColor = Colors.grey.shade50;
+    } else if (isInProgress) {
+      bgColor = Colors.orange.withOpacity(0.05);
+    }
+
+    if (isDone) {
+      statusIcon = const Icon(LucideIcons.checkCircle, color: Colors.green, size: 20);
+    } else if (isInProgress) {
+      statusIcon = const Icon(LucideIcons.activity, color: Colors.orange, size: 20);
+    } else if (!isFirst) {
+      statusIcon = const Icon(LucideIcons.clock, color: Colors.grey, size: 20);
+    }
+
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isFirst ? const Color(0xFFF3FBF7) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade100),
-        ),
-        child: Row(
-          children: [
-            leading,
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  Text(subtitle, style: TextStyle(color: Colors.grey.shade500, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
-                  if (dealTitle != null) ...[
-                    const SizedBox(height: 4),
+      onTap: isDone ? null : onTap,
+      child: Opacity(
+        opacity: isDone ? 0.6 : 1.0,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isFirst ? Colors.green.withOpacity(0.1) : Colors.grey.shade100),
+          ),
+          child: Row(
+            children: [
+              leading,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Row(
                       children: [
-                        const Icon(LucideIcons.briefcase, size: 10, color: Colors.blue),
-                        const SizedBox(width: 4),
-                        Text(dealTitle, style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
+                        if (isDone) 
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            child: const Text('DONE', style: TextStyle(color: Colors.green, fontSize: 8, fontWeight: FontWeight.bold)),
+                          ),
+                        if (isInProgress)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                            child: const Text('ONGOING', style: TextStyle(color: Colors.orange, fontSize: 8, fontWeight: FontWeight.bold)),
+                          ),
                       ],
                     ),
+                    Text(subtitle, style: TextStyle(color: Colors.grey.shade500, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    if (dealTitle != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(LucideIcons.briefcase, size: 10, color: Colors.blue),
+                          const SizedBox(width: 4),
+                          Text(dealTitle, style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-            if (statusIcon != null) statusIcon,
-          ],
+              if (statusIcon != null) statusIcon,
+            ],
+          ),
         ),
       ),
     );

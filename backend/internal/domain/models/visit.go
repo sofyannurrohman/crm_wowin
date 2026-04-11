@@ -47,6 +47,7 @@ type VisitActivity struct {
 	LeadID            *uuid.UUID `json:"lead_id,omitempty"`
 	CustomerID        *uuid.UUID `json:"customer_id,omitempty"`
 	DealID            *uuid.UUID `json:"deal_id,omitempty"` // Optional linkage to sales pipeline
+	DealTitle         *string    `json:"deal_title,omitempty"`
 	Type              VisitType  `json:"type"`
 	Latitude          float64    `json:"latitude"`
 	Longitude         float64    `json:"longitude"`
@@ -56,5 +57,9 @@ type VisitActivity struct {
 	Distance          *float64   `json:"distance,omitempty"` // Distance to customer HQ during check-in
 	IsOffline         bool       `json:"is_offline"` // True if dispatched from SQLite backlog
 	Notes             *string    `json:"notes,omitempty"`
+	Outcome           *string    `json:"outcome,omitempty"`
+	SignaturePath     string     `json:"signature_path"`
+	DealItems         []DealItem `json:"deal_items,omitempty"`
+	TaskCompleted     bool       `json:"task_completed"` // True if all destinations in task are done
 	CreatedAt         utils.FlexTime  `json:"created_at"`
 }

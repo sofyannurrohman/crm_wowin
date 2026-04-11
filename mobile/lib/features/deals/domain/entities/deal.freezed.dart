@@ -17,7 +17,9 @@ mixin _$Deal {
   String get id;
   String get title;
   @JsonKey(name: 'customer_id')
-  String get customerId;
+  String? get customerId;
+  @JsonKey(name: 'lead_id')
+  String? get leadId;
   @JsonKey(name: 'contact_id')
   String? get contactId;
   String get stage;
@@ -53,6 +55,7 @@ mixin _$Deal {
             (identical(other.title, title) || other.title == title) &&
             (identical(other.customerId, customerId) ||
                 other.customerId == customerId) &&
+            (identical(other.leadId, leadId) || other.leadId == leadId) &&
             (identical(other.contactId, contactId) ||
                 other.contactId == contactId) &&
             (identical(other.stage, stage) || other.stage == stage) &&
@@ -79,6 +82,7 @@ mixin _$Deal {
       id,
       title,
       customerId,
+      leadId,
       contactId,
       stage,
       status,
@@ -93,7 +97,7 @@ mixin _$Deal {
 
   @override
   String toString() {
-    return 'Deal(id: $id, title: $title, customerId: $customerId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items, customer: $customer, salesId: $salesId, salesmanName: $salesmanName)';
+    return 'Deal(id: $id, title: $title, customerId: $customerId, leadId: $leadId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items, customer: $customer, salesId: $salesId, salesmanName: $salesmanName)';
   }
 }
 
@@ -105,7 +109,8 @@ abstract mixin class $DealCopyWith<$Res> {
   $Res call(
       {String id,
       String title,
-      @JsonKey(name: 'customer_id') String customerId,
+      @JsonKey(name: 'customer_id') String? customerId,
+      @JsonKey(name: 'lead_id') String? leadId,
       @JsonKey(name: 'contact_id') String? contactId,
       String stage,
       String status,
@@ -135,7 +140,8 @@ class _$DealCopyWithImpl<$Res> implements $DealCopyWith<$Res> {
   $Res call({
     Object? id = null,
     Object? title = null,
-    Object? customerId = null,
+    Object? customerId = freezed,
+    Object? leadId = freezed,
     Object? contactId = freezed,
     Object? stage = null,
     Object? status = null,
@@ -157,10 +163,14 @@ class _$DealCopyWithImpl<$Res> implements $DealCopyWith<$Res> {
           ? _self.title
           : title // ignore: cast_nullable_to_non_nullable
               as String,
-      customerId: null == customerId
+      customerId: freezed == customerId
           ? _self.customerId
           : customerId // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
+      leadId: freezed == leadId
+          ? _self.leadId
+          : leadId // ignore: cast_nullable_to_non_nullable
+              as String?,
       contactId: freezed == contactId
           ? _self.contactId
           : contactId // ignore: cast_nullable_to_non_nullable
@@ -319,7 +329,8 @@ extension DealPatterns on Deal {
     TResult Function(
             String id,
             String title,
-            @JsonKey(name: 'customer_id') String customerId,
+            @JsonKey(name: 'customer_id') String? customerId,
+            @JsonKey(name: 'lead_id') String? leadId,
             @JsonKey(name: 'contact_id') String? contactId,
             String stage,
             String status,
@@ -341,6 +352,7 @@ extension DealPatterns on Deal {
             _that.id,
             _that.title,
             _that.customerId,
+            _that.leadId,
             _that.contactId,
             _that.stage,
             _that.status,
@@ -375,7 +387,8 @@ extension DealPatterns on Deal {
     TResult Function(
             String id,
             String title,
-            @JsonKey(name: 'customer_id') String customerId,
+            @JsonKey(name: 'customer_id') String? customerId,
+            @JsonKey(name: 'lead_id') String? leadId,
             @JsonKey(name: 'contact_id') String? contactId,
             String stage,
             String status,
@@ -396,6 +409,7 @@ extension DealPatterns on Deal {
             _that.id,
             _that.title,
             _that.customerId,
+            _that.leadId,
             _that.contactId,
             _that.stage,
             _that.status,
@@ -429,7 +443,8 @@ extension DealPatterns on Deal {
     TResult? Function(
             String id,
             String title,
-            @JsonKey(name: 'customer_id') String customerId,
+            @JsonKey(name: 'customer_id') String? customerId,
+            @JsonKey(name: 'lead_id') String? leadId,
             @JsonKey(name: 'contact_id') String? contactId,
             String stage,
             String status,
@@ -450,6 +465,7 @@ extension DealPatterns on Deal {
             _that.id,
             _that.title,
             _that.customerId,
+            _that.leadId,
             _that.contactId,
             _that.stage,
             _that.status,
@@ -473,7 +489,8 @@ class _Deal implements Deal {
   const _Deal(
       {required this.id,
       required this.title,
-      @JsonKey(name: 'customer_id') required this.customerId,
+      @JsonKey(name: 'customer_id') this.customerId,
+      @JsonKey(name: 'lead_id') this.leadId,
       @JsonKey(name: 'contact_id') this.contactId,
       required this.stage,
       required this.status,
@@ -494,7 +511,10 @@ class _Deal implements Deal {
   final String title;
   @override
   @JsonKey(name: 'customer_id')
-  final String customerId;
+  final String? customerId;
+  @override
+  @JsonKey(name: 'lead_id')
+  final String? leadId;
   @override
   @JsonKey(name: 'contact_id')
   final String? contactId;
@@ -554,6 +574,7 @@ class _Deal implements Deal {
             (identical(other.title, title) || other.title == title) &&
             (identical(other.customerId, customerId) ||
                 other.customerId == customerId) &&
+            (identical(other.leadId, leadId) || other.leadId == leadId) &&
             (identical(other.contactId, contactId) ||
                 other.contactId == contactId) &&
             (identical(other.stage, stage) || other.stage == stage) &&
@@ -580,6 +601,7 @@ class _Deal implements Deal {
       id,
       title,
       customerId,
+      leadId,
       contactId,
       stage,
       status,
@@ -594,7 +616,7 @@ class _Deal implements Deal {
 
   @override
   String toString() {
-    return 'Deal(id: $id, title: $title, customerId: $customerId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items, customer: $customer, salesId: $salesId, salesmanName: $salesmanName)';
+    return 'Deal(id: $id, title: $title, customerId: $customerId, leadId: $leadId, contactId: $contactId, stage: $stage, status: $status, amount: $amount, probability: $probability, expectedClose: $expectedClose, description: $description, items: $items, customer: $customer, salesId: $salesId, salesmanName: $salesmanName)';
   }
 }
 
@@ -607,7 +629,8 @@ abstract mixin class _$DealCopyWith<$Res> implements $DealCopyWith<$Res> {
   $Res call(
       {String id,
       String title,
-      @JsonKey(name: 'customer_id') String customerId,
+      @JsonKey(name: 'customer_id') String? customerId,
+      @JsonKey(name: 'lead_id') String? leadId,
       @JsonKey(name: 'contact_id') String? contactId,
       String stage,
       String status,
@@ -638,7 +661,8 @@ class __$DealCopyWithImpl<$Res> implements _$DealCopyWith<$Res> {
   $Res call({
     Object? id = null,
     Object? title = null,
-    Object? customerId = null,
+    Object? customerId = freezed,
+    Object? leadId = freezed,
     Object? contactId = freezed,
     Object? stage = null,
     Object? status = null,
@@ -660,10 +684,14 @@ class __$DealCopyWithImpl<$Res> implements _$DealCopyWith<$Res> {
           ? _self.title
           : title // ignore: cast_nullable_to_non_nullable
               as String,
-      customerId: null == customerId
+      customerId: freezed == customerId
           ? _self.customerId
           : customerId // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
+      leadId: freezed == leadId
+          ? _self.leadId
+          : leadId // ignore: cast_nullable_to_non_nullable
+              as String?,
       contactId: freezed == contactId
           ? _self.contactId
           : contactId // ignore: cast_nullable_to_non_nullable

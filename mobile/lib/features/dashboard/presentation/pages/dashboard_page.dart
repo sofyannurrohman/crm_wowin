@@ -3,6 +3,7 @@ import 'package:wowin_crm/l10n/app_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
@@ -23,6 +24,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../tasks/presentation/bloc/task_bloc.dart';
 import '../../../tasks/presentation/bloc/task_state.dart';
+import '../../../deals/presentation/bloc/deal_bloc.dart';
+import '../../../deals/presentation/bloc/deal_state.dart';
 import 'package:intl/intl.dart';
 import 'package:wowin_crm/features/tasks/domain/entities/task.dart';
 import 'package:wowin_crm/features/tasks/domain/entities/task_destination.dart';
@@ -71,19 +74,37 @@ class _DashboardPageState extends State<DashboardPage> {
             _buildHeader(context, l10n),
             // Scrollable body
             Expanded(
-              child: BlocListener<TaskBloc, TaskState>(
-                listener: (context, state) {
-                  if (state is TaskOperationSuccess) {
-                    _fetchDashboardData();
-                  }
-                },
+              child: MultiBlocListener(
+                listeners: [
+                  BlocListener<TaskBloc, TaskState>(
+                    listener: (context, state) {
+                      if (state is TaskOperationSuccess) {
+                        _fetchDashboardData();
+                      }
+                    },
+                  ),
+                  BlocListener<VisitBloc, VisitState>(
+                    listener: (context, state) {
+                      if (state is VisitSuccess) {
+                        _fetchDashboardData();
+                      }
+                    },
+                  ),
+                  BlocListener<DealBloc, DealState>(
+                    listener: (context, state) {
+                      if (state is DealOperationSuccess) {
+                        _fetchDashboardData();
+                      }
+                    },
+                  ),
+                ],
                 child: RefreshIndicator(
                   color: _orange,
                   onRefresh: () async {
                     _fetchDashboardData();
                   },
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   child: BlocBuilder<DashboardBloc, DashboardState>(
                     builder: (context, state) {
@@ -211,6 +232,18 @@ class _DashboardPageState extends State<DashboardPage> {
   // ---------------------------------------------------------------------------
   Widget _buildBody(DashboardLoaded state, AppLocalizations l10n) {
     final d = state.dashboard;
+    final List<_RouteStep> optimizedSteps = _getOptimizedSteps(state.routeTasks);
+    
+    // Find first unvisited destination in optimized sequence
+    _RouteStep? nextOptimizedStop;
+    try {
+      nextOptimizedStop = optimizedSteps.firstWhere(
+        (s) => !s.isWarehouse && s.status != TaskStatus.done
+      );
+    } catch (_) {
+      nextOptimizedStop = null;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -224,13 +257,44 @@ class _DashboardPageState extends State<DashboardPage> {
                 if (hasActiveVisit)
                   ActiveVisitCard(
                     scheduleId: visitState.scheduleId!,
-                    customerId: visitState.customerId ?? '',
+                    customerId: visitState.customerId,
                     leadId: visitState.leadId,
+                    taskDestinationId: visitState.taskDestinationId,
                     customerName: visitState.customerName ?? 'Pelanggan',
                     startTime: visitState.checkInTime ?? DateTime.now(),
                   ).animateEntrance(delay: const Duration(milliseconds: 100))
+                else if (nextOptimizedStop != null)
+                  NextVisitCard(
+                    nextStop: VisitRecommendation(
+                      id: nextOptimizedStop!.id,
+                      name: nextOptimizedStop!.name,
+                      address: nextOptimizedStop!.address,
+                      latitude: nextOptimizedStop!.latitude ?? 0,
+                      longitude: nextOptimizedStop!.longitude ?? 0,
+                      reason: 'Optimized via Route Planner',
+                      customerId: nextOptimizedStop!.customerId,
+                      leadId: nextOptimizedStop!.leadId,
+                      taskDestinationId: nextOptimizedStop!.id,
+                      type: nextOptimizedStop!.customerId != null ? 'customer' : 'lead',
+                      status: 'scheduled',
+                      priority: 'medium',
+                      daysSinceLast: 0,
+                    ),
+                    parentTask: nextOptimizedStop!.parentTask,
+                  ).animateEntrance(delay: const Duration(milliseconds: 100))
                 else if (d.nextStop != null)
-                  NextVisitCard(nextStop: d.nextStop!).animateEntrance(delay: const Duration(milliseconds: 100)),
+                  Builder(
+                    builder: (context) {
+                      final parentTask = (state as DashboardLoaded).routeTasks.whereType<Task>().firstWhere(
+                        (t) => t.destinations.any((dest) => dest.id == d.nextStop!.taskDestinationId),
+                        orElse: () => null as dynamic,
+                      );
+                      return NextVisitCard(
+                        nextStop: d.nextStop!,
+                        parentTask: parentTask,
+                      ).animateEntrance(delay: const Duration(milliseconds: 100));
+                    },
+                  ),
               ],
             );
           },
@@ -244,8 +308,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 label: l10n.todaysVisits,
                 icon: LucideIcons.calendarCheck,
                 value: '${d.visitsToday}',
-                badge: '+2 today',
-                badgeColor: const Color(0xFF10B981),
+                badge: '${d.visitsToday}/${d.visitsTarget} Kunjungan',
+                badgeColor: d.visitsToday >= d.visitsTarget ? const Color(0xFF10B981) : _navy,
               ).animateEntrance(delay: const Duration(milliseconds: 200)),
             ),
             const SizedBox(width: 12),
@@ -308,7 +372,7 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         const SizedBox(height: 20),
         
-        _buildRouteSequence(state.routeTasks, l10n),
+        _buildRouteSequence(optimizedSteps, l10n),
 
         const SizedBox(height: 100), // padding for FAB
       ],
@@ -485,8 +549,119 @@ class _DashboardPageState extends State<DashboardPage> {
   // ---------------------------------------------------------------------------
   // Route sequence timeline
   // ---------------------------------------------------------------------------
-  Widget _buildRouteSequence(List<Task> tasks, AppLocalizations l10n) {
-    if (tasks.isEmpty) {
+  List<_RouteStep> _getOptimizedSteps(List<Task> tasks) {
+    if (tasks.isEmpty) return [];
+
+    final List<_RouteStep> steps = [];
+    
+    // For simplicity, we optimize each task's destinations using the same greedy logic
+    // but starting from each task's warehouse
+    for (final task in tasks) {
+      if (task.status == TaskStatus.done) continue;
+      
+      if (task.warehouse != null) {
+        steps.add(_RouteStep(
+          id: 'wh-${task.warehouseId}',
+          name: task.warehouse!.name,
+          address: task.warehouse!.address ?? 'Gudang Utama',
+          isWarehouse: true,
+          status: task.status,
+          parentTask: task,
+          latitude: task.warehouse?.latitude,
+          longitude: task.warehouse?.longitude,
+        ));
+      }
+
+      final List<TaskDestination> unvisited = task.destinations.where((d) => d.status != TaskStatus.done).toList();
+      final List<TaskDestination> done = task.destinations.where((d) => d.status == TaskStatus.done).toList();
+      
+      // 1. Add Done tasks first (historical)
+      for (final dest in done) {
+        steps.add(_RouteStep(
+          id: dest.id,
+          name: dest.targetName ?? 'Selesai',
+          address: dest.targetAddress ?? '-',
+          isWarehouse: false,
+          status: dest.status,
+          customerId: dest.customerId,
+          leadId: dest.leadId,
+          scheduleId: task.id,
+          parentTask: task,
+          latitude: dest.targetLatitude,
+          longitude: dest.targetLongitude,
+        ));
+      }
+
+      // 2. Greedy Optimization for the rest
+      LatLng currentLoc = LatLng(
+        task.warehouse?.latitude ?? -6.1754, 
+        task.warehouse?.longitude ?? 106.8272
+      );
+      
+      // Update currentLoc to last done task if exists
+      if (done.isNotEmpty) {
+        final lastDone = done.last;
+        if (lastDone.targetLatitude != null && lastDone.targetLongitude != null) {
+          currentLoc = LatLng(lastDone.targetLatitude!, lastDone.targetLongitude!);
+        }
+      }
+
+      while (unvisited.isNotEmpty) {
+        double minDistance = double.infinity;
+        int nearestIndex = -1;
+
+        for (int i = 0; i < unvisited.length; i++) {
+          final dest = unvisited[i];
+          if (dest.targetLatitude != null && dest.targetLongitude != null) {
+            final destLoc = LatLng(dest.targetLatitude!, dest.targetLongitude!);
+            final distance = const Distance().as(LengthUnit.Meter, currentLoc, destLoc);
+            if (distance < minDistance) {
+              minDistance = distance;
+              nearestIndex = i;
+            }
+          }
+        }
+
+        if (nearestIndex != -1) {
+          final nearestDest = unvisited.removeAt(nearestIndex);
+          steps.add(_RouteStep(
+            id: nearestDest.id,
+            name: nearestDest.targetName ?? 'Tujuan',
+            address: nearestDest.targetAddress ?? '-',
+            isWarehouse: false,
+            status: nearestDest.status,
+            customerId: nearestDest.customerId,
+            leadId: nearestDest.leadId,
+            scheduleId: task.id,
+            parentTask: task,
+            latitude: nearestDest.targetLatitude,
+            longitude: nearestDest.targetLongitude,
+          ));
+          currentLoc = LatLng(nearestDest.targetLatitude!, nearestDest.targetLongitude!);
+        } else {
+          // Add remaining if no location
+          for (final d in unvisited) {
+             steps.add(_RouteStep(
+              id: d.id,
+              name: d.targetName ?? 'Tujuan',
+              address: d.targetAddress ?? '-',
+              isWarehouse: false,
+              status: d.status,
+              customerId: d.customerId,
+              leadId: d.leadId,
+              scheduleId: task.id,
+              parentTask: task,
+            ));
+          }
+          unvisited.clear();
+        }
+      }
+    }
+    return steps;
+  }
+
+  Widget _buildRouteSequence(List<_RouteStep> steps, AppLocalizations l10n) {
+    if (steps.isEmpty) {
       return Container(
         margin: const EdgeInsets.symmetric(horizontal: 20),
         padding: const EdgeInsets.all(24),
@@ -506,38 +681,6 @@ class _DashboardPageState extends State<DashboardPage> {
       );
     }
 
-    // Combine all destinations from all tasks into one long list
-    final List<_RouteStep> steps = [];
-    
-    for (final task in tasks) {
-      // 1. Starting Point: Warehouse (if exists)
-      if (task.warehouse != null) {
-        steps.add(_RouteStep(
-          id: 'wh-${task.warehouseId}',
-          name: task.warehouse!.name,
-          address: task.warehouse!.address ?? 'Gudang Utama',
-          isWarehouse: true,
-          status: task.status, // We map task status to WH for now
-        ));
-      }
-
-      // 2. Task Destinations
-      final sortedDestinations = List<TaskDestination>.from(task.destinations)
-        ..sort((a, b) => a.sequenceOrder.compareTo(b.sequenceOrder));
-
-      for (final dest in sortedDestinations) {
-        steps.add(_RouteStep(
-          id: dest.id,
-          name: dest.targetName ?? 'Tujuan',
-          address: dest.targetAddress ?? '-',
-          isWarehouse: false,
-          status: dest.status,
-          customerId: dest.customerId,
-          leadId: dest.leadId,
-          scheduleId: task.id, // We use taskId as scheduleId for simplicity here
-        ));
-      }
-    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -596,14 +739,8 @@ class _DashboardPageState extends State<DashboardPage> {
                       onTap: step.isWarehouse || step.status == TaskStatus.done
                           ? null
                           : () => context.pushNamed(
-                                'check_in',
-                                pathParameters: {'scheduleId': step.scheduleId!},
-                                queryParameters: {
-                                  if (step.customerId != null) 'customerId': step.customerId,
-                                  if (step.leadId != null) 'leadId': step.leadId,
-                                  'customerName': step.name,
-                                  'customerAddress': step.address,
-                                },
+                                kRouteRoutePlanner,
+                                extra: step.parentTask,
                               ),
                       child: Container(
                         padding: const EdgeInsets.all(16),
@@ -1174,6 +1311,9 @@ class _RouteStep {
   final String? customerId;
   final String? leadId;
   final String? scheduleId;
+  final Task? parentTask;
+  final double? latitude;
+  final double? longitude;
 
   _RouteStep({
     required this.id,
@@ -1184,5 +1324,8 @@ class _RouteStep {
     this.customerId,
     this.leadId,
     this.scheduleId,
+    this.parentTask,
+    this.latitude,
+    this.longitude,
   });
 }

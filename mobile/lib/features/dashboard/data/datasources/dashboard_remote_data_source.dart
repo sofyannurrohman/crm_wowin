@@ -28,9 +28,10 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
           activeDeals: 0,
           visitsToday: 0,
           targetMetPercentage: 0,
+          monthlyRevenue: 0,
+          monthlyTarget: 65000,
+          visitsTarget: 150,
         ),
-        monthlyRevenue: 0,
-        monthlyTarget: 65000,
         daysLeft: 0,
       );
     }
@@ -45,8 +46,6 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
 
     return KpiDashboard(
       summary: summary,
-      monthlyRevenue: (data['monthly_revenue'] as num?)?.toDouble() ?? 0,
-      monthlyTarget: (data['monthly_target'] as num?)?.toDouble() ?? 65000,
       daysLeft: (data['days_left'] as num?)?.toInt() ?? 0,
       hotDeals: hotDeals,
       recentActivities: recentActivities,

@@ -8,7 +8,7 @@ abstract class AuthRepository {
     required String name,
     required String email,
     required String password,
-    String companyName,
+    required String salesType,
   });
   Future<Either<Failure, List<UserEntity>>> getSalesmen();
   Future<Either<Failure, void>> logout();

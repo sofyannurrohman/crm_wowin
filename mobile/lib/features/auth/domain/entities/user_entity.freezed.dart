@@ -24,6 +24,8 @@ mixin _$UserEntity {
   String? get avatarPath;
   @JsonKey(name: 'employee_code')
   String? get employeeCode;
+  @JsonKey(name: 'sales_type')
+  String? get salesType;
 
   /// Create a copy of UserEntity
   /// with the given fields replaced by the non-null parameter values.
@@ -49,17 +51,19 @@ mixin _$UserEntity {
             (identical(other.avatarPath, avatarPath) ||
                 other.avatarPath == avatarPath) &&
             (identical(other.employeeCode, employeeCode) ||
-                other.employeeCode == employeeCode));
+                other.employeeCode == employeeCode) &&
+            (identical(other.salesType, salesType) ||
+                other.salesType == salesType));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, email, name, role, phone,
-      status, avatarPath, employeeCode);
+      status, avatarPath, employeeCode, salesType);
 
   @override
   String toString() {
-    return 'UserEntity(id: $id, email: $email, name: $name, role: $role, phone: $phone, status: $status, avatarPath: $avatarPath, employeeCode: $employeeCode)';
+    return 'UserEntity(id: $id, email: $email, name: $name, role: $role, phone: $phone, status: $status, avatarPath: $avatarPath, employeeCode: $employeeCode, salesType: $salesType)';
   }
 }
 
@@ -77,7 +81,8 @@ abstract mixin class $UserEntityCopyWith<$Res> {
       String? phone,
       String? status,
       @JsonKey(name: 'avatar_path') String? avatarPath,
-      @JsonKey(name: 'employee_code') String? employeeCode});
+      @JsonKey(name: 'employee_code') String? employeeCode,
+      @JsonKey(name: 'sales_type') String? salesType});
 }
 
 /// @nodoc
@@ -100,6 +105,7 @@ class _$UserEntityCopyWithImpl<$Res> implements $UserEntityCopyWith<$Res> {
     Object? status = freezed,
     Object? avatarPath = freezed,
     Object? employeeCode = freezed,
+    Object? salesType = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -133,6 +139,10 @@ class _$UserEntityCopyWithImpl<$Res> implements $UserEntityCopyWith<$Res> {
       employeeCode: freezed == employeeCode
           ? _self.employeeCode
           : employeeCode // ignore: cast_nullable_to_non_nullable
+              as String?,
+      salesType: freezed == salesType
+          ? _self.salesType
+          : salesType // ignore: cast_nullable_to_non_nullable
               as String?,
     ));
   }
@@ -239,15 +249,24 @@ extension UserEntityPatterns on UserEntity {
             String? phone,
             String? status,
             @JsonKey(name: 'avatar_path') String? avatarPath,
-            @JsonKey(name: 'employee_code') String? employeeCode)?
+            @JsonKey(name: 'employee_code') String? employeeCode,
+            @JsonKey(name: 'sales_type') String? salesType)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _UserEntity() when $default != null:
-        return $default(_that.id, _that.email, _that.name, _that.role,
-            _that.phone, _that.status, _that.avatarPath, _that.employeeCode);
+        return $default(
+            _that.id,
+            _that.email,
+            _that.name,
+            _that.role,
+            _that.phone,
+            _that.status,
+            _that.avatarPath,
+            _that.employeeCode,
+            _that.salesType);
       case _:
         return orElse();
     }
@@ -276,14 +295,23 @@ extension UserEntityPatterns on UserEntity {
             String? phone,
             String? status,
             @JsonKey(name: 'avatar_path') String? avatarPath,
-            @JsonKey(name: 'employee_code') String? employeeCode)
+            @JsonKey(name: 'employee_code') String? employeeCode,
+            @JsonKey(name: 'sales_type') String? salesType)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _UserEntity():
-        return $default(_that.id, _that.email, _that.name, _that.role,
-            _that.phone, _that.status, _that.avatarPath, _that.employeeCode);
+        return $default(
+            _that.id,
+            _that.email,
+            _that.name,
+            _that.role,
+            _that.phone,
+            _that.status,
+            _that.avatarPath,
+            _that.employeeCode,
+            _that.salesType);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -311,14 +339,23 @@ extension UserEntityPatterns on UserEntity {
             String? phone,
             String? status,
             @JsonKey(name: 'avatar_path') String? avatarPath,
-            @JsonKey(name: 'employee_code') String? employeeCode)?
+            @JsonKey(name: 'employee_code') String? employeeCode,
+            @JsonKey(name: 'sales_type') String? salesType)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _UserEntity() when $default != null:
-        return $default(_that.id, _that.email, _that.name, _that.role,
-            _that.phone, _that.status, _that.avatarPath, _that.employeeCode);
+        return $default(
+            _that.id,
+            _that.email,
+            _that.name,
+            _that.role,
+            _that.phone,
+            _that.status,
+            _that.avatarPath,
+            _that.employeeCode,
+            _that.salesType);
       case _:
         return null;
     }
@@ -336,7 +373,8 @@ class _UserEntity implements UserEntity {
       this.phone,
       this.status,
       @JsonKey(name: 'avatar_path') this.avatarPath,
-      @JsonKey(name: 'employee_code') this.employeeCode});
+      @JsonKey(name: 'employee_code') this.employeeCode,
+      @JsonKey(name: 'sales_type') this.salesType});
   factory _UserEntity.fromJson(Map<String, dynamic> json) =>
       _$UserEntityFromJson(json);
 
@@ -358,6 +396,9 @@ class _UserEntity implements UserEntity {
   @override
   @JsonKey(name: 'employee_code')
   final String? employeeCode;
+  @override
+  @JsonKey(name: 'sales_type')
+  final String? salesType;
 
   /// Create a copy of UserEntity
   /// with the given fields replaced by the non-null parameter values.
@@ -388,17 +429,19 @@ class _UserEntity implements UserEntity {
             (identical(other.avatarPath, avatarPath) ||
                 other.avatarPath == avatarPath) &&
             (identical(other.employeeCode, employeeCode) ||
-                other.employeeCode == employeeCode));
+                other.employeeCode == employeeCode) &&
+            (identical(other.salesType, salesType) ||
+                other.salesType == salesType));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, email, name, role, phone,
-      status, avatarPath, employeeCode);
+      status, avatarPath, employeeCode, salesType);
 
   @override
   String toString() {
-    return 'UserEntity(id: $id, email: $email, name: $name, role: $role, phone: $phone, status: $status, avatarPath: $avatarPath, employeeCode: $employeeCode)';
+    return 'UserEntity(id: $id, email: $email, name: $name, role: $role, phone: $phone, status: $status, avatarPath: $avatarPath, employeeCode: $employeeCode, salesType: $salesType)';
   }
 }
 
@@ -418,7 +461,8 @@ abstract mixin class _$UserEntityCopyWith<$Res>
       String? phone,
       String? status,
       @JsonKey(name: 'avatar_path') String? avatarPath,
-      @JsonKey(name: 'employee_code') String? employeeCode});
+      @JsonKey(name: 'employee_code') String? employeeCode,
+      @JsonKey(name: 'sales_type') String? salesType});
 }
 
 /// @nodoc
@@ -441,6 +485,7 @@ class __$UserEntityCopyWithImpl<$Res> implements _$UserEntityCopyWith<$Res> {
     Object? status = freezed,
     Object? avatarPath = freezed,
     Object? employeeCode = freezed,
+    Object? salesType = freezed,
   }) {
     return _then(_UserEntity(
       id: null == id
@@ -474,6 +519,10 @@ class __$UserEntityCopyWithImpl<$Res> implements _$UserEntityCopyWith<$Res> {
       employeeCode: freezed == employeeCode
           ? _self.employeeCode
           : employeeCode // ignore: cast_nullable_to_non_nullable
+              as String?,
+      salesType: freezed == salesType
+          ? _self.salesType
+          : salesType // ignore: cast_nullable_to_non_nullable
               as String?,
     ));
   }

@@ -22,6 +22,7 @@ type SalesActivity struct {
 	LeadID            *uuid.UUID     `json:"lead_id,omitempty"`
 	CustomerID        *uuid.UUID     `json:"customer_id,omitempty"`
 	DealID            *uuid.UUID     `json:"deal_id,omitempty"`
+	DealTitle         *string        `json:"deal_title,omitempty"`
 	TaskDestinationID *uuid.UUID     `json:"task_destination_id,omitempty"`
 	Type              ActivityType   `json:"type"`
 	Title             string         `json:"title"`
@@ -36,6 +37,7 @@ type SalesActivity struct {
 	IsOffline         bool           `json:"is_offline"`
 	Address           *string        `json:"address,omitempty"`
 	Outcome           *string        `json:"outcome,omitempty"`
+	SignaturePath     *string        `json:"signature_path,omitempty"`
 	ActivityAt        utils.FlexTime  `json:"activity_at"`
 	CreatedAt         utils.FlexTime  `json:"created_at"`
 	UpdatedAt         utils.FlexTime  `json:"updated_at"`

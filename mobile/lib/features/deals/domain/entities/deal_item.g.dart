@@ -8,7 +8,7 @@ part of 'deal_item.dart';
 
 _DealItem _$DealItemFromJson(Map<String, dynamic> json) => _DealItem(
       id: json['id'] as String,
-      dealId: json['deal_id'] as String,
+      dealId: json['deal_id'] as String?,
       productId: json['product_id'] as String,
       name: json['name'] as String,
       quantity: (json['quantity'] as num).toDouble(),

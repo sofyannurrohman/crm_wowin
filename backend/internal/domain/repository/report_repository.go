@@ -6,7 +6,7 @@ import (
 )
 
 type ReportRepository interface {
-	GetKpiSummary(ctx context.Context) (*models.KpiSummary, error)
+	GetKpiSummary(ctx context.Context, salesID string, role string) (*models.KpiSummary, error)
 	GetRevenueTrend(ctx context.Context, months int) ([]models.ChartData, error)
 	GetPipelineFunnel(ctx context.Context) ([]models.ChartData, error)
 	GetTopPerformers(ctx context.Context, limit int) ([]models.SalesPerformance, error)

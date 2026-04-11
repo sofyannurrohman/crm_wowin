@@ -21,10 +21,10 @@ class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _companyController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
   bool _agreedToTerms = false;
+  String? _selectedSalesType;
 
   // changed orange -> new green #0D8549
   static const Color _orange = Color(0xFF0D8549);
@@ -33,7 +33,6 @@ class _RegisterPageState extends State<RegisterPage> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _companyController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -56,7 +55,7 @@ class _RegisterPageState extends State<RegisterPage> {
               name: _nameController.text.trim(),
               email: _emailController.text.trim(),
               password: _passwordController.text,
-              companyName: _companyController.text.trim(),
+              salesType: _selectedSalesType ?? '',
             ),
           );
     }
@@ -216,21 +215,18 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
           const SizedBox(height: 16),
 
-          // Company Name
-          _buildLabel(l10n.companyName),
-          const SizedBox(height: 8),
-          _buildTextField(
-            controller: _companyController,
-            hint: 'e.g. Acme Corp',
-            prefixIcon: LucideIcons.building2,
-            // optional field – no validator
-          ),
           const SizedBox(height: 16),
 
           // Password
           _buildLabel(l10n.password),
           const SizedBox(height: 8),
           _buildPasswordField(l10n),
+          const SizedBox(height: 16),
+
+          // Sales Type
+          _buildLabel('Tipe Sales'),
+          const SizedBox(height: 8),
+          _buildSalesTypeDropdown(l10n),
           const SizedBox(height: 20),
 
           // Terms & Conditions checkbox
@@ -437,6 +433,46 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSalesTypeDropdown(AppLocalizations l10n) {
+    return DropdownButtonFormField<String>(
+      value: _selectedSalesType,
+      items: const [
+        DropdownMenuItem(value: 'motoris', child: Text('Motoris')),
+        DropdownMenuItem(value: 'task_order', child: Text('Task Order')),
+        DropdownMenuItem(value: 'canvas', child: Text('Canvas')),
+      ],
+      onChanged: (v) => setState(() => _selectedSalesType = v),
+      validator: (v) => (v == null || v.isEmpty) ? 'Silahkan pilih tipe sales' : null,
+      decoration: InputDecoration(
+        hintText: 'Pilih Tipe Sales',
+        hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 15),
+        prefixIcon: const Icon(LucideIcons.briefcase, size: 20, color: Color(0xFFAAAAAA)),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFFDDDDDD), width: 1.2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _orange, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1.2),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+        ),
+      ),
+      icon: const Icon(LucideIcons.chevronDown, size: 20, color: Color(0xFFAAAAAA)),
+      dropdownColor: Colors.white,
+      style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A1A)),
     );
   }
 

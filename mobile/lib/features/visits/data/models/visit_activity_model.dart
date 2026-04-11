@@ -6,6 +6,7 @@ class VisitActivityModel extends VisitActivity {
     super.scheduleId,
     required super.salesId,
     required super.customerId,
+    super.leadId,
     required super.type,
     required super.latitude,
     required super.longitude,
@@ -15,6 +16,9 @@ class VisitActivityModel extends VisitActivity {
     super.distance,
     required super.isOffline,
     super.notes,
+    super.dealId,
+    super.dealTitle,
+    super.taskCompleted = false,
     required super.createdAt,
   });
 
@@ -24,6 +28,7 @@ class VisitActivityModel extends VisitActivity {
       scheduleId: json['schedule_id'],
       salesId: json['sales_id'] ?? '',
       customerId: json['customer_id'] ?? '',
+      leadId: json['lead_id'],
       type: json['type'] ?? 'unknown',
       latitude: (json['latitude'] ?? json['lat'] ?? 0.0).toDouble(),
       longitude: (json['longitude'] ?? json['lon'] ?? 0.0).toDouble(),
@@ -33,6 +38,9 @@ class VisitActivityModel extends VisitActivity {
       distance: (json['distance'] != null) ? (json['distance'] as num).toDouble() : null,
       isOffline: json['is_offline'] ?? false,
       notes: json['notes'],
+      dealId: json['deal_id'],
+      dealTitle: json['deal_title'],
+      taskCompleted: json['task_completed'] ?? false,
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']).toLocal() 
           : DateTime.now(),

@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 mixin _$DealItem {
   String get id;
   @JsonKey(name: 'deal_id')
-  String get dealId;
+  String? get dealId;
   @JsonKey(name: 'product_id')
   String get productId;
   String get name;
@@ -78,7 +78,7 @@ abstract mixin class $DealItemCopyWith<$Res> {
   @useResult
   $Res call(
       {String id,
-      @JsonKey(name: 'deal_id') String dealId,
+      @JsonKey(name: 'deal_id') String? dealId,
       @JsonKey(name: 'product_id') String productId,
       String name,
       double quantity,
@@ -102,7 +102,7 @@ class _$DealItemCopyWithImpl<$Res> implements $DealItemCopyWith<$Res> {
   @override
   $Res call({
     Object? id = null,
-    Object? dealId = null,
+    Object? dealId = freezed,
     Object? productId = null,
     Object? name = null,
     Object? quantity = null,
@@ -117,10 +117,10 @@ class _$DealItemCopyWithImpl<$Res> implements $DealItemCopyWith<$Res> {
           ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      dealId: null == dealId
+      dealId: freezed == dealId
           ? _self.dealId
           : dealId // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
       productId: null == productId
           ? _self.productId
           : productId // ignore: cast_nullable_to_non_nullable
@@ -252,7 +252,7 @@ extension DealItemPatterns on DealItem {
   TResult maybeWhen<TResult extends Object?>(
     TResult Function(
             String id,
-            @JsonKey(name: 'deal_id') String dealId,
+            @JsonKey(name: 'deal_id') String? dealId,
             @JsonKey(name: 'product_id') String productId,
             String name,
             double quantity,
@@ -300,7 +300,7 @@ extension DealItemPatterns on DealItem {
   TResult when<TResult extends Object?>(
     TResult Function(
             String id,
-            @JsonKey(name: 'deal_id') String dealId,
+            @JsonKey(name: 'deal_id') String? dealId,
             @JsonKey(name: 'product_id') String productId,
             String name,
             double quantity,
@@ -346,7 +346,7 @@ extension DealItemPatterns on DealItem {
   TResult? whenOrNull<TResult extends Object?>(
     TResult? Function(
             String id,
-            @JsonKey(name: 'deal_id') String dealId,
+            @JsonKey(name: 'deal_id') String? dealId,
             @JsonKey(name: 'product_id') String productId,
             String name,
             double quantity,
@@ -382,7 +382,7 @@ extension DealItemPatterns on DealItem {
 class _DealItem extends DealItem {
   const _DealItem(
       {required this.id,
-      @JsonKey(name: 'deal_id') required this.dealId,
+      @JsonKey(name: 'deal_id') this.dealId,
       @JsonKey(name: 'product_id') required this.productId,
       required this.name,
       required this.quantity,
@@ -399,7 +399,7 @@ class _DealItem extends DealItem {
   final String id;
   @override
   @JsonKey(name: 'deal_id')
-  final String dealId;
+  final String? dealId;
   @override
   @JsonKey(name: 'product_id')
   final String productId;
@@ -476,7 +476,7 @@ abstract mixin class _$DealItemCopyWith<$Res>
   @useResult
   $Res call(
       {String id,
-      @JsonKey(name: 'deal_id') String dealId,
+      @JsonKey(name: 'deal_id') String? dealId,
       @JsonKey(name: 'product_id') String productId,
       String name,
       double quantity,
@@ -500,7 +500,7 @@ class __$DealItemCopyWithImpl<$Res> implements _$DealItemCopyWith<$Res> {
   @pragma('vm:prefer-inline')
   $Res call({
     Object? id = null,
-    Object? dealId = null,
+    Object? dealId = freezed,
     Object? productId = null,
     Object? name = null,
     Object? quantity = null,
@@ -515,10 +515,10 @@ class __$DealItemCopyWithImpl<$Res> implements _$DealItemCopyWith<$Res> {
           ? _self.id
           : id // ignore: cast_nullable_to_non_nullable
               as String,
-      dealId: null == dealId
+      dealId: freezed == dealId
           ? _self.dealId
           : dealId // ignore: cast_nullable_to_non_nullable
-              as String,
+              as String?,
       productId: null == productId
           ? _self.productId
           : productId // ignore: cast_nullable_to_non_nullable

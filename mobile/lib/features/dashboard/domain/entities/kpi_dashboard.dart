@@ -7,8 +7,6 @@ import '../../../visits/domain/entities/visit_activity.dart';
 /// parsed from the backend response that aren't in the freezed entity.
 class KpiDashboard {
   final KpiSummary summary;
-  final double monthlyRevenue;
-  final double monthlyTarget;
   final int daysLeft;
 
   final List<Deal> hotDeals;
@@ -16,8 +14,6 @@ class KpiDashboard {
 
   const KpiDashboard({
     required this.summary,
-    required this.monthlyRevenue,
-    required this.monthlyTarget,
     required this.daysLeft,
     this.hotDeals = const [],
     this.recentActivities = const [],
@@ -29,5 +25,8 @@ class KpiDashboard {
   int get activeDeals => summary.activeDeals;
   double get totalSales => summary.totalSales;
   double get targetMetPercentage => summary.targetMetPercentage;
+  double get monthlyRevenue => summary.monthlyRevenue;
+  double get monthlyTarget => summary.monthlyTarget;
+  int get visitsTarget => summary.visitsTarget;
   VisitRecommendation? get nextStop => summary.nextStop;
 }

@@ -72,6 +72,12 @@ class CheckOutSubmitted extends VisitEvent {
   final String? leadId;
   final double? priceOverride;
   final String? priceOverrideNote;
+  final String? dealId;
+  final List<Map<String, dynamic>>? dealItems;
+  final String? outcome;
+  final String? paymentMethod;
+  final String? paymentRef;
+  final dynamic signatureBytes; // Uint8List? or similar
 
   const CheckOutSubmitted({
     required this.scheduleId,
@@ -88,9 +94,12 @@ class CheckOutSubmitted extends VisitEvent {
     this.priceOverride,
     this.priceOverrideNote,
     this.dealId,
+    this.dealItems,
+    this.outcome,
+    this.paymentMethod,
+    this.paymentRef,
+    this.signatureBytes,
   });
-
-  final String? dealId;
 
   @override
   List<Object?> get props => [
@@ -108,6 +117,11 @@ class CheckOutSubmitted extends VisitEvent {
         priceOverride,
         priceOverrideNote,
         dealId,
+        dealItems,
+        outcome,
+        paymentMethod,
+        paymentRef,
+        signatureBytes,
       ];
 }
 
@@ -128,4 +142,8 @@ class LinkDealToVisit extends VisitEvent {
 
   @override
   List<Object?> get props => [dealId];
+}
+
+class RestoreActiveVisit extends VisitEvent {
+  const RestoreActiveVisit();
 }

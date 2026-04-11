@@ -110,6 +110,7 @@ func SetupRouter(
 		
 		visitGroup.POST("/activities", visitHandler.LogActivity) // Check-in / Checkout
 		visitGroup.GET("/activities", visitHandler.ListActivities)
+		visitGroup.GET("/active", visitHandler.GetActiveActivity)
 		visitGroup.GET("/schedules/:schedule_id/activities", visitHandler.GetActivitiesBySchedule)
 		
 		// GPS Tracking & Live Monitoring
@@ -150,6 +151,8 @@ func SetupRouter(
 		targetGroup := protected.Group("/settings/targets")
 		targetGroup.GET("", targetHandler.Get)
 		targetGroup.PUT("", targetHandler.Update)
+		targetGroup.GET("/users/:userID", targetHandler.GetForUser)
+		targetGroup.PUT("/users", targetHandler.UpdateForUser)
 
 		// Tasks
 		taskGroup := protected.Group("/tasks")

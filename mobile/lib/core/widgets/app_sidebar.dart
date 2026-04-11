@@ -67,12 +67,6 @@ class AppSidebar extends StatelessWidget {
             l10n.dealsPipeline, 
             () => _navigate(context, kRouteDeals),
           ),
-          _buildDrawerItem(
-            context, 
-            LucideIcons.activity, 
-            'Aktivitas Sales', 
-            () => _navigate(context, kRouteSalesActivities),
-          ),
           
           const Divider(height: 32, color: Color(0xFFF3F4F6)),
           

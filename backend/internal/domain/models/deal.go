@@ -13,6 +13,7 @@ const (
 	DealStageSurvey      DealStage = "survey"
 	DealStageNegotiation DealStage = "negotiation"
 	DealStageClosing     DealStage = "closing"
+	DealStagePreOrder    DealStage = "pre_order"
 	DealStageClosedWon   DealStage = "closed_won"
 	DealStageClosedLost  DealStage = "closed_lost"
 )
@@ -29,7 +30,8 @@ const (
 type Deal struct {
 	ID            uuid.UUID       `json:"id"`
 	Title         string          `json:"title"`
-	CustomerID    uuid.UUID       `json:"customer_id"`
+	CustomerID    *uuid.UUID       `json:"customer_id,omitempty"`
+	LeadID        *uuid.UUID       `json:"lead_id,omitempty"`
 	ContactID     *uuid.UUID      `json:"contact_id,omitempty"`
 	AssignedTo    *uuid.UUID      `json:"sales_id,omitempty"`
 	Stage         DealStage       `json:"stage"`

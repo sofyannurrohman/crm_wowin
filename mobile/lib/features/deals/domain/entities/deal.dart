@@ -10,7 +10,8 @@ abstract class Deal with _$Deal {
   const factory Deal({
     required String id,
     required String title,
-    @JsonKey(name: 'customer_id') required String customerId,
+    @JsonKey(name: 'customer_id') String? customerId,
+    @JsonKey(name: 'lead_id') String? leadId,
     @JsonKey(name: 'contact_id') String? contactId,
     required String stage,
     required String status,

@@ -31,7 +31,7 @@ type Product struct {
 // DealItem represents the junction appending products into a deal 
 type DealItem struct {
 	ID          uuid.UUID `json:"id"`
-	DealID      uuid.UUID `json:"deal_id"`
+	DealID      *uuid.UUID `json:"deal_id,omitempty"`
 	ProductID   uuid.UUID `json:"product_id"`
 	Name        string    `json:"name"`
 	Quantity    float64   `json:"quantity"` // Changed to float for fractions if needed

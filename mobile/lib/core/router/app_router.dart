@@ -42,6 +42,7 @@ import '../../features/activities/presentation/pages/sales_activity_list_page.da
 import '../../features/activities/presentation/pages/add_sales_activity_page.dart';
 import '../../features/activities/domain/entities/sales_activity.dart';
 import '../../features/banners/presentation/pages/add_banner_page.dart';
+import '../../features/visits/presentation/pages/ongoing_visit_page.dart';
 
 
 
@@ -135,6 +136,27 @@ final GoRouter appRouter = GoRouter(
           taskDestinationId: args['taskDestinationId'] as String?,
           customerId: args['customerId'] as String?,
           leadId: args['leadId'] as String?,
+          dealId: args['dealId'] as String?,
+          dealItems: args['dealItems'] as List<Map<String, dynamic>>?,
+          duration: args['activitySubmitTime'] != null && args['checkInTime'] != null
+              ? (args['activitySubmitTime'] as DateTime).difference(args['checkInTime'] as DateTime)
+              : null,
+          activityNotes: args['activityNotes'] as String?,
+        );
+      },
+    ),
+    GoRoute(
+      name: kRouteOngoingVisit,
+      path: '/ongoing-visit',
+      builder: (context, state) {
+        final args = state.extra as Map<String, dynamic>;
+        return OngoingVisitPage(
+          scheduleId: args['scheduleId'] as String,
+          customerId: args['customerId'] as String?,
+          customerName: args['customerName'] as String?,
+          leadId: args['leadId'] as String?,
+          taskDestinationId: args['taskDestinationId'] as String?,
+          checkInTime: args['checkInTime'] as DateTime,
           dealId: args['dealId'] as String?,
         );
       },
@@ -315,6 +337,8 @@ final GoRouter appRouter = GoRouter(
           initialDeal: extras['initialDeal'] as Deal?,
           initialCustomerId: extras['initialCustomerId'] as String?,
           initialCustomerName: extras['initialCustomerName'] as String?,
+          initialLeadId: extras['initialLeadId'] as String?,
+          initialLeadName: extras['initialLeadName'] as String?,
         );
       },
     ),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
+	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -16,20 +17,39 @@ func NewReportRepository(db *pgxpool.Pool) repository.ReportRepository {
 	return &reportRepositoryImpl{db: db}
 }
 
-func (r *reportRepositoryImpl) GetKpiSummary(ctx context.Context) (*models.KpiSummary, error) {
-	query := `
+func (r *reportRepositoryImpl) GetKpiSummary(ctx context.Context, salesID string, role string) (*models.KpiSummary, error) {
+	// Initialize filter parts
+	customerFilter := "WHERE deleted_at IS NULL"
+	dealFilter := "WHERE status = 'open'"
+	winLossFilter := "WHERE status IN ('won', 'lost')"
+	visitFilter := "WHERE DATE(checkin_at) = CURRENT_DATE"
+	leadFilter := "WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)"
+	revenueFilter := "WHERE status = 'won' AND DATE_TRUNC('month', closed_at) = DATE_TRUNC('month', CURRENT_DATE)"
+
+	// If the user is a salesman, restrict the counts to their own assigned records
+	if role == "sales" {
+		customerFilter += fmt.Sprintf(" AND assigned_to = '%s'", salesID)
+		dealFilter += fmt.Sprintf(" AND assigned_to = '%s'", salesID)
+		winLossFilter += fmt.Sprintf(" AND assigned_to = '%s'", salesID)
+		visitFilter += fmt.Sprintf(" AND sales_id = '%s'", salesID)
+		leadFilter += fmt.Sprintf(" AND assigned_to = '%s'", salesID)
+		revenueFilter += fmt.Sprintf(" AND assigned_to = '%s'", salesID)
+	}
+
+	query := fmt.Sprintf(`
 		SELECT 
-			(SELECT COUNT(*) FROM customers WHERE deleted_at IS NULL) as total_customers,
-			(SELECT COUNT(*) FROM deals WHERE status = 'open') as active_deals,
-			(SELECT COALESCE(SUM(amount), 0) FROM deals WHERE status = 'open') as pipeline_value,
+			(SELECT COUNT(*) FROM customers %s) as total_customers,
+			(SELECT COUNT(*) FROM deals %s) as active_deals,
+			(SELECT COALESCE(SUM(amount), 0) FROM deals %s) as pipeline_value,
 			(SELECT COALESCE(
 				(COUNT(*) FILTER (WHERE status = 'won'))::float / NULLIF(COUNT(*), 0) * 100, 0
-			 ) FROM deals WHERE status IN ('won', 'lost')) as win_rate,
-			(SELECT COUNT(*) FROM visits WHERE DATE(checkin_at) = CURRENT_DATE) as visits_today,
-			(SELECT COUNT(*) FROM leads WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)) as new_leads,
-			(SELECT COALESCE(SUM(amount), 0) FROM deals WHERE status = 'won' AND DATE_TRUNC('month', closed_at) = DATE_TRUNC('month', CURRENT_DATE)) as monthly_revenue,
+			 ) FROM deals %s) as win_rate,
+			(SELECT COUNT(*) FROM visits %s) as visits_today,
+			(SELECT COUNT(*) FROM leads %s) as new_leads,
+			(SELECT COALESCE(SUM(amount), 0) FROM deals %s) as monthly_revenue,
 			(EXTRACT(DAY FROM (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month') - CURRENT_DATE))::int as days_left
-	`
+	`, customerFilter, dealFilter, dealFilter, winLossFilter, visitFilter, leadFilter, revenueFilter)
+
 	var k models.KpiSummary
 	var daysLeft int
 	err := r.db.QueryRow(ctx, query).Scan(

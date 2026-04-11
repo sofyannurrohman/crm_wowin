@@ -4,13 +4,16 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../domain/entities/visit_recommendation.dart';
+import 'package:wowin_crm/features/tasks/domain/entities/task.dart' as task_ent;
 
 class NextVisitCard extends StatelessWidget {
   final VisitRecommendation nextStop;
+  final task_ent.Task? parentTask;
 
   const NextVisitCard({
     super.key,
     required this.nextStop,
+    this.parentTask,
   });
 
   static const Color _navy = Color(0xFF1A237E);
@@ -124,6 +127,14 @@ class NextVisitCard extends StatelessWidget {
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: () {
+                          if (parentTask != null) {
+                            context.pushNamed(
+                              kRouteRoutePlanner,
+                              extra: parentTask,
+                            );
+                            return;
+                          }
+                          
                           context.pushNamed(
                             kRouteCheckIn,
                             extra: {

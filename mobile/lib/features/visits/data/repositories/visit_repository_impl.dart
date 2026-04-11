@@ -34,15 +34,15 @@ class VisitRepositoryImpl implements VisitRepository {
   }
 
   @override
-  Future<Either<Failure, void>> checkOut(CheckOutRequest request) async {
+  Future<Either<Failure, Map<String, dynamic>>> checkOut(CheckOutRequest request) async {
     try {
-      await remoteDataSource.checkOut(request);
-      return const Right(null);
+      final data = await remoteDataSource.checkOut(request);
+      return Right(data);
     } catch (e) {
       // Fallback to offline cache
       try {
         await localDataSource.cacheCheckOut(request, request.signaturePath, request.inventoryData);
-        return const Right(null);
+        return const Right(<String, dynamic>{}); // Assume empty response for offline/cache cases
       } catch (cacheError) {
         return Left(ServerFailure('Gagal menyimpan data check-out secara offline: ${cacheError.toString()}'));
       }
@@ -53,6 +53,18 @@ class VisitRepositoryImpl implements VisitRepository {
   Future<Either<Failure, List<VisitActivity>>> getActivities({String? salesId, String? customerId, String? leadId}) async {
     try {
       final result = await remoteDataSource.getActivities(salesId: salesId, customerId: customerId, leadId: leadId);
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, VisitActivity?>> getActiveVisit() async {
+    try {
+      final result = await remoteDataSource.getActiveVisit();
       return Right(result);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

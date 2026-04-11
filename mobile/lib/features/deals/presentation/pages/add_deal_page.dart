@@ -26,12 +26,16 @@ class AddDealPage extends StatefulWidget {
   final Deal? initialDeal;
   final String? initialCustomerId;
   final String? initialCustomerName;
+  final String? initialLeadId;
+  final String? initialLeadName;
 
   const AddDealPage({
     super.key, 
     this.initialDeal,
     this.initialCustomerId,
     this.initialCustomerName,
+    this.initialLeadId,
+    this.initialLeadName,
   });
 
   @override
@@ -48,6 +52,8 @@ class _AddDealPageState extends State<AddDealPage> {
   
   String? _selectedCustomerId;
   String? _selectedCustomerName;
+  String? _selectedLeadId;
+  String? _selectedLeadName;
   String _selectedStage = 'prospect';
   DateTime? _expectedCloseDate;
   List<DealItem> _items = [];
@@ -79,6 +85,13 @@ class _AddDealPageState extends State<AddDealPage> {
     );
     _selectedCustomerId = deal?.customerId ?? widget.initialCustomerId;
     _selectedCustomerName = deal?.customer?.name ?? widget.initialCustomerName;
+    _selectedLeadId = deal?.leadId ?? widget.initialLeadId;
+    _selectedLeadName = widget.initialLeadName;
+
+    // Fix: If ID is empty string, set to null
+    if (_selectedCustomerId == '') _selectedCustomerId = null;
+    if (_selectedLeadId == '') _selectedLeadId = null;
+
     _selectedStage = deal?.stage ?? 'prospect';
     _items = deal?.items ?? [];
     _selectedSalesmanId = deal?.salesId;
@@ -230,7 +243,7 @@ class _AddDealPageState extends State<AddDealPage> {
                 setState(() {
                   _items.add(DealItem(
                     id: const Uuid().v4(),
-                    dealId: widget.initialDeal?.id ?? '',
+                    dealId: widget.initialDeal?.id,
                     productId: product.id,
                     name: product.name,
                     quantity: qty,
@@ -321,9 +334,9 @@ class _AddDealPageState extends State<AddDealPage> {
 
   void _submit() {
     if (_formKey.currentState!.validate()) {
-      if (_selectedCustomerId == null) {
+      if (_selectedCustomerId == null && _selectedLeadId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Silakan pilih pelanggan terlebih dahulu'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Silakan pilih pelanggan atau lead terlebih dahulu'), backgroundColor: Colors.red),
         );
         return;
       }
@@ -331,7 +344,8 @@ class _AddDealPageState extends State<AddDealPage> {
       final deal = Deal(
         id: widget.initialDeal?.id ?? const Uuid().v4(),
         title: _titleController.text,
-        customerId: _selectedCustomerId!,
+        customerId: _selectedCustomerId,
+        leadId: _selectedLeadId,
         amount: double.tryParse(_amountController.text) ?? 0.0,
         stage: _selectedStage,
         probability: int.tryParse(_probabilityController.text) ?? 20,
@@ -342,12 +356,21 @@ class _AddDealPageState extends State<AddDealPage> {
         salesId: _selectedSalesmanId,
       );
       
-      _submittedDealId = deal.id;
+      // Safety check: ensure no empty strings make it to the backend for ID fields
+      final dealToSubmit = deal.copyWith(
+        customerId: (deal.customerId?.isEmpty ?? false) ? null : deal.customerId,
+        leadId: (deal.leadId?.isEmpty ?? false) ? null : deal.leadId,
+        items: deal.items?.map((item) => item.copyWith(
+          dealId: (item.dealId?.isEmpty ?? false) ? null : item.dealId,
+        )).toList(),
+      );
+      
+      _submittedDealId = dealToSubmit.id;
 
       if (widget.initialDeal == null) {
-        context.read<DealBloc>().add(CreateDealSubmitted(deal));
+        context.read<DealBloc>().add(CreateDealSubmitted(dealToSubmit));
       } else {
-        context.read<DealBloc>().add(UpdateDealSubmitted(deal));
+        context.read<DealBloc>().add(UpdateDealSubmitted(dealToSubmit));
       }
     }
   }
@@ -418,11 +441,22 @@ class _AddDealPageState extends State<AddDealPage> {
                 ),
                 const SizedBox(height: 16),
                 _buildPickerField(
-                  label: 'Pelanggan',
-                  value: _selectedCustomerName ?? 'Pilih Pelanggan',
+                  label: 'Pelanggan / Lead',
+                  value: _selectedCustomerName ?? _selectedLeadName ?? 'Pilih Pelanggan',
                   icon: LucideIcons.users,
                   onTap: _showCustomerPicker,
                 ),
+                if (_selectedLeadId != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, left: 4),
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.tag, size: 12, color: Colors.blue),
+                        const SizedBox(width: 4),
+                        Text('Target: LEAD', style: TextStyle(fontSize: 10, color: Colors.blue[700], fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 24),
                 _buildSectionHeader('Detail Finansial & Progres', LucideIcons.trendingUp),
                 const SizedBox(height: 16),

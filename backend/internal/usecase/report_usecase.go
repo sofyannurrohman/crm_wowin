@@ -4,40 +4,62 @@ import (
 	"context"
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
+	"time"
+
 	"github.com/google/uuid"
 )
 
 type ReportUseCase interface {
-	GetDashboardSummary(ctx context.Context, salesID string) (*models.KpiSummary, error)
+	GetDashboardSummary(ctx context.Context, salesID string, role string) (*models.KpiSummary, error)
 	GetAnalytics(ctx context.Context, months int) (map[string]interface{}, error)
 	GetVisitRecommendations(ctx context.Context, salesID string) ([]models.VisitRecommendation, error)
 }
 
 type reportUseCaseImpl struct {
-	repo       repository.ReportRepository
-	targetRepo repository.TargetRepository
-	taskRepo   repository.TaskRepository
+	repo            repository.ReportRepository
+	targetRepo      repository.TargetRepository
+	salesTargetRepo repository.SalesTargetRepository
+	taskRepo        repository.TaskRepository
 }
 
-func NewReportUseCase(repo repository.ReportRepository, targetRepo repository.TargetRepository, taskRepo repository.TaskRepository) ReportUseCase {
-	return &reportUseCaseImpl{repo: repo, targetRepo: targetRepo, taskRepo: taskRepo}
+func NewReportUseCase(repo repository.ReportRepository, targetRepo repository.TargetRepository, salesTargetRepo repository.SalesTargetRepository, taskRepo repository.TaskRepository) ReportUseCase {
+	return &reportUseCaseImpl{repo: repo, targetRepo: targetRepo, salesTargetRepo: salesTargetRepo, taskRepo: taskRepo}
 }
 
-func (u *reportUseCaseImpl) GetDashboardSummary(ctx context.Context, salesID string) (*models.KpiSummary, error) {
-	summary, err := u.repo.GetKpiSummary(ctx)
+func (u *reportUseCaseImpl) GetDashboardSummary(ctx context.Context, salesID string, role string) (*models.KpiSummary, error) {
+	summary, err := u.repo.GetKpiSummary(ctx, salesID, role)
 	if err != nil {
 		return nil, err
 	}
 
-	// Fetch targets to show progress
-	target, _ := u.targetRepo.Get(ctx)
-	if target != nil {
-		summary.VisitsTarget = target.MonthlyVisits
-		summary.MonthlyTarget = float64(target.MonthlyRevenue)
+	// Fetch targets: Individual (SalesTarget) first, fallback to Global (Target)
+	uid, _ := uuid.Parse(salesID)
+	// We use current month and year for dashboard summary
+	now := time.Now()
+	month := int(now.Month())
+	year := now.Year()
+
+	var targetRevenue float64
+	var targetVisits int
+
+	individualTarget, err := u.salesTargetRepo.GetByUserID(ctx, uid, month, year)
+	if err == nil && individualTarget != nil {
+		targetRevenue = individualTarget.TargetRevenue
+		targetVisits = individualTarget.TargetVisits
 	} else {
-		summary.VisitsTarget = 150 // Default fallback
-		summary.MonthlyTarget = 65000
+		// Fallback to Global Target
+		globalTarget, _ := u.targetRepo.Get(ctx)
+		if globalTarget != nil {
+			targetRevenue = float64(globalTarget.MonthlyRevenue)
+			targetVisits = globalTarget.MonthlyVisits
+		} else {
+			targetRevenue = 500000000 // default fallback
+			targetVisits = 150
+		}
 	}
+
+	summary.VisitsTarget = targetVisits
+	summary.MonthlyTarget = targetRevenue
 
 	// Compute target percentage
 	if summary.MonthlyTarget > 0 {
@@ -53,14 +75,17 @@ func (u *reportUseCaseImpl) GetDashboardSummary(ctx context.Context, salesID str
 
 	// --- NEXT STOP LOGIC ---
 	// Fetch today's tasks for this salesman
-	uid, _ := uuid.Parse(salesID)
+	uid, _ = uuid.Parse(salesID)
 	tasks, err := u.taskRepo.List(ctx, repository.TaskFilter{
 		SalesID: &uid,
 	})
 	if err == nil && len(tasks) > 0 {
 		var nextStop *models.TaskDestination
-		// Look for the first uncompleted destination in today's tasks
+		// Look for the first uncompleted destination in active tasks today
 		for i := range tasks {
+			if tasks[i].Status == models.TaskStatusCompleted {
+				continue
+			}
 			for j := range tasks[i].Destinations {
 				dest := &tasks[i].Destinations[j]
 				if dest.Status != models.TaskStatusCompleted {

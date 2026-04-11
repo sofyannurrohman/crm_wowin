@@ -25,6 +25,7 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
     'survey',
     'negotiation',
     'closing',
+    'pre_order',
     'closed_won',
     'closed_lost'
   ];
@@ -34,6 +35,7 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
     'survey': 'SURVEY',
     'negotiation': 'NEGOTIATION',
     'closing': 'CLOSING',
+    'pre_order': 'PRE-ORDER',
     'closed_won': 'WON',
     'closed_lost': 'LOST',
   };
@@ -43,6 +45,7 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
     'survey': const Color(0xFF8B5CF6),
     'negotiation': const Color(0xFFF59E0B),
     'closing': const Color(0xFF10B981),
+    'pre_order': const Color(0xFF6366F1), // Indigo
     'closed_won': const Color(0xFF059669),
     'closed_lost': const Color(0xFFEF4444),
   };

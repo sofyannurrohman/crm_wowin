@@ -14,6 +14,7 @@ abstract class UserEntity with _$UserEntity {
     String? status,
     @JsonKey(name: 'avatar_path') String? avatarPath,
     @JsonKey(name: 'employee_code') String? employeeCode,
+    @JsonKey(name: 'sales_type') String? salesType,
   }) = _UserEntity;
 
   factory UserEntity.fromJson(Map<String, dynamic> json) =>

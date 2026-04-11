@@ -16,7 +16,7 @@ echo "✅ PostgreSQL is reachable"
 # 2. Run Database Migrations
 echo "📦 Running database migrations up..."
 # Be explicit with Driver and DBString to avoid any ambiguity
-goose -dir ./db/migrations up
+goose -dir ./db/migrations -allow-missing up
 
 # 3. Handle Seeding (Optional - only in development)
 if [ "$SEED_DATABASE" = "true" ]; then

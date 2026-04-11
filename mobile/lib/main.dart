@@ -23,11 +23,21 @@ import 'features/tasks/presentation/bloc/task_event.dart';
 import 'features/settings/presentation/bloc/settings_bloc.dart';
 import 'features/activities/presentation/bloc/sales_activity_bloc.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
+import 'features/banners/presentation/bloc/banner_bloc.dart';
 
 import 'core/theme/app_theme.dart';
 
+import 'package:hydrated_bloc/hydrated_bloc.dart';
+import 'package:path_provider/path_provider.dart';
+import 'features/visits/presentation/bloc/visit_event.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  HydratedBloc.storage = await HydratedStorage.build(
+    storageDirectory: kIsWeb
+        ? HydratedStorageDirectory.web
+        : HydratedStorageDirectory((await getApplicationDocumentsDirectory()).path),
+  );
   await initDependencies(); // Boot GetIt dependency injection
   if (!kIsWeb) {
     await TrackingBackgroundService.initialize();
@@ -48,7 +58,7 @@ class WowinCrmApp extends StatelessWidget {
           create: (_) => sl<AuthBloc>()..add(CheckAuthStatus()),
         ),
         BlocProvider<VisitBloc>(
-          create: (_) => sl<VisitBloc>(),
+          create: (_) => sl<VisitBloc>()..add(const RestoreActiveVisit()),
         ),
         BlocProvider<AttendanceBloc>(
           create: (_) => sl<AttendanceBloc>(),
@@ -83,6 +93,9 @@ class WowinCrmApp extends StatelessWidget {
         ),
         BlocProvider<ProductBloc>(
           create: (_) => sl<ProductBloc>(),
+        ),
+        BlocProvider<BannerBloc>(
+          create: (_) => sl<BannerBloc>(),
         ),
       ],
       child: MaterialApp.router(

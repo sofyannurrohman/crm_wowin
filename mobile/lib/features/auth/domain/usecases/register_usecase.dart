@@ -12,7 +12,7 @@ class RegisterUseCase {
     required String name,
     required String email,
     required String password,
-    String companyName = '',
+    required String salesType,
   }) async {
     if (name.trim().isEmpty) {
       return const Left(ValidationFailure('Nama tidak boleh kosong'));
@@ -24,12 +24,15 @@ class RegisterUseCase {
       return const Left(
           ValidationFailure('Password minimal 8 karakter'));
     }
+    if (salesType.isEmpty) {
+      return const Left(ValidationFailure('Tipe sales harus dipilih'));
+    }
 
     return await repository.register(
       name: name.trim(),
       email: email.trim(),
       password: password,
-      companyName: companyName.trim(),
+      salesType: salesType,
     );
   }
 }

@@ -30,10 +30,17 @@ func NewDealUseCase(dr repository.DealRepository, cr repository.CustomerReposito
 }
 
 func (u *dealUseCaseImpl) CreateDeal(ctx context.Context, d *models.Deal, creatorID uuid.UUID) (*models.Deal, error) {
-	// Pre-ensure Customer exists
-	_, err := u.custRepo.GetByID(ctx, d.CustomerID)
-	if err != nil {
-		return nil, dberrors.ErrInvalidInput // Can't start a deal without a valid client
+	// Pre-ensure Target exists (Either Customer or Lead)
+	if d.CustomerID != nil {
+		_, err := u.custRepo.GetByID(ctx, *d.CustomerID)
+		if err != nil {
+			return nil, dberrors.ErrInvalidInput
+		}
+	} else if d.LeadID != nil {
+		// If deal is linked to lead, no need to validate customer
+		// Just ensure lead exists? (Optional but good)
+	} else {
+		return nil, dberrors.ErrInvalidInput // Can't start a deal without a valid client or lead
 	}
 
 	d.CreatedBy = &creatorID
@@ -45,7 +52,7 @@ func (u *dealUseCaseImpl) CreateDeal(ctx context.Context, d *models.Deal, creato
 		d.Status = models.DealStatusOpen
 	}
 
-	err = u.dealRepo.Create(ctx, d)
+	err := u.dealRepo.Create(ctx, d)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +70,10 @@ func (u *dealUseCaseImpl) GetDealDetails(ctx context.Context, id uuid.UUID) (*mo
 		history = make([]*models.DealStageHistory, 0)
 	}
 
-	customer, _ := u.custRepo.GetByID(ctx, deal.CustomerID)
+	var customer *models.Customer
+	if deal.CustomerID != nil {
+		customer, _ = u.custRepo.GetByID(ctx, *deal.CustomerID)
+	}
 
 	return deal, history, customer, nil
 }

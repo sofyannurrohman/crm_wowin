@@ -4,12 +4,21 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/router/route_constants.dart';
 
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
 import '../../../deals/presentation/bloc/deal_bloc.dart';
 import '../../../deals/presentation/bloc/deal_event.dart';
+import '../../../tasks/presentation/bloc/task_bloc.dart';
+import '../../../tasks/presentation/bloc/task_event.dart';
+
+import '../widgets/signature_pad.dart';
+import '../widgets/payment_form.dart';
+import '../widgets/stock_check_sheet.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
+import '../../../auth/presentation/bloc/auth_state.dart' as auth;
 
 class CheckOutPage extends StatefulWidget {
   final String scheduleId;
@@ -17,6 +26,9 @@ class CheckOutPage extends StatefulWidget {
   final String? customerId;
   final String? leadId;
   final String? dealId;
+  final List<Map<String, dynamic>>? dealItems;
+  final Duration? duration;
+  final String? activityNotes;
 
   const CheckOutPage({
     super.key,
@@ -25,6 +37,9 @@ class CheckOutPage extends StatefulWidget {
     this.customerId,
     this.leadId,
     this.dealId,
+    this.dealItems,
+    this.duration,
+    this.activityNotes,
   });
 
   @override
@@ -46,6 +61,22 @@ class _CheckOutPageState extends State<CheckOutPage> {
     'No Action Required'
   ];
 
+  bool _isSubmitting = false;
+
+
+  String? _selectedOutcome;
+  final Map<String, String> _outcomeOptions = {
+    'negotiation': 'Ongoing / Negotiation (Negosiasi)',
+    'deal_won': 'Deal Won (Bungkus! 🚀)',
+    'deal_lost': 'Rejected / Lost (Gagal)',
+    'follow_up': 'Follow Up Needed (Perlu Follow Up)',
+  };
+
+  // Specialized workflow state
+  dynamic _signatureBytes;
+  String? _paymentMethod;
+  String? _paymentRef;
+
   DateTime? _nextVisitDate;
   Position? _currentPosition;
   bool _isLoadingLocation = true;
@@ -60,6 +91,9 @@ class _CheckOutPageState extends State<CheckOutPage> {
   void initState() {
     super.initState();
     _determinePosition();
+    if (widget.activityNotes != null) {
+      _visitResultController.text = widget.activityNotes!;
+    }
   }
 
   @override
@@ -129,7 +163,11 @@ class _CheckOutPageState extends State<CheckOutPage> {
   }
 
   void _submitCheckOut() {
+    if (_isSubmitting) return;
+    
     if (_formKey.currentState!.validate() && _currentPosition != null) {
+      setState(() => _isSubmitting = true);
+      
       String formattedDate = '';
       if (_nextVisitDate != null) {
         formattedDate = DateFormat('yyyy-MM-dd').format(_nextVisitDate!);
@@ -149,10 +187,16 @@ class _CheckOutPageState extends State<CheckOutPage> {
               priceOverride: double.tryParse(_priceOverrideController.text),
               priceOverrideNote: _priceOverrideNoteController.text,
               dealId: widget.dealId,
+              dealItems: widget.dealItems,
+              outcome: _selectedOutcome,
+              signatureBytes: _signatureBytes,
+              paymentMethod: _paymentMethod,
+              paymentRef: _paymentRef,
             ),
           );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -188,6 +232,11 @@ class _CheckOutPageState extends State<CheckOutPage> {
       body: BlocListener<VisitBloc, VisitState>(
         listener: (context, state) {
           if (state is VisitSuccess) {
+            setState(() => _isSubmitting = false);
+            debugPrint('VisitSuccess received! Message: ${state.message}');
+            debugPrint('Task Completed Status: ${state.isTaskCompleted}');
+            debugPrint('Task Destination ID: ${widget.taskDestinationId}');
+
             // ── Deal Pipeline Automation ──
             final dealIdToUpdate = widget.dealId ?? state.currentDealId;
             if (dealIdToUpdate != null) {
@@ -199,14 +248,29 @@ class _CheckOutPageState extends State<CheckOutPage> {
                     stage: targetStage,
                   ),
                 );
+              } else {
+                // If no stage transition, at least refresh the list to show the new deal
+                context.read<DealBloc>().add(const FetchDeals());
               }
             }
 
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message), backgroundColor: const Color(0xFF10B981)),
             );
-            context.pop();
+            
+            // Refresh tasks globally so maps and lists show updated status
+            context.read<TaskBloc>().add(const FetchTasks());
+
+            if (state.isTaskCompleted) {
+              // Redirect to task list if everything is finished
+              context.goNamed(kRouteTasks);
+            } else {
+              // Return to route planner (maps) for the next stops
+              // We return true so that the caller (OngoingVisitPage) knows it should also pop
+              context.pop(true);
+            }
           } else if (state is VisitError) {
+            setState(() => _isSubmitting = false);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message), backgroundColor: const Color(0xFFEF4444)),
             );
@@ -224,7 +288,15 @@ class _CheckOutPageState extends State<CheckOutPage> {
                     children: [
                       _buildDurationCard(),
                       const SizedBox(height: 24),
-                      _buildLabel('Visit Summary'),
+                      _buildLabel('Visit Outcome'),
+                      _buildOutcomeDropdown(),
+                      const SizedBox(height: 20),
+                      
+                      // Specialized Contextual Widgets
+                      _buildSpecializedWorkflowWidgets(),
+                      
+                      const SizedBox(height: 20),
+                      _buildLabel('Visit Notes / Remarks'),
                       _buildSummaryField(),
                       const SizedBox(height: 20),
                       if (widget.dealId != null || widget.taskDestinationId != null) ...[
@@ -252,6 +324,16 @@ class _CheckOutPageState extends State<CheckOutPage> {
   }
 
   Widget _buildDurationCard() {
+    String durationStr = '0m';
+    if (widget.duration != null) {
+      final d = widget.duration!;
+      if (d.inHours > 0) {
+        durationStr = '${d.inHours}h ${d.inMinutes.remainder(60)}m';
+      } else {
+        durationStr = '${d.inMinutes}m';
+      }
+    }
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -277,9 +359,9 @@ class _CheckOutPageState extends State<CheckOutPage> {
             children: [
               const Icon(LucideIcons.alarmClock, color: _orange, size: 28),
               const SizedBox(width: 12),
-              const Text(
-                '1h 24m',
-                style: TextStyle(
+              Text(
+                durationStr,
+                style: const TextStyle(
                   color: _textPrimary,
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
@@ -303,6 +385,42 @@ class _CheckOutPageState extends State<CheckOutPage> {
           fontWeight: FontWeight.w700,
         ),
       ),
+    );
+  }
+
+  Widget _buildOutcomeDropdown() {
+    return DropdownButtonFormField<String>(
+      value: _selectedOutcome,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.grey.shade50,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: _orange),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+      ),
+      hint: const Text('Pilih Hasil Kunjungan', style: TextStyle(fontSize: 14)),
+      items: _outcomeOptions.entries.map((entry) {
+        return DropdownMenuItem<String>(
+          value: entry.key,
+          child: Text(entry.value, style: const TextStyle(fontSize: 14)),
+        );
+      }).toList(),
+      onChanged: (value) {
+        setState(() {
+          _selectedOutcome = value;
+        });
+      },
+      validator: (value) => value == null ? 'Silakan pilih hasil kunjungan' : null,
     );
   }
 
@@ -470,6 +588,99 @@ class _CheckOutPageState extends State<CheckOutPage> {
     );
   }
 
+  Widget _buildSpecializedWorkflowWidgets() {
+    final authState = context.read<auth.AuthBloc>().state;
+    if (authState is! auth.Authenticated) return const SizedBox.shrink();
+
+    final user = authState.user;
+    final String salesType = user.salesType ?? 'motoris';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (salesType == 'task_order') ...[
+          SignaturePad(
+            onChanged: (bytes) => setState(() => _signatureBytes = bytes),
+          ),
+          const SizedBox(height: 20),
+        ],
+        if (salesType == 'canvas' && _selectedOutcome == 'deal_won') ...[
+          _buildInventoryCheckButton(),
+          const SizedBox(height: 20),
+          PaymentForm(
+            amount: 0.0, // Should be calculated from dealItems
+            onChanged: (method, ref) {
+              setState(() {
+                _paymentMethod = method;
+                _paymentRef = ref;
+              });
+            },
+          ),
+          const SizedBox(height: 20),
+        ],
+        if (salesType == 'motoris')
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.withOpacity(0.2)),
+            ),
+            child: Row(
+              children: [
+                const Icon(LucideIcons.info, size: 16, color: Colors.blue),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Motoris mode active: 300m tolerance enabled.',
+                    style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildInventoryCheckButton() {
+    return InkWell(
+      onTap: () {
+        // Use existing StockCheckSheet or create a new one for Van Stock
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          builder: (context) => StockCheckSheet(onConfirm: (data) {}),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            Icon(LucideIcons.package, color: _orange.withOpacity(0.6), size: 20),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Check Van Stock', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  Text('Ensure items are available in your vehicle', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                ],
+              ),
+            ),
+            const Icon(LucideIcons.chevronRight, size: 16, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomSection() {
     return Container(
       decoration: BoxDecoration(
@@ -489,8 +700,9 @@ class _CheckOutPageState extends State<CheckOutPage> {
         children: [
           BlocBuilder<VisitBloc, VisitState>(
             builder: (context, state) {
-              final isLoading = state is VisitLoading || _isLoadingLocation;
+              final isLoading = state is VisitLoading || _isLoadingLocation || _isSubmitting;
               final canSubmit = _currentPosition != null && !isLoading;
+
 
               return ElevatedButton(
                 onPressed: canSubmit ? _submitCheckOut : null,

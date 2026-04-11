@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { fetchUsers } from '@/api/auth.api'
+import { fetchUsers, updateUser } from '@/api/auth.api'
 import {
-  Loader2, RefreshCw, Shield, UserCog, Users, Mail, TrendingUp
+  Loader2, RefreshCw, Shield, UserCog, Users, Mail, TrendingUp, CheckCircle2
 } from 'lucide-vue-next'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,10 @@ import { Separator } from '@/components/ui/separator'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useToast } from '@/components/ui/toast/use-toast'
 
+const { toast } = useToast()
 const loading = ref(false)
 const users = ref<any[]>([])
 
@@ -25,6 +28,23 @@ async function loadData() {
     console.error('Failed to load user data', e)
   } finally {
     loading.value = false
+  }
+}
+
+async function handleUpdateSalesType(userId: string, type: string) {
+  try {
+    await updateUser(userId, { sales_type: type })
+    toast({
+      title: 'Tipe Sales Diperbarui',
+      description: `Berhasil mengubah tipe sales menjadi ${type.replace('_', ' ')}.`
+    })
+    loadData()
+  } catch (e: any) {
+    toast({
+      title: 'Gagal memperbarui',
+      description: e.response?.data?.error?.message || 'Terjadi kesalahan sistem.',
+      variant: 'destructive'
+    })
   }
 }
 
@@ -126,6 +146,7 @@ const getRoleBadge = (role: string) => {
               <TableHead class="w-[50px]">#</TableHead>
               <TableHead>Nama</TableHead>
               <TableHead>Role</TableHead>
+              <TableHead>Tipe Sales</TableHead>
               <TableHead class="text-center">Email</TableHead>
               <TableHead class="text-center">Status</TableHead>
               <TableHead class="text-right">Last Login</TableHead>
@@ -151,6 +172,21 @@ const getRoleBadge = (role: string) => {
                 <Badge :variant="getRoleBadge(user.role).variant">
                   {{ getRoleBadge(user.role).label }}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                <div v-if="user.role === 'sales'" class="w-[140px]">
+                  <Select :modelValue="user.sales_type" @update:modelValue="(val: string) => handleUpdateSalesType(user.id, val)">
+                    <SelectTrigger class="h-8 text-xs capitalize">
+                      <SelectValue :placeholder="user.sales_type?.replace('_', ' ') || 'Belum diatur'" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="motoris">Motoris</SelectItem>
+                      <SelectItem value="task_order">Task Order</SelectItem>
+                      <SelectItem value="canvas">Canvas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <span v-else class="text-xs text-muted-foreground">-</span>
               </TableCell>
               <TableCell class="text-center font-mono text-muted-foreground">
                 {{ user.email }}

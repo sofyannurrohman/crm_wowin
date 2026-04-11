@@ -7,6 +7,7 @@ import (
 	"crm_wowin_backend/internal/domain/repository"
 	"errors"
 	"math"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -19,6 +20,7 @@ type VisitUseCase interface {
 	UpdateSchedule(ctx context.Context, s *models.VisitSchedule) (*models.VisitSchedule, error)
 
 	// Check-in and Check-out
+	GetActiveActivity(ctx context.Context, salesID uuid.UUID) (*models.VisitActivity, error)
 	LogActivity(ctx context.Context, activity *models.VisitActivity) (*models.VisitActivity, error)
 	GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error)
 	ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error)
@@ -32,10 +34,33 @@ type visitUseCaseImpl struct {
 	activityRepo repository.SalesActivityRepository
 	leadRepo     repository.LeadRepository
 	dealRepo     repository.DealRepository
+	userRepo     repository.UserRepository
+	vanStockRepo repository.VanStockRepository
+	paymentRepo  repository.PaymentRepository
 }
 
-func NewVisitUseCase(vr repository.VisitRepository, cr repository.CustomerRepository, tr repository.TaskRepository, ar repository.SalesActivityRepository, lr repository.LeadRepository, dr repository.DealRepository) VisitUseCase {
-	return &visitUseCaseImpl{visitRepo: vr, custRepo: cr, taskRepo: tr, activityRepo: ar, leadRepo: lr, dealRepo: dr}
+func NewVisitUseCase(
+	vr repository.VisitRepository,
+	cr repository.CustomerRepository,
+	tr repository.TaskRepository,
+	ar repository.SalesActivityRepository,
+	lr repository.LeadRepository,
+	dr repository.DealRepository,
+	ur repository.UserRepository,
+	vsr repository.VanStockRepository,
+	pr repository.PaymentRepository,
+) VisitUseCase {
+	return &visitUseCaseImpl{
+		visitRepo:    vr,
+		custRepo:     cr,
+		taskRepo:     tr,
+		activityRepo: ar,
+		leadRepo:     lr,
+		dealRepo:     dr,
+		userRepo:     ur,
+		vanStockRepo: vsr,
+		paymentRepo:  pr,
+	}
 }
 
 func (u *visitUseCaseImpl) CreateSchedule(ctx context.Context, s *models.VisitSchedule) (*models.VisitSchedule, error) {
@@ -130,6 +155,12 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 		return nil, errors.New("customer_id or lead_id is required for activity")
 	}
 
+	// Fetch Sales Person details to check SalesType
+	user, err := u.userRepo.FindByID(ctx, activity.SalesID)
+	if err != nil {
+		return nil, errors.New("failed to fetch salesman info")
+	}
+
 	// PROXIMITY VALIDATION! 
 	// We calculate distance if the target has set coordinates
 	if targetLat != nil && targetLng != nil {
@@ -137,13 +168,19 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 		activity.Distance = &distMeters
 		
 		if activity.Type == models.VisitTypeCheckIn && !activity.IsOffline {
-			if distMeters > targetRadius {
+			// Apply 300m tolerance for Motoris
+			effectiveRadius := targetRadius
+			if user.SalesType != nil && *user.SalesType == models.SalesTypeMotoris {
+				effectiveRadius = 300.0
+			}
+
+			if distMeters > effectiveRadius {
 				return nil, errors.New("lokasi check-in berada di luar radius yang diizinkan")
 			}
 		}
 	}
 
-	err := u.visitRepo.LogActivity(ctx, activity)
+	err = u.visitRepo.LogActivity(ctx, activity)
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +201,7 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 			CheckInTime:       &activity.CreatedAt,
 			SelfiePhotoPath:   &activity.SelfiePhotoPath,
 			PlacePhotoPath:    &activity.PlacePhotoPath,
+			SignaturePath:     &activity.SignaturePath,
 			Distance:          activity.Distance,
 			IsOffline:         activity.IsOffline,
 			ActivityAt:        activity.CreatedAt,
@@ -173,6 +211,21 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 		}
 		
 		_ = u.activityRepo.Create(ctx, salesAct)
+
+		// Mark Destination as In Progress if it's task-based
+		if activity.TaskDestinationID != nil {
+			destID := *activity.TaskDestinationID
+			task, err := u.taskRepo.GetByDestinationID(ctx, destID)
+			if err == nil && task != nil {
+				for i := range task.Destinations {
+					if task.Destinations[i].ID == destID {
+						task.Destinations[i].Status = models.TaskStatusInProgress
+						break
+					}
+				}
+				_ = u.taskRepo.Update(ctx, task)
+			}
+		}
 	} else if activity.Type == models.VisitTypeCheckOut {
 		// Find the active session to close
 		// We look for an open activity for this user and customer (and task destination if present)
@@ -203,11 +256,98 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 			
 			if activeSession != nil {
 				activeSession.CheckOutTime = &activity.CreatedAt
+				activeSession.SignaturePath = &activity.SignaturePath
+				if activity.Outcome != nil {
+					activeSession.Outcome = activity.Outcome
+				}
 				if activity.Notes != nil {
-					activeSession.Outcome = activity.Notes // Checkout notes usually represent the outcome
 					activeSession.Notes = activity.Notes
 				}
 				_ = u.activityRepo.Update(ctx, activeSession)
+			}
+		}
+
+		// Handle DealItems if provided during Checkout
+		if len(activity.DealItems) > 0 && activity.DealID == nil {
+			var dAmount float64
+			for _, it := range activity.DealItems {
+				dAmount += it.UnitPrice * it.Quantity
+			}
+
+			salesmanID := activity.SalesID
+			newDeal := &models.Deal{
+				Title:       "Deal dari Kunjungan: " + targetName,
+				CustomerID:  activity.CustomerID,
+				LeadID:      activity.LeadID,
+				AssignedTo:  &salesmanID,
+				Stage:       models.DealStageProspect,
+				Status:      models.DealStatusOpen,
+				Amount:      &dAmount,
+				Probability: 10,
+				Items:       activity.DealItems,
+				CreatedBy:   &salesmanID,
+			}
+			
+			if activity.Notes != nil {
+				newDeal.Description = activity.Notes
+			}
+			
+			// Structured Outcome Logic for new deals
+			isWon := false
+			if activity.Outcome != nil && *activity.Outcome == "deal_won" {
+				isWon = true
+			} else if activity.Notes != nil {
+				// Fallback for legacy keyword matching
+				noteLower := strings.ToLower(*activity.Notes)
+				if strings.Contains(noteLower, "closing") || strings.Contains(noteLower, "bungkus") {
+					isWon = true
+				}
+			}
+
+			if isWon {
+				// Canvas Logic: Check Inventory
+				if user.SalesType != nil && *user.SalesType == models.SalesTypeCanvas {
+					canFulfill := true
+					for _, it := range activity.DealItems {
+						vs, err := u.vanStockRepo.GetByUserAndProduct(ctx, user.ID, it.ProductID)
+						if err != nil || vs == nil || vs.Quantity < it.Quantity {
+							canFulfill = false
+							break
+						}
+					}
+
+					if !canFulfill {
+						// Downgrade to Pre-Order instead of Won
+						newDeal.Stage = models.DealStagePreOrder
+						newDeal.Status = models.DealStatusOpen
+						newDeal.Probability = 50
+					} else {
+						// Fulfill and Deduct
+						newDeal.Stage = models.DealStageClosedWon
+						newDeal.Status = models.DealStatusWon
+						newDeal.Probability = 100
+						for _, it := range activity.DealItems {
+							_ = u.vanStockRepo.DeductStock(ctx, user.ID, it.ProductID, it.Quantity)
+						}
+						
+						// Create Payment record if it's a direct sale
+						payment := &models.Payment{
+							ActivityID: activity.ID,
+							Amount:     dAmount,
+							Method:     models.PaymentMethodCash, // Default, mobile can override
+						}
+						_ = u.paymentRepo.Create(ctx, payment)
+					}
+				} else {
+					// Traditional won
+					newDeal.Stage = models.DealStageClosedWon
+					newDeal.Status = models.DealStatusWon
+					newDeal.Probability = 100
+				}
+			}
+
+			if err := u.dealRepo.Create(ctx, newDeal); err == nil {
+				activity.DealID = &newDeal.ID
 			}
 		}
 
@@ -243,6 +383,7 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 				
 				if allDone {
 					task.Status = models.TaskStatusCompleted
+					activity.TaskCompleted = true
 				} else {
 					task.Status = models.TaskStatusInProgress
 				}
@@ -251,15 +392,61 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 			}
 		}
 
-		// AUTOMATIC WON LOGIC: If outcome is "PO Submitted" and DealID exists
-		if activity.DealID != nil && activity.Notes != nil && (*activity.Notes == "PO Submitted" || *activity.Notes == "PO Terkirim") {
-			newStage := models.DealStage("closed_won")
-			notes := "Otomatis diubah menjadi WON melalui laporan kunjungan: " + *activity.Notes
-			_ = u.dealRepo.UpdateStage(ctx, *activity.DealID, newStage, &activity.SalesID, &notes)
+		// AUTOMATIC WON LOGIC for existing deals
+		if activity.DealID != nil {
+			isWon := false
+			if activity.Outcome != nil && *activity.Outcome == "deal_won" {
+				isWon = true
+			} else if activity.Notes != nil {
+				noteLower := strings.ToLower(*activity.Notes)
+				if strings.Contains(noteLower, "closing") || strings.Contains(noteLower, "bungkus") || strings.Contains(noteLower, "po submitted") || strings.Contains(noteLower, "po terkirim") {
+					isWon = true
+				}
+			}
+
+			if isWon {
+				newStage := models.DealStageClosedWon
+				outcomeStr := "Structured outcome"
+				if activity.Outcome != nil { outcomeStr = *activity.Outcome }
+				notes := "Otomatis diubah menjadi WON melalui laporan kunjungan: " + outcomeStr
+				_ = u.dealRepo.UpdateStage(ctx, *activity.DealID, newStage, &activity.SalesID, &notes)
+			}
 		}
 	}
 
 	return activity, nil
+}
+
+func (u *visitUseCaseImpl) GetActiveActivity(ctx context.Context, salesID uuid.UUID) (*models.VisitActivity, error) {
+	filter := repository.SalesActivityFilter{
+		SalesID: &salesID,
+	}
+	activities, err := u.activityRepo.List(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, sa := range activities {
+		if sa.Type == models.ActivityTypeVisit && sa.CheckOutTime == nil {
+			// Found active session
+			return &models.VisitActivity{
+				ID:                sa.ID,
+				SalesID:           sa.UserID,
+				CustomerID:        sa.CustomerID,
+				LeadID:            sa.LeadID,
+				DealID:            sa.DealID,
+				TaskDestinationID: sa.TaskDestinationID,
+				Type:              models.VisitTypeCheckIn,
+				Latitude:          *sa.Latitude,
+				Longitude:         *sa.Longitude,
+				CreatedAt:         *sa.CheckInTime,
+				IsOffline:         sa.IsOffline,
+				Notes:             sa.Notes,
+			}, nil
+		}
+	}
+
+	return nil, dberrors.ErrNotFound
 }
 
 func (u *visitUseCaseImpl) GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error) {
@@ -294,6 +481,8 @@ func (u *visitUseCaseImpl) ListActivities(ctx context.Context, filter repository
 				SalesID:           sa.UserID,
 				LeadID:            sa.LeadID,
 				CustomerID:        sa.CustomerID,
+				DealID:            sa.DealID,
+				DealTitle:         sa.DealTitle,
 				Type:              models.VisitTypeCheckIn,
 				CreatedAt:         *sa.CheckInTime,
 			}
@@ -316,6 +505,8 @@ func (u *visitUseCaseImpl) ListActivities(ctx context.Context, filter repository
 				SalesID:           sa.UserID,
 				LeadID:            sa.LeadID,
 				CustomerID:        sa.CustomerID,
+				DealID:            sa.DealID,
+				DealTitle:         sa.DealTitle,
 				Type:              models.VisitTypeCheckOut,
 				CreatedAt:         *sa.CheckOutTime,
 			}
@@ -323,6 +514,7 @@ func (u *visitUseCaseImpl) ListActivities(ctx context.Context, filter repository
 			if sa.Longitude != nil { checkOut.Longitude = *sa.Longitude }
 			checkOut.IsOffline = sa.IsOffline
 			checkOut.Notes = sa.Outcome // Use outcome for checkout notes
+			checkOut.Outcome = sa.Outcome
 			
 			results = append(results, checkOut)
 		}

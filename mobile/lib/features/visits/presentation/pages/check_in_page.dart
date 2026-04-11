@@ -12,8 +12,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' as ll;
 import 'package:http/http.dart' as http;
+import '../../../../core/router/route_constants.dart';
 import '../../../../core/utils/image_utils.dart';
 import '../../../../core/services/watermark_service.dart';
+import '../../../../core/services/geocoding_service.dart';
 
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_event.dart';
@@ -81,10 +83,6 @@ class _CheckInPageState extends State<CheckInPage> {
   XFile? _selfiePhoto;
   Uint8List? _selfieBytes;
   DateTime? _checkInTime;
-
-  // Product Deal State
-  bool _isProductDeal = false;
-  List<Map<String, dynamic>> _selectedDealItems = [];
 
   // Camera State
   CameraController? _cameraController;
@@ -326,18 +324,10 @@ class _CheckInPageState extends State<CheckInPage> {
   }
 
   Future<void> _reverseGeocode(Position pos) async {
-    try {
-      final res = await http.get(
-        Uri.parse('https://nominatim.openstreetmap.org/reverse?lat=${pos.latitude}&lon=${pos.longitude}&format=json'),
-        headers: {'User-Agent': 'wowin_crm_mobile'},
-      );
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (mounted) {
-          setState(() => _currentAddress = data['display_name']);
-        }
-      }
-    } catch (_) {}
+    final address = await GeocodingService.reverseGeocode(pos.latitude, pos.longitude);
+    if (address != null && mounted) {
+      setState(() => _currentAddress = address);
+    }
   }
 
   Future<void> _fetchRoute() async {
@@ -459,7 +449,11 @@ class _CheckInPageState extends State<CheckInPage> {
       
       // 1. Watermark first (needs position)
       setState(() => _isWatermarking = true);
-      final watermarkedBytes = await WatermarkService.addAddressWatermark(bytes, _currentPosition);
+      final watermarkedBytes = await WatermarkService.addAddressWatermark(
+        bytes, 
+        _currentPosition,
+        address: _currentAddress,
+      );
       
       // 2. Compress after watermark
       final compressedBytes = await ImageUtils.compressImage(watermarkedBytes);
@@ -500,7 +494,6 @@ class _CheckInPageState extends State<CheckInPage> {
         leadId: widget.leadId,
         customerName: _selectedCustomer?.name,
         taskDestinationId: widget.taskDestinationId,
-        dealItems: _isProductDeal ? _selectedDealItems : null,
       ),
     );
   }
@@ -510,21 +503,25 @@ class _CheckInPageState extends State<CheckInPage> {
     return Scaffold(
       backgroundColor: _bg,
       appBar: _buildAppBar(),
-      body: Column(
+      body: Stack(
         children: [
-          _buildProgressIndicator(),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              children: [
-                _buildStepSelection(),
-                _buildStepProximity(),
-                _buildCameraStep(isStorefront: true),
-                _buildCameraStep(isStorefront: false),
-                _buildStepSummary(),
-              ],
-            ),
+          Column(
+            children: [
+              _buildProgressIndicator(),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _buildStepSelection(),
+                    _buildStepProximity(),
+                    _buildCameraStep(isStorefront: true),
+                    _buildCameraStep(isStorefront: false),
+                    _buildStepSummary(),
+                  ],
+                ),
+              ),
+            ],
           ),
           if (_isWatermarking)
             Positioned.fill(
@@ -644,7 +641,9 @@ class _CheckInPageState extends State<CheckInPage> {
                         final currentUser = (authState is auth.Authenticated) ? authState.user : null;
                         final bool isOwner = currentUser != null && (c.salesId == currentUser.id);
                         final bool isAdmin = currentUser?.role == 'admin';
-                        final bool isLocked = !isOwner && !isAdmin;
+                        // Relax check if coming from an assigned task/schedule
+                        final bool isAssigned = widget.scheduleId != 'adhoc';
+                        final bool isLocked = !isOwner && !isAdmin && !isAssigned;
 
                         if (isLocked) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -866,7 +865,9 @@ class _CheckInPageState extends State<CheckInPage> {
               final currentUser = (authState is auth.Authenticated) ? authState.user : null;
               final bool isOwner = currentUser != null && (_selectedCustomer?.salesId == currentUser.id);
               final bool isAdmin = currentUser?.role == 'admin';
-              final bool isLocked = !isOwner && !isAdmin && _selectedCustomer?.id != 'external';
+              // Relax check if coming from an assigned task/schedule
+              final bool isAssigned = widget.scheduleId != 'adhoc';
+              final bool isLocked = !isOwner && !isAdmin && !isAssigned && _selectedCustomer?.id != 'external';
 
               if (isLocked) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -1106,10 +1107,6 @@ class _CheckInPageState extends State<CheckInPage> {
           ),
           const SizedBox(height: 16),
 
-          // Product Deal Section
-          _buildProductDealSection(),
-          const SizedBox(height: 16),
-
           // Notes Section
           _buildActivitySection(
             title: 'CATATAN HASIL KUNJUNGAN',
@@ -1143,7 +1140,20 @@ class _CheckInPageState extends State<CheckInPage> {
             listener: (context, state) {
               if (state is VisitSuccess) {
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.green));
-                context.pop();
+                
+                // Navigate to Ongoing Visit Screen instead of pop
+                context.pushReplacementNamed(
+                  kRouteOngoingVisit,
+                  extra: {
+                    'scheduleId': widget.scheduleId,
+                    'customerId': state.customerId,
+                    'leadId': state.leadId,
+                    'customerName': state.customerName ?? widget.customerName,
+                    'taskDestinationId': widget.taskDestinationId,
+                    'checkInTime': state.checkInTime ?? DateTime.now(),
+                    'dealId': widget.dealId,
+                  },
+                );
               } else if (state is VisitError) {
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
               }
@@ -1251,275 +1261,6 @@ class _CheckInPageState extends State<CheckInPage> {
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.memory(bytes, height: 120, width: double.infinity, fit: BoxFit.cover),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProductDealSection() {
-    double total = 0;
-    for (var item in _selectedDealItems) {
-      total += (item['unit_price'] as double) * (item['quantity'] as double);
-    }
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _isProductDeal ? Colors.indigo[50] : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _isProductDeal ? Colors.indigo[200]! : Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(LucideIcons.shoppingBag, size: 16, color: _isProductDeal ? Colors.indigo : Colors.grey),
-                  const SizedBox(width: 8),
-                  Text('DEAL PRODUCT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _isProductDeal ? Colors.indigo : Colors.grey, letterSpacing: 1)),
-                ],
-              ),
-              Switch.adaptive(
-                value: _isProductDeal,
-                activeColor: Colors.indigo,
-                onChanged: (v) => setState(() => _isProductDeal = v),
-              ),
-            ],
-          ),
-          if (_isProductDeal) ...[
-            const Divider(height: 24),
-            ..._selectedDealItems.asMap().entries.map((entry) {
-              final idx = entry.key;
-              final item = entry.value;
-              return _buildSelectedProductItem(idx, item);
-            }).toList(),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _showProductPicker,
-              icon: const Icon(LucideIcons.plus, size: 16),
-              label: const Text('Tambah Produk'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.indigo,
-                side: const BorderSide(color: Colors.indigo),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-            const Divider(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('ESTIMASI DEAL', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
-                Text(
-                  'Rp ${NumberFormat('#,###', 'id_ID').format(total)}',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.indigo),
-                ),
-              ],
-            ),
-          ] else
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
-              child: Text('Aktifkan jika terjadi transaksi produk.', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSelectedProductItem(int idx, Map<String, dynamic> item) {
-    final basePrice = item['base_price'] as double;
-    final negotiatedPrice = item['unit_price'] as double;
-    final hasOverride = negotiatedPrice != basePrice;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.indigo.withOpacity(0.1))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(child: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
-              IconButton(
-                icon: const Icon(LucideIcons.trash2, color: Colors.red, size: 16),
-                onPressed: () => setState(() => _selectedDealItems.removeAt(idx)),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              // Quantity
-              Container(
-                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(LucideIcons.minus, size: 14),
-                      onPressed: () => setState(() {
-                        if (item['quantity'] > 1) item['quantity']--;
-                      }),
-                    ),
-                    Text('${item['quantity'].toInt()}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(LucideIcons.plus, size: 14),
-                      onPressed: () => setState(() => item['quantity']++),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Price
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (hasOverride)
-                      Text(
-                        'Base: Rp ${NumberFormat('#,###', 'id_ID').format(basePrice)}',
-                        style: const TextStyle(fontSize: 10, decoration: TextDecoration.lineThrough, color: Colors.grey),
-                      ),
-                    GestureDetector(
-                      onTap: () => _showPriceOverrideDialog(idx, item),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text(
-                            'Rp ${NumberFormat('#,###', 'id_ID').format(negotiatedPrice)}',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: hasOverride ? Colors.orange[800] : Colors.black),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(LucideIcons.edit2, size: 12, color: Colors.grey),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showProductPicker() {
-    context.read<ProductBloc>().add(const FetchProducts());
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.8,
-        maxChildSize: 0.95,
-        minChildSize: 0.5,
-        builder: (context, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-              const Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('Pilih Produk untuk Deal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ),
-              Expanded(
-                child: BlocBuilder<ProductBloc, ProductState>(
-                  builder: (context, state) {
-                    if (state is ProductLoading) return const Center(child: CircularProgressIndicator());
-                    if (state is ProductsLoaded) {
-                      return ListView.builder(
-                        controller: scrollController,
-                        itemCount: state.products.length,
-                        itemBuilder: (context, index) {
-                          final product = state.products[index];
-                          final isSelected = _selectedDealItems.any((item) => item['product_id'] == product.id);
-                          
-                          return ListTile(
-                            leading: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), shape: BoxShape.circle),
-                              child: const Icon(LucideIcons.package, color: Colors.blue, size: 20),
-                            ),
-                            title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text('Harga Katalog: Rp ${NumberFormat('#,###', 'id_ID').format(product.price)}'),
-                            trailing: isSelected 
-                                ? const Icon(LucideIcons.checkCircle, color: Colors.green)
-                                : const Icon(LucideIcons.plusCircle, color: Colors.grey),
-                            onTap: () {
-                              if (!isSelected) {
-                                setState(() {
-                                  _selectedDealItems.add({
-                                    'product_id': product.id,
-                                    'name': product.name,
-                                    'quantity': 1.0,
-                                    'unit': product.unit ?? 'pcs',
-                                    'base_price': product.price,
-                                    'unit_price': product.price,
-                                    'subtotal': product.price,
-                                    'discount': 0.0,
-                                  });
-                                });
-                              }
-                              Navigator.pop(context);
-                            },
-                          );
-                        },
-                      );
-                    }
-                    return const Center(child: Text('Gagal memuat produk'));
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showPriceOverrideDialog(int idx, Map<String, dynamic> item) {
-    final controller = TextEditingController(text: item['unit_price'].toStringAsFixed(0));
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Negosiasi Harga', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Produk: ${item['name']}', style: const TextStyle(fontSize: 13)),
-            const SizedBox(height: 8),
-            Text('Harga Dasar: Rp ${NumberFormat('#,###', 'id_ID').format(item['base_price'])}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Harga Kesepakatan', prefixText: 'Rp '),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _selectedDealItems[idx]['unit_price'] = double.tryParse(controller.text) ?? item['base_price'];
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Simpan'),
           ),
         ],
       ),

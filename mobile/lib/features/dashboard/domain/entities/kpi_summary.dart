@@ -12,6 +12,9 @@ abstract class KpiSummary with _$KpiSummary {
     @JsonKey(name: 'active_deals') required int activeDeals,
     @JsonKey(name: 'visits_today') required int visitsToday,
     @JsonKey(name: 'target_met_percentage') required double targetMetPercentage,
+    @JsonKey(name: 'monthly_revenue') required double monthlyRevenue,
+    @JsonKey(name: 'monthly_target') required double monthlyTarget,
+    @JsonKey(name: 'visits_target') required int visitsTarget,
     @JsonKey(name: 'next_stop') VisitRecommendation? nextStop,
   }) = _KpiSummary;
 

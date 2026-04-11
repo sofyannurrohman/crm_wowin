@@ -9,7 +9,8 @@ part of 'deal.dart';
 _Deal _$DealFromJson(Map<String, dynamic> json) => _Deal(
       id: json['id'] as String,
       title: json['title'] as String,
-      customerId: json['customer_id'] as String,
+      customerId: json['customer_id'] as String?,
+      leadId: json['lead_id'] as String?,
       contactId: json['contact_id'] as String?,
       stage: json['stage'] as String,
       status: json['status'] as String,
@@ -33,6 +34,7 @@ Map<String, dynamic> _$DealToJson(_Deal instance) => <String, dynamic>{
       'id': instance.id,
       'title': instance.title,
       'customer_id': instance.customerId,
+      'lead_id': instance.leadId,
       'contact_id': instance.contactId,
       'stage': instance.stage,
       'status': instance.status,

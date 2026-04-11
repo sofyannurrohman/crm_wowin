@@ -7,6 +7,7 @@ class VisitActivity extends Equatable {
   final String? scheduleId;
   final String salesId;
   final String customerId;
+  final String? leadId;
   final String type;
   final double latitude;
   final double longitude;
@@ -16,7 +17,10 @@ class VisitActivity extends Equatable {
   final double? distance;
   final bool isOffline;
   final String? notes;
+  final String? outcome;
   final String? dealId;
+  final String? dealTitle;
+  final bool taskCompleted;
   final DateTime createdAt;
 
   const VisitActivity({
@@ -24,6 +28,7 @@ class VisitActivity extends Equatable {
     this.scheduleId,
     required this.salesId,
     required this.customerId,
+    this.leadId,
     required this.type,
     required this.latitude,
     required this.longitude,
@@ -33,7 +38,10 @@ class VisitActivity extends Equatable {
     this.distance,
     required this.isOffline,
     this.notes,
+    this.outcome,
     this.dealId,
+    this.dealTitle,
+    this.taskCompleted = false,
     required this.createdAt,
   });
 
@@ -52,7 +60,10 @@ class VisitActivity extends Equatable {
       distance: (json['distance'] as num?)?.toDouble(),
       isOffline: json['is_offline'] ?? false,
       notes: json['notes'],
+      outcome: json['outcome'],
       dealId: json['deal_id'],
+      dealTitle: json['deal_title'],
+      taskCompleted: json['task_completed'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
     );
   }
@@ -72,7 +83,10 @@ class VisitActivity extends Equatable {
         distance,
         isOffline,
         notes,
+        outcome,
         dealId,
+        dealTitle,
+        taskCompleted,
         createdAt,
       ];
 }
