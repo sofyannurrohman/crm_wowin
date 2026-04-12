@@ -21,23 +21,23 @@ func NewTerritoryRepository(db *pgxpool.Pool) repository.TerritoryRepository {
 func (r *territoryRepositoryImpl) Create(ctx context.Context, t *models.Territory) error {
 	geomJSON, _ := json.Marshal(t.Geometry)
 	query := `
-		INSERT INTO territories (name, description, geom, color, status, created_by)
-		VALUES ($1, $2, ST_GeomFromGeoJSON($3), $4, $5, $6)
+		INSERT INTO territories (name, description, geom, color, status, warehouse_id, created_by)
+		VALUES ($1, $2, ST_GeomFromGeoJSON($3), $4, $5, $6, $7)
 		RETURNING id, created_at, updated_at
 	`
-	return r.db.QueryRow(ctx, query, t.Name, t.Description, string(geomJSON), t.Color, t.Status, t.CreatedBy).
+	return r.db.QueryRow(ctx, query, t.Name, t.Description, string(geomJSON), t.Color, t.Status, t.WarehouseID, t.CreatedBy).
 		Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt)
 }
 
 func (r *territoryRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Territory, error) {
 	query := `
-		SELECT id, name, description, ST_AsGeoJSON(geom), color, status, created_by, created_at, updated_at
+		SELECT id, name, description, ST_AsGeoJSON(geom), color, status, warehouse_id, created_by, created_at, updated_at
 		FROM territories WHERE id = $1
 	`
 	var t models.Territory
 	var geomStr string
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&t.ID, &t.Name, &t.Description, &geomStr, &t.Color, &t.Status, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
+		&t.ID, &t.Name, &t.Description, &geomStr, &t.Color, &t.Status, &t.WarehouseID, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -46,12 +46,19 @@ func (r *territoryRepositoryImpl) GetByID(ctx context.Context, id uuid.UUID) (*m
 	return &t, nil
 }
 
-func (r *territoryRepositoryImpl) List(ctx context.Context) ([]*models.Territory, error) {
+func (r *territoryRepositoryImpl) List(ctx context.Context, warehouseID *uuid.UUID) ([]*models.Territory, error) {
 	query := `
-		SELECT id, name, description, ST_AsGeoJSON(geom), color, status, created_by, created_at, updated_at
-		FROM territories ORDER BY created_at DESC
+		SELECT id, name, description, ST_AsGeoJSON(geom), color, status, warehouse_id, created_by, created_at, updated_at
+		FROM territories WHERE 1=1
 	`
-	rows, err := r.db.Query(ctx, query)
+	args := []interface{}{}
+	if warehouseID != nil {
+		query += " AND warehouse_id = $1"
+		args = append(args, *warehouseID)
+	}
+	query += " ORDER BY created_at DESC"
+
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +68,7 @@ func (r *territoryRepositoryImpl) List(ctx context.Context) ([]*models.Territory
 	for rows.Next() {
 		var t models.Territory
 		var geomStr string
-		err := rows.Scan(&t.ID, &t.Name, &t.Description, &geomStr, &t.Color, &t.Status, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt)
+		err := rows.Scan(&t.ID, &t.Name, &t.Description, &geomStr, &t.Color, &t.Status, &t.WarehouseID, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -75,10 +82,10 @@ func (r *territoryRepositoryImpl) Update(ctx context.Context, t *models.Territor
 	geomJSON, _ := json.Marshal(t.Geometry)
 	query := `
 		UPDATE territories 
-		SET name = $1, description = $2, geom = ST_GeomFromGeoJSON($3), color = $4, status = $5, updated_at = NOW()
-		WHERE id = $6
+		SET name = $1, description = $2, geom = ST_GeomFromGeoJSON($3), color = $4, status = $5, warehouse_id = $6, updated_at = NOW()
+		WHERE id = $7
 	`
-	_, err := r.db.Exec(ctx, query, t.Name, t.Description, string(geomJSON), t.Color, t.Status, t.ID)
+	_, err := r.db.Exec(ctx, query, t.Name, t.Description, string(geomJSON), t.Color, t.Status, t.WarehouseID, t.ID)
 	return err
 }
 

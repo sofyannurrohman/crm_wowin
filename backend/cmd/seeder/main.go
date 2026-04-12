@@ -60,19 +60,21 @@ func seedUsers(ctx context.Context, db *pgxpool.Pool) uuid.UUID {
 		email string
 		role  string
 		code  string
+		typeSales string
 	}{
-		{adminID, "Super Admin", "admin@wowin.com", "super_admin", "EMP001"},
-		{salesID1, "John Sales", "john@wowin.com", "sales", "EMP002"},
-		{salesID2, "Jane Sales", "jane@wowin.com", "sales", "EMP003"},
+		{adminID, "Super Admin", "admin@wowin.com", "super_admin", "EMP001", ""},
+		{salesID1, "John Motoris", "motoris@wowin.id", "sales", "EMP002", "motoris"},
+		{salesID2, "Jane Canvas", "canvas@wowin.id", "sales", "EMP003", "canvas"},
+		{uuid.MustParse("550e8400-e29b-41d4-a716-446655440003"), "Bob TaskOrder", "taskorder@wowin.id", "sales", "EMP004", "task_order"},
 	}
 
 	for _, u := range users {
-		query := `INSERT INTO users (id, name, email, password_hash, role, employee_code, status) 
-				  VALUES ($1, $2, $3, $4, $5, $6, 'active') 
-				  ON CONFLICT (email) DO UPDATE SET updated_at = NOW() 
+		query := `INSERT INTO users (id, name, email, password_hash, role, employee_code, sales_type, status) 
+				  VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, '')::sales_type, 'active') 
+				  ON CONFLICT (email) DO UPDATE SET updated_at = NOW(), sales_type = EXCLUDED.sales_type 
 				  RETURNING id`
 		var actualID uuid.UUID
-		err := db.QueryRow(ctx, query, u.id, u.name, u.email, passHash, u.role, u.code).Scan(&actualID)
+		err := db.QueryRow(ctx, query, u.id, u.name, u.email, passHash, u.role, u.code, u.typeSales).Scan(&actualID)
 		if err != nil {
 			log.Printf("    warning: failed to seed user %s: %v", u.email, err)
 			continue
@@ -157,7 +159,7 @@ func seedCustomers(ctx context.Context, db *pgxpool.Pool, adminID, territoryID u
 	for _, c := range customers {
 		cID := uuid.New()
 		query := `INSERT INTO customers (id, name, company_name, email, type, status, location, territory_id, created_by) 
-				  VALUES ($1, $2, $3, $4, $5, 'active', ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9) ON CONFLICT DO NOTHING`
+				  VALUES ($1, $2, $3, $4, $5::customer_type, 'active', ST_SetSRID(ST_MakePoint($6, $7), 4326), $8, $9) ON CONFLICT DO NOTHING`
 		_, err := db.Exec(ctx, query, cID, c.name, c.company, c.email, c.typeStr, c.lon, c.lat, territoryID, adminID)
 		if err != nil {
 			log.Printf("    warning: failed to seed customer %s (%s): %v", c.name, c.typeStr, err)

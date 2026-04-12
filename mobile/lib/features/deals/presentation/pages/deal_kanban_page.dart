@@ -20,6 +20,7 @@ class DealKanbanPage extends StatefulWidget {
 }
 
 class _DealKanbanPageState extends State<DealKanbanPage> {
+  List<Deal> _lastDeals = [];
   final List<String> _stages = [
     'prospect',
     'survey',
@@ -108,16 +109,21 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
         ],
         child: BlocBuilder<DealBloc, DealState>(
           builder: (context, state) {
-            if (state is DealLoading) {
+            if (state is DealLoading && _lastDeals.isEmpty) {
               return const Center(child: CircularProgressIndicator(color: Color(0xFFE8622A)));
             }
 
             if (state is DealsLoaded) {
+              _lastDeals = state.deals;
               return _buildKanbanBoard(state.deals);
             }
 
-            if (state is DealError) {
+            if (state is DealError && _lastDeals.isEmpty) {
               return Center(child: Text(state.message));
+            }
+            
+            if (_lastDeals.isNotEmpty) {
+              return _buildKanbanBoard(_lastDeals);
             }
 
             return const Center(child: Text('No deals found'));

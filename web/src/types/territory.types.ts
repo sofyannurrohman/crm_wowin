@@ -17,6 +17,7 @@ export interface Territory {
   geojson: TerritoryGeoJSON;
   sales_count?: number;
   customer_count?: number;
+  warehouse_id?: string;
   created_at: string;
   updated_at: string;
 }

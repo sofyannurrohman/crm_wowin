@@ -31,7 +31,7 @@ async function loadData() {
   }
 }
 
-async function handleUpdateSalesType(userId: string, type: string) {
+async function handleUpdateSalesType(userId: string, type: any) {
   try {
     await updateUser(userId, { sales_type: type })
     toast({
@@ -175,7 +175,7 @@ const getRoleBadge = (role: string) => {
               </TableCell>
               <TableCell>
                 <div v-if="user.role === 'sales'" class="w-[140px]">
-                  <Select :modelValue="user.sales_type" @update:modelValue="(val: string) => handleUpdateSalesType(user.id, val)">
+                  <Select :modelValue="user.sales_type" @update:modelValue="(val: any) => handleUpdateSalesType(user.id, val)">
                     <SelectTrigger class="h-8 text-xs capitalize">
                       <SelectValue :placeholder="user.sales_type?.replace('_', ' ') || 'Belum diatur'" />
                     </SelectTrigger>

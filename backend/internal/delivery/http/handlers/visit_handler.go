@@ -283,6 +283,12 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	activity.PhotoPath = selfiePath // for legacy DB column support if needed
 	activity.SignaturePath = signaturePath
 
+	if tdID := c.Request.FormValue("task_destination_id"); tdID != "" {
+		if tuid, err := uuid.Parse(tdID); err == nil {
+			activity.TaskDestinationID = &tuid
+		}
+	}
+
 	// Notes and Offline status are optional overrides
 	notesParams := c.Request.FormValue("notes")
 	if notesParams != "" {
@@ -295,6 +301,12 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	outcome := c.Request.FormValue("outcome")
 	if outcome != "" {
 		activity.Outcome = &outcome
+	}
+
+	if priceStr := c.Request.FormValue("total_price_override"); priceStr != "" {
+		if pOverride, err := strconv.ParseFloat(priceStr, 64); err == nil {
+			activity.PriceOverride = &pOverride
+		}
 	}
 
 	if sID := c.Request.FormValue("schedule_id"); sID != "" {

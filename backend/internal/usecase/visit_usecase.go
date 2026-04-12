@@ -6,6 +6,7 @@ import (
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
 	"errors"
+	"fmt"
 	"math"
 	"strings"
 
@@ -263,15 +264,20 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 				if activity.Notes != nil {
 					activeSession.Notes = activity.Notes
 				}
-				_ = u.activityRepo.Update(ctx, activeSession)
+				if err := u.activityRepo.Update(ctx, activeSession); err != nil {
+					return nil, fmt.Errorf("failed to update checkout session: %w", err)
+				}
 			}
 		}
 
-		// Handle DealItems if provided during Checkout
-		if len(activity.DealItems) > 0 && activity.DealID == nil {
+		// Handle DealItems if provided during Checkout, or if outcome explicitly dictates a closed deal
+		if (len(activity.DealItems) > 0 || (activity.Outcome != nil && *activity.Outcome == "deal_won") || (activity.Notes != nil && (strings.Contains(strings.ToLower(*activity.Notes), "closing") || strings.Contains(strings.ToLower(*activity.Notes), "bungkus")))) && activity.DealID == nil {
 			var dAmount float64
 			for _, it := range activity.DealItems {
 				dAmount += it.UnitPrice * it.Quantity
+			}
+			if activity.PriceOverride != nil {
+				dAmount = *activity.PriceOverride
 			}
 
 			salesmanID := activity.SalesID
@@ -331,12 +337,19 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 						}
 						
 						// Create Payment record if it's a direct sale
-						payment := &models.Payment{
-							ActivityID: activity.ID,
-							Amount:     dAmount,
-							Method:     models.PaymentMethodCash, // Default, mobile can override
+						payMethod := models.PaymentMethodCash
+						if activity.PaymentMethod != "" {
+							payMethod = models.PaymentMethod(activity.PaymentMethod)
 						}
-						_ = u.paymentRepo.Create(ctx, payment)
+						payment := &models.Payment{
+							ActivityID:  activity.ID,
+							Amount:      dAmount,
+							Method:      payMethod,
+							ReferenceNo: activity.PaymentRef,
+						}
+						if err := u.paymentRepo.Create(ctx, payment); err != nil {
+							return nil, fmt.Errorf("failed to create payment record: %w", err)
+						}
 					}
 				} else {
 					// Traditional won
@@ -346,9 +359,10 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 				}
 			}
 
-			if err := u.dealRepo.Create(ctx, newDeal); err == nil {
-				activity.DealID = &newDeal.ID
+			if err := u.dealRepo.Create(ctx, newDeal); err != nil {
+				return nil, fmt.Errorf("gagal membuat laporan penjualan: %w", err)
 			}
+			activity.DealID = &newDeal.ID
 		}
 
 		// Mark Schedule as completed if checkout happens
@@ -388,7 +402,9 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 					task.Status = models.TaskStatusInProgress
 				}
 				
-				_ = u.taskRepo.Update(ctx, task)
+				if err := u.taskRepo.Update(ctx, task); err != nil {
+					return nil, fmt.Errorf("gagal memperbarui status tugas: %w", err)
+				}
 			}
 		}
 
@@ -409,7 +425,49 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 				outcomeStr := "Structured outcome"
 				if activity.Outcome != nil { outcomeStr = *activity.Outcome }
 				notes := "Otomatis diubah menjadi WON melalui laporan kunjungan: " + outcomeStr
-				_ = u.dealRepo.UpdateStage(ctx, *activity.DealID, newStage, &activity.SalesID, &notes)
+
+				// Canvas Logic: Check Inventory for Existing Deal
+				if user.SalesType != nil && *user.SalesType == models.SalesTypeCanvas {
+					canFulfill := true
+					for _, it := range activity.DealItems {
+						vs, err := u.vanStockRepo.GetByUserAndProduct(ctx, user.ID, it.ProductID)
+						if err != nil || vs == nil || vs.Quantity < it.Quantity {
+							canFulfill = false
+							break
+						}
+					}
+
+					if !canFulfill {
+						newStage = models.DealStagePreOrder
+						notes += " (Stok van tidak mencukupi, diubah ke Pre-Order)"
+					} else {
+						// Deduct and pay
+						for _, it := range activity.DealItems {
+							_ = u.vanStockRepo.DeductStock(ctx, user.ID, it.ProductID, it.Quantity)
+						}
+						payMethod := models.PaymentMethodCash
+						if activity.PaymentMethod != "" {
+							payMethod = models.PaymentMethod(activity.PaymentMethod)
+						}
+						payAmount := float64(0)
+						if activity.PriceOverride != nil {
+							payAmount = *activity.PriceOverride
+						}
+						payment := &models.Payment{
+							ActivityID:  activity.ID,
+							Amount:      payAmount, // Amount from checkout
+							Method:      payMethod,
+							ReferenceNo: activity.PaymentRef,
+						}
+						if err := u.paymentRepo.Create(ctx, payment); err != nil {
+							return nil, fmt.Errorf("failed to process canvas payment: %w", err)
+						}
+					}
+				}
+
+				if err := u.dealRepo.UpdateStage(ctx, *activity.DealID, newStage, &activity.SalesID, &notes); err != nil {
+					return nil, fmt.Errorf("gagal mengubah status deal menjadi won: %w", err)
+				}
 			}
 		}
 	}

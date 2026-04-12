@@ -157,6 +157,15 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
           // If the tasks are reloaded, find our specific task and update it
           try {
             final updatedTask = state.tasks.firstWhere((t) => t.id == _currentTask.id);
+            
+            if (updatedTask.status == TaskStatus.done) {
+              // Task completely done, go back to task list automatically
+              if (mounted) {
+                context.pop();
+              }
+              return;
+            }
+
             // Deep check or just check status/destinations
             if (updatedTask.destinations.length != _currentTask.destinations.length || 
                 updatedTask.destinations.any((d) => d.status != _currentTask.destinations.firstWhere((old) => old.id == d.id).status)) {
@@ -324,30 +333,34 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                     
                     setState(() => _isProcessing = true);
                     
-                    if (dest.status == TaskStatus.in_progress) {
-                      await context.pushNamed(kRouteOngoingVisit, extra: {
+                    try {
+                      if (dest.status == TaskStatus.in_progress) {
+                        await context.pushNamed(kRouteOngoingVisit, extra: {
+                          'scheduleId': 'task',
+                          'customerName': destName,
+                          'leadId': dest.leadId,
+                          'customerId': dest.customerId,
+                          'taskDestinationId': dest.id,
+                          'checkInTime': dest.updatedAt,
+                          'dealId': dest.dealId,
+                        });
+                        return;
+                      }
+
+                      await context.pushNamed(kRouteCheckIn, extra: {
                         'scheduleId': 'task',
                         'customerName': destName,
-                        'leadId': dest.leadId,
-                        'customerId': dest.customerId,
+                        'customerAddress': destAddress,
+                        'targetLat': dest.targetLatitude,
+                        'targetLng': dest.targetLongitude,
                         'taskDestinationId': dest.id,
-                        'checkInTime': dest.updatedAt, // Fallback to last update
                         'dealId': dest.dealId,
                       });
+                    } finally {
                       if (mounted) setState(() => _isProcessing = false);
-                      return;
+                      // Don't refetch tasks here, the pop from CheckOutPage already triggers an update if needed,
+                      // and fetching blindly can cause layout race conditions.
                     }
-
-                    await context.pushNamed(kRouteCheckIn, extra: {
-                      'scheduleId': 'task',
-                      'customerName': destName,
-                      'customerAddress': destAddress,
-                      'targetLat': dest.targetLatitude,
-                      'targetLng': dest.targetLongitude,
-                      'taskDestinationId': dest.id,
-                      'dealId': dest.dealId,
-                    });
-                    if (mounted) setState(() => _isProcessing = false);
                   },
 
                 );

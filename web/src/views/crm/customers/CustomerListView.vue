@@ -3,14 +3,15 @@ import { ref, onMounted, watch, computed } from 'vue'
 import { useCustomerStore } from '@/stores/customers.store'
 import { useRouter } from 'vue-router'
 import { 
-  Plus, Search, MapPin, Loader2, Eye, Edit, Users, 
-  ChevronLeft, ChevronRight, Building2, UserCircle, Mail, Phone
+  Plus, Search, MapPin, Loader2, Eye, Edit, Users, Trash2,
+  ChevronLeft, ChevronRight, Building2, UserCircle, Mail, Phone, Map as MapIcon
 } from 'lucide-vue-next'
 import { useDebounce } from '@vueuse/core'
 import type { Customer, CustomerStatus } from '@/types/customer.types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -35,15 +36,18 @@ const searchInput = ref('')
 const debouncedSearch = useDebounce(searchInput, 500)
 const selectedStatus = ref<string>('all')
 const page = ref(1)
-
-// Dialog State
 const showDialog = ref(false)
 const saving = ref(false)
+
+const editingId = ref<string | null>(null)
 const formData = ref({
   name: '',
   industry: '',
   email: '',
   phone: '',
+  address: '',
+  latitude: undefined as number | undefined,
+  longitude: undefined as number | undefined,
   status: 'prospect' as CustomerStatus
 })
 
@@ -75,14 +79,64 @@ onMounted(() => {
 })
 
 function openCreate() {
+  editingId.value = null
   formData.value = {
     name: '',
     industry: '',
     email: '',
     phone: '',
+    address: '',
+    latitude: undefined,
+    longitude: undefined,
     status: 'prospect'
   }
   showDialog.value = true
+}
+
+function openEdit(customer: Customer) {
+  editingId.value = customer.id
+  
+  // Set industry from type or existing value
+  let industryVal = 'Lainnya'
+  const typeMap: Record<string, string> = {
+    'warung': 'Warung Makan',
+    'toko': 'Toko Kelontong',
+    'retail': 'Retail / Minimarket',
+    'agen': 'Agen / Distributor',
+    'restoran': 'Restoran',
+    'cafe': 'Cafe',
+    'lainnya': 'Lainnya'
+  }
+  
+  // Try to find matching industry
+  industryVal = typeMap[customer.type as string] || 'Lainnya'
+
+  formData.value = {
+    name: customer.name,
+    industry: industryVal,
+    email: customer.email || '',
+    phone: customer.phone || '',
+    address: customer.address || '',
+    latitude: customer.latitude,
+    longitude: customer.longitude,
+    status: customer.status
+  }
+  showDialog.value = true
+}
+
+async function confirmDelete(id: string, name: string) {
+  if (confirm(`Apakah Anda yakin ingin menghapus pelanggan "${name}"?`)) {
+    try {
+      await store.deleteCustomer(id)
+      toast({ title: 'Berhasil', description: `Pelanggan "${name}" telah dihapus.` })
+    } catch (e: any) {
+      toast({ 
+        title: 'Gagal menghapus', 
+        description: e.response?.data?.error || 'Terjadi kesalahan sistem', 
+        variant: 'destructive' 
+      })
+    }
+  }
 }
 
 async function handleSave() {
@@ -110,8 +164,13 @@ async function handleSave() {
       company_name: formData.value.name
     }
 
-    await store.createCustomer(payload)
-    toast({ title: 'Berhasil', description: `Customer "${formData.value.name}" telah dibuat.` })
+    if (editingId.value) {
+      await store.updateCustomer(editingId.value, payload)
+      toast({ title: 'Berhasil', description: `Data "${formData.value.name}" telah diperbarui.` })
+    } else {
+      await store.createCustomer(payload)
+      toast({ title: 'Berhasil', description: `Customer "${formData.value.name}" telah dibuat.` })
+    }
     showDialog.value = false
   } catch (e: any) {
     toast({ 
@@ -145,7 +204,7 @@ const formatStatus = (status: string) => {
         <p class="text-muted-foreground mt-1">Kelola direktori kontak dan informasi prospek.</p>
       </div>
       <div class="flex items-center gap-2">
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" @click="router.push('/heatmap')">
           <MapPin class="w-4 h-4 mr-2" />
           Lihat Peta
         </Button>
@@ -257,11 +316,19 @@ const formatStatus = (status: string) => {
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger as-child>
-                        <Button variant="ghost" size="icon" class="h-8 w-8" @click.stop>
+                        <Button variant="ghost" size="icon" class="h-8 w-8" @click.stop="openEdit(customer)">
                           <Edit class="h-4 w-4" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Edit</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger as-child>
+                        <Button variant="ghost" size="icon" class="h-8 w-8 text-destructive hover:text-destructive" @click.stop="confirmDelete(customer.id, customer.name)">
+                          <Trash2 class="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Hapus</TooltipContent>
                     </Tooltip>
                   </div>
                 </TooltipProvider>
@@ -290,11 +357,11 @@ const formatStatus = (status: string) => {
 
     <!-- Dialog Add Customer -->
     <Dialog :open="showDialog" @update:open="showDialog = $event">
-      <DialogContent class="sm:max-w-[500px]">
+      <DialogContent class="sm:max-w-[550px]">
         <DialogHeader>
-          <DialogTitle>Tambah Pelanggan Baru</DialogTitle>
+          <DialogTitle>{{ editingId ? 'Edit Pelanggan' : 'Tambah Pelanggan Baru' }}</DialogTitle>
           <DialogDescription>
-            Lengkapi data di bawah ini untuk mendaftarkan pelanggan baru ke sistem.
+            {{ editingId ? 'Perbarui informasi pelanggan di bawah ini.' : 'Lengkapi data di bawah ini untuk mendaftarkan pelanggan baru ke sistem.' }}
           </DialogDescription>
         </DialogHeader>
 
@@ -345,6 +412,28 @@ const formatStatus = (status: string) => {
                 <Input id="email" v-model="formData.email" placeholder="email@toko.com" class="pl-10" />
               </div>
             </div>
+
+            <div class="grid gap-2">
+              <Label for="address">Alamat Lengkap</Label>
+              <div class="relative">
+                <MapIcon class="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input id="address" v-model="formData.address" placeholder="Jalan Raya No. 123..." class="pl-10" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div class="grid gap-2">
+                <Label for="lat">Latitude</Label>
+                <Input id="lat" v-model.number="formData.latitude" type="number" step="any" placeholder="-6.200" />
+              </div>
+              <div class="grid gap-2">
+                <Label for="lng">Longitude</Label>
+                <Input id="lng" v-model.number="formData.longitude" type="number" step="any" placeholder="106.816" />
+              </div>
+            </div>
+            <p class="text-[10px] text-muted-foreground italic -mt-2">
+              Koordinat bersifat opsional namun diperlukan untuk fitur Pemetaan/Heatmap.
+            </p>
           </div>
         </div>
 
@@ -352,7 +441,7 @@ const formatStatus = (status: string) => {
           <Button variant="outline" @click="showDialog = false" :disabled="saving">Batal</Button>
           <Button @click="handleSave" :disabled="saving">
             <Loader2 v-if="saving" class="w-4 h-4 mr-2 animate-spin" />
-            Simpan Pelanggan
+            {{ editingId ? 'Perbarui Data' : 'Simpan Pelanggan' }}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -5,10 +5,13 @@ import {
   type Task, type TaskStatus, type TaskPriority
 } from '@/api/tasks.api'
 import { fetchUsers } from '@/api/auth.api'
+import { fetchCustomers } from '@/api/customers.api'
+import { fetchLeads } from '@/api/leads.api'
 import {
-  Plus, Search, Loader2, Calendar, ClipboardCheck,
-  MoreHorizontal, Edit, Trash2, CheckCircle, AlertTriangle, Clock
+  MoreHorizontal, Edit, Trash2, CheckCircle, AlertTriangle, Clock,
+  MapPin, X, UserPlus, Building, Plus, Search, Loader2, ClipboardCheck
 } from 'lucide-vue-next'
+import { Separator } from '@/components/ui/separator'
 import { useDebounce } from '@vueuse/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,12 +35,16 @@ import {
 import { useToast } from '@/components/ui/toast/use-toast'
 
 const { toast } = useToast()
+const statusFilter = ref<string>('all')
+const customers = ref<any[]>([])
+const leads = ref<any[]>([])
+const selectedTargetType = ref<'customer' | 'lead'>('customer')
+const selectedTargetId = ref('')
 const tasks = ref<Task[]>([])
 const users = ref<any[]>([])
 const loading = ref(false)
 const searchInput = ref('')
 const debouncedSearch = useDebounce(searchInput, 500)
-const statusFilter = ref<string>('all')
 
 // Dialog state
 const showTaskDialog = ref(false)
@@ -48,7 +55,8 @@ const formData = ref({
   description: '',
   assigned_to: '',
   priority: 'medium' as TaskPriority,
-  due_at: ''
+  due_at: '',
+  destinations: [] as any[]
 })
 
 async function loadTasks() {
@@ -75,16 +83,37 @@ async function loadUsers() {
   }
 }
 
+async function loadTargets() {
+  try {
+    const [cRes, lRes] = await Promise.all([
+      fetchCustomers({ limit: 100 }),
+      fetchLeads({ limit: 100 })
+    ])
+    customers.value = cRes.data.data || []
+    leads.value = lRes.data.data || []
+  } catch (e) {
+    console.error('Failed to load targets', e)
+  }
+}
+
 onMounted(() => {
   loadTasks()
   loadUsers()
+  loadTargets()
 })
 
 watch([debouncedSearch, statusFilter], loadTasks)
 
 function openCreate() {
   editingTask.value = null
-  formData.value = { title: '', description: '', assigned_to: '', priority: 'medium', due_at: '' }
+  formData.value = { 
+    title: '', 
+    description: '', 
+    assigned_to: '', 
+    priority: 'medium', 
+    due_at: '',
+    destinations: []
+  }
   showTaskDialog.value = true
 }
 
@@ -95,19 +124,66 @@ function openEdit(task: Task) {
     description: task.description || '',
     assigned_to: task.assigned_to,
     priority: task.priority,
-    due_at: task.due_at ? task.due_at.split('T')[0] : ''
+    due_at: task.due_at ? task.due_at.split('T')[0] : '',
+    destinations: (task.destinations || []).map(d => ({
+      ...d,
+      type: d.lead_id ? 'lead' : 'customer',
+      target_id: d.lead_id || d.customer_id
+    }))
   }
   showTaskDialog.value = true
+}
+
+function addDestination() {
+  if (!selectedTargetId.value) return
+  
+  const type = selectedTargetType.value
+  const id = selectedTargetId.value
+  
+  // Prevent duplicates
+  if (formData.value.destinations.find(d => d.target_id === id)) return
+
+  const target = type === 'customer' 
+    ? customers.value.find(c => c.id === id) 
+    : leads.value.find(l => l.id === id)
+
+  if (target) {
+    formData.value.destinations.push({
+      type,
+      target_id: id,
+      target_name: target.name,
+      sequence_order: formData.value.destinations.length + 1
+    })
+    selectedTargetId.value = ''
+  }
+}
+
+function removeDestination(index: number) {
+  formData.value.destinations.splice(index, 1)
+  // Re-index sequence
+  formData.value.destinations.forEach((d, i) => {
+    d.sequence_order = i + 1
+  })
 }
 
 async function handleSave() {
   saving.value = true
   try {
+    // Format payload for backend destinations
+    const payload = {
+      ...formData.value,
+      destinations: formData.value.destinations.map(d => ({
+        lead_id: d.type === 'lead' ? d.target_id : undefined,
+        customer_id: d.type === 'customer' ? d.target_id : undefined,
+        sequence_order: d.sequence_order
+      }))
+    }
+
     if (editingTask.value) {
-      await updateTask(editingTask.value.id, formData.value)
+      await updateTask(editingTask.value.id, payload)
       toast({ title: 'Tugas diperbarui', description: `Tugas "${formData.value.title}" berhasil diubah.` })
     } else {
-      await createTask(formData.value)
+      await createTask(payload)
       toast({ title: 'Tugas ditambahkan', description: `Tugas "${formData.value.title}" berhasil dibuat.` })
     }
     showTaskDialog.value = false
@@ -206,6 +282,7 @@ const getStatusIcon = (status: string) => {
             <TableRow>
               <TableHead>Tugas</TableHead>
               <TableHead>Prioritas</TableHead>
+              <TableHead>Target</TableHead>
               <TableHead>Assigned To</TableHead>
               <TableHead>Deadline</TableHead>
               <TableHead>Status</TableHead>
@@ -224,6 +301,21 @@ const getStatusIcon = (status: string) => {
                 <Badge :variant="getPriorityVariant(task.priority)" class="text-[10px] uppercase font-bold tracking-tight">
                   {{ task.priority }}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                <div class="flex flex-col gap-0.5 max-w-[150px]">
+                  <template v-if="task.destinations?.length">
+                    <div v-for="dest in task.destinations.slice(0, 2)" :key="dest.id" 
+                         class="text-[10px] bg-muted/50 px-1.5 py-0.5 rounded truncate flex items-center gap-1">
+                      <MapPin class="w-2.5 h-2.5" />
+                      {{ dest.target_name }}
+                    </div>
+                    <p v-if="task.destinations.length > 2" class="text-[9px] text-muted-foreground pl-1">
+                      +{{ task.destinations.length - 2 }} lainnya
+                    </p>
+                  </template>
+                  <span v-else class="text-[10px] text-muted-foreground italic">No target</span>
+                </div>
               </TableCell>
               <TableCell>
                 <div class="flex items-center gap-2">
@@ -316,6 +408,66 @@ const getStatusIcon = (status: string) => {
           <div class="space-y-2">
             <Label>Deskripsi / Instruksi</Label>
             <Input v-model="formData.description" placeholder="Instruksi tambahan..." />
+          </div>
+
+          <Separator />
+          
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <Label class="text-xs font-bold uppercase tracking-wider text-muted-foreground">Destinasi Kunjungan</Label>
+              <Badge variant="outline" class="text-[10px]">{{ formData.destinations.length }} Lokasi</Badge>
+            </div>
+
+            <div class="flex gap-2">
+               <Select v-model="selectedTargetType" class="w-[100px]">
+                  <SelectTrigger class="h-8 text-[11px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="customer">Pelanggan</SelectItem>
+                    <SelectItem value="lead">Lead</SelectItem>
+                  </SelectContent>
+               </Select>
+               <Select v-model="selectedTargetId" class="flex-1">
+                  <SelectTrigger class="h-8 text-[11px]">
+                    <SelectValue :placeholder="selectedTargetType === 'customer' ? 'Cari Pelanggan...' : 'Cari Lead...'" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <template v-if="selectedTargetType === 'customer'">
+                      <SelectItem v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</SelectItem>
+                    </template>
+                    <template v-else>
+                      <SelectItem v-for="l in leads" :key="l.id" :value="l.id">{{ l.name }}</SelectItem>
+                    </template>
+                  </SelectContent>
+               </Select>
+               <Button type="button" size="sm" class="h-8 px-2" @click="addDestination" :disabled="!selectedTargetId">
+                 <Plus class="w-4 h-4" />
+               </Button>
+            </div>
+
+            <div class="space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
+               <div v-for="(dest, i) in formData.destinations" :key="i" 
+                    class="flex items-center justify-between gap-2 p-2 bg-muted/40 rounded-md border border-border/50 group">
+                  <div class="flex items-center gap-2 overflow-hidden">
+                    <span class="flex-shrink-0 w-4 h-4 bg-primary/10 text-primary text-[10px] flex items-center justify-center rounded-full font-bold">
+                      {{ i + 1 }}
+                    </span>
+                    <component :is="dest.type === 'customer' ? Building : UserPlus" class="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                    <span class="text-[11px] font-medium truncate">{{ dest.target_name }}</span>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" class="h-6 w-6 opacity-0 group-hover:opacity-100" @click="removeDestination(i)">
+                    <X class="w-3 h-3 text-destructive" />
+                  </Button>
+               </div>
+               <div v-if="formData.destinations.length === 0" 
+                    class="text-center py-4 border border-dashed rounded-md bg-muted/20">
+                 <p class="text-[10px] text-muted-foreground">Belum ada target kunjungan terpilih.</p>
+               </div>
+            </div>
+            <p class="text-[10px] text-muted-foreground italic">
+              * Urutan destinasi akan digunakan sales sebagai rute kunjungan di mobile app.
+            </p>
           </div>
 
           <DialogFooter class="pt-4">

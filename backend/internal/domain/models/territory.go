@@ -20,6 +20,7 @@ type Territory struct {
 	Geometry    interface{}     `json:"geometry" binding:"required"` // Expecting GeoJSON MultiPolygon
 	Color       string          `json:"color"`
 	Status      TerritoryStatus `json:"status"`
+	WarehouseID *uuid.UUID      `json:"warehouse_id,omitempty"`
 	CreatedBy   *uuid.UUID      `json:"created_by"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`

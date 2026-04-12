@@ -11,7 +11,7 @@ import (
 type TerritoryUseCase interface {
 	CreateTerritory(ctx context.Context, t *models.Territory) (*models.Territory, error)
 	GetTerritory(ctx context.Context, id uuid.UUID) (*models.Territory, error)
-	ListTerritories(ctx context.Context) ([]*models.Territory, error)
+	ListTerritories(ctx context.Context, warehouseID *uuid.UUID) ([]*models.Territory, error)
 	UpdateTerritory(ctx context.Context, t *models.Territory) (*models.Territory, error)
 	DeleteTerritory(ctx context.Context, id uuid.UUID) error
 }
@@ -36,8 +36,8 @@ func (u *territoryUseCaseImpl) GetTerritory(ctx context.Context, id uuid.UUID) (
 	return u.repo.GetByID(ctx, id)
 }
 
-func (u *territoryUseCaseImpl) ListTerritories(ctx context.Context) ([]*models.Territory, error) {
-	return u.repo.List(ctx)
+func (u *territoryUseCaseImpl) ListTerritories(ctx context.Context, warehouseID *uuid.UUID) ([]*models.Territory, error) {
+	return u.repo.List(ctx, warehouseID)
 }
 
 func (u *territoryUseCaseImpl) UpdateTerritory(ctx context.Context, t *models.Territory) (*models.Territory, error) {

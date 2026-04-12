@@ -19,3 +19,11 @@ export async function createCustomer(data: Partial<Customer>) {
 export async function getCustomerById(id: string) {
   return client.get<ApiResponse<Customer>>(`/customers/${id}`)
 }
+
+export async function updateCustomer(id: string, data: Partial<Customer>) {
+  return client.put<ApiResponse<Customer>>(`/customers/${id}`, data)
+}
+
+export async function deleteCustomer(id: string) {
+  return client.delete<ApiResponse<void>>(`/customers/${id}`)
+}

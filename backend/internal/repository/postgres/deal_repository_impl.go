@@ -28,17 +28,23 @@ func (r *dealRepoImpl) Create(ctx context.Context, d *models.Deal) error {
 	}
 	defer tx.Rollback(ctx)
 
+	var closedAt interface{}
+	if d.Status == models.DealStatusWon || d.Status == models.DealStatusLost {
+		closedAt = "NOW()"
+	}
+
 	query := `
 		INSERT INTO deals (
 			title, customer_id, lead_id, contact_id, assigned_to, stage, status, 
-			amount, probability, expected_close, description, created_by
+			amount, probability, expected_close, description, created_by, closed_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 
+			CASE WHEN $13::text = 'NOW()' THEN NOW() ELSE NULL END
 		) RETURNING id, created_at, updated_at
 	`
 	err = tx.QueryRow(ctx, query,
 		d.Title, d.CustomerID, d.LeadID, d.ContactID, d.AssignedTo, d.Stage, d.Status,
-		d.Amount, d.Probability, d.ExpectedClose, d.Description, d.CreatedBy,
+		d.Amount, d.Probability, d.ExpectedClose, d.Description, d.CreatedBy, closedAt,
 	).Scan(&d.ID, &d.CreatedAt, &d.UpdatedAt)
 
 	if err != nil {

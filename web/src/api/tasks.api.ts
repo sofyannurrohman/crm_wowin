@@ -5,13 +5,13 @@ export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export interface TaskDestination {
-  id: string
-  task_id: string
+  id?: string
+  task_id?: string
   lead_id?: string
   customer_id?: string
   deal_id?: string
   sequence_order: number
-  status: string
+  status?: string
   target_name?: string
   target_latitude?: number
   target_longitude?: number

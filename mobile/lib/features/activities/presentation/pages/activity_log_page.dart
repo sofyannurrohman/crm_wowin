@@ -479,8 +479,9 @@ class _ActivityDetailSheet extends StatelessWidget {
   }
 
   Widget _buildPhotoCard(String label, String path) {
-    // Determine full URL
-    final fullUrl = path.startsWith('http') ? path : 'https://crm-wowin.wowinpurnomoputra.my.id/uploads/$path';
+    // Determine full URL using api endpoints correctly to prevent duplicate /uploads
+    final displayPath = path.startsWith('/') ? path : '/$path';
+    final fullUrl = path.startsWith('http') ? path : '${ApiEndpoints.uploadsBaseUrl}$displayPath';
 
     return Container(
       width: 140,

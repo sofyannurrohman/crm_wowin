@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Phone, Mail, MapPin, Loader2, Calendar, User } from 'lucide-vue-next'
+import { ArrowLeft, Phone, Mail, MapPin, Loader2, Calendar, User, Edit } from 'lucide-vue-next'
 import { getCustomerById } from '@/api/customers.api'
 import type { Customer } from '@/types/customer.types'
 import { Button } from '@/components/ui/button'
@@ -38,9 +38,15 @@ const goBack = () => router.back()
       <Button variant="ghost" size="icon" @click="goBack" class="h-9 w-9">
         <ArrowLeft class="w-4 h-4" />
       </Button>
-      <div>
+      <div class="flex-1">
         <h1 class="text-3xl font-bold tracking-tight">Profil Pelanggan</h1>
         <p class="text-muted-foreground text-sm">Detail informasi dan aktivitas pelanggan</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="sm" @click="router.push('/customers')">
+          <Edit class="w-4 h-4 mr-2" />
+          Edit
+        </Button>
       </div>
     </div>
 

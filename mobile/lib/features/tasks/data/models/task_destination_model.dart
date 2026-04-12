@@ -28,7 +28,7 @@ class TaskDestinationModel extends TaskDestination {
       dealId: json['deal_id'],
       sequenceOrder: json['sequence_order'] ?? 0,
       status: TaskStatus.values.firstWhere(
-        (e) => e.name == (json['status'] ?? 'pending'),
+        (e) => e.toString().split('.').last == (json['status'] ?? 'pending'),
         orElse: () => TaskStatus.pending,
       ),
       createdAt: json['created_at'] != null 
@@ -53,7 +53,7 @@ class TaskDestinationModel extends TaskDestination {
       'customer_id': customerId,
       'deal_id': dealId,
       'sequence_order': sequenceOrder,
-      'status': status.name,
+      'status': status.toString().split('.').last,
       'target_name': targetName,
       'target_address': targetAddress,
       'target_latitude': targetLatitude,

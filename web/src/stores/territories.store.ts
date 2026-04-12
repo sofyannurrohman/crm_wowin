@@ -1,24 +1,41 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { fetchTerritories as apiFetch, createTerritory as apiCreate, updateTerritory as apiUpdate, deleteTerritory as apiDelete } from '@/api/tracking.api'
+import { warehouseApi, type Warehouse } from '@/api/warehouses.api'
 import type { Territory } from '@/types/territory.types'
 
 export const useTerritoryStore = defineStore('territories', () => {
   const territories = ref<Territory[]>([])
+  const warehouses = ref<Warehouse[]>([])
+  const selectedWarehouseId = ref<string | null>(null)
+  
   const loading = ref(false)
+  const loadingWarehouses = ref(false)
   const isSubmitting = ref(false)
   const error = ref<string | null>(null)
 
-  async function fetchAll() {
+  async function fetchAll(warehouseId?: string) {
     loading.value = true
     error.value = null
     try {
-      const res = await apiFetch()
+      const res = await apiFetch(warehouseId)
       territories.value = res.data.data
     } catch (e: any) {
       error.value = e.response?.data?.error?.message ?? 'Gagal memuat data territory'
     } finally {
       loading.value = false
+    }
+  }
+
+  async function fetchWarehouses() {
+    loadingWarehouses.value = true
+    try {
+      const data = await warehouseApi.list()
+      warehouses.value = data
+    } catch (e: any) {
+      console.error('Failed to fetch warehouses', e)
+    } finally {
+      loadingWarehouses.value = false
     }
   }
 
@@ -66,5 +83,9 @@ export const useTerritoryStore = defineStore('territories', () => {
      }
   }
 
-  return { territories, loading, isSubmitting, error, fetchAll, create, update, remove }
+  return { 
+    territories, warehouses, selectedWarehouseId,
+    loading, loadingWarehouses, isSubmitting, error, 
+    fetchAll, fetchWarehouses, create, update, remove 
+  }
 })

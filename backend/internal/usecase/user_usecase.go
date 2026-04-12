@@ -22,7 +22,7 @@ type UserUseCase interface {
 	GetProfile(ctx context.Context, userID string) (*models.User, error)
 	UpdateProfile(ctx context.Context, userID string, name, phone string) (*models.User, error)
 	Logout(ctx context.Context, userID string) error
-	ListUsers(ctx context.Context) ([]*models.User, error)
+	ListUsers(ctx context.Context, warehouseID *uuid.UUID) ([]*models.User, error)
 }
 
 type userUseCaseImpl struct {
@@ -168,8 +168,8 @@ func (u *userUseCaseImpl) Logout(ctx context.Context, userID string) error {
 	return u.userRepo.RevokeAllUserTokens(ctx, id)
 }
 
-func (u *userUseCaseImpl) ListUsers(ctx context.Context) ([]*models.User, error) {
-	users, err := u.userRepo.FindAll(ctx)
+func (u *userUseCaseImpl) ListUsers(ctx context.Context, warehouseID *uuid.UUID) ([]*models.User, error) {
+	users, err := u.userRepo.FindAll(ctx, warehouseID)
 	if err == nil {
 		for _, user := range users {
 			user.FirstName, user.LastName = splitName(user.Name)

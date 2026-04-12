@@ -39,7 +39,14 @@ func (h *TerritoryHandler) Create(c *gin.Context) {
 }
 
 func (h *TerritoryHandler) List(c *gin.Context) {
-	ts, err := h.uc.ListTerritories(c.Request.Context())
+	var warehouseID *uuid.UUID
+	if wID := c.Query("warehouse_id"); wID != "" {
+		if u, err := uuid.Parse(wID); err == nil {
+			warehouseID = &u
+		}
+	}
+
+	ts, err := h.uc.ListTerritories(c.Request.Context(), warehouseID)
 	if err != nil {
 		response.Fail(c, http.StatusInternalServerError, err.Error())
 		return

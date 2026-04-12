@@ -47,6 +47,7 @@ type User struct {
 	Status       UserStatus  `json:"status"`
 	AvatarPath   *string     `json:"avatar_path,omitempty"`
 	SalesType    *SalesType  `json:"sales_type,omitempty"`
+	WarehouseID  *uuid.UUID  `json:"warehouse_id,omitempty"`
 	ManagerID    *uuid.UUID  `json:"manager_id,omitempty"`
 	EmployeeCode *string     `json:"employee_code,omitempty"`
 	JoinedAt     *utils.FlexTime `json:"joined_at,omitempty"`

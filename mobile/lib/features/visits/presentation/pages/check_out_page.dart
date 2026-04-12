@@ -591,49 +591,90 @@ class _CheckOutPageState extends State<CheckOutPage> {
   Widget _buildSpecializedWorkflowWidgets() {
     final authState = context.read<auth.AuthBloc>().state;
     if (authState is! auth.Authenticated) return const SizedBox.shrink();
-
     final user = authState.user;
-    final String salesType = user.salesType ?? 'motoris';
+    final String salesType = (user.salesType ?? 'motoris').toLowerCase();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Task Order: Always require signature ──
         if (salesType == 'task_order') ...[
+          _buildLabel('Digital Signature (Proof of Visit)'),
+          const SizedBox(height: 8),
           SignaturePad(
             onChanged: (bytes) => setState(() => _signatureBytes = bytes),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
         ],
-        if (salesType == 'canvas' && _selectedOutcome == 'deal_won') ...[
-          _buildInventoryCheckButton(),
-          const SizedBox(height: 20),
-          PaymentForm(
-            amount: 0.0, // Should be calculated from dealItems
-            onChanged: (method, ref) {
-              setState(() {
-                _paymentMethod = method;
-                _paymentRef = ref;
-              });
-            },
-          ),
-          const SizedBox(height: 20),
+
+        // ── Canvas: Direct Sales & Inventory ──
+        if (salesType == 'canvas') ...[
+          if (_selectedOutcome == 'deal_won') ...[
+            _buildLabel('Inventory & Payment Details'),
+            const SizedBox(height: 12),
+            _buildInventoryCheckButton(),
+            const SizedBox(height: 16),
+            PaymentForm(
+              amount: 0.0, // Should be calculated from dealItems
+              onChanged: (method, ref) {
+                setState(() {
+                  _paymentMethod = method;
+                  _paymentRef = ref;
+                });
+              },
+            ),
+            const SizedBox(height: 24),
+          ] else ...[
+             _buildInventoryCheckButton(),
+             const SizedBox(height: 24),
+          ]
         ],
+
+        // ── Motoris: Proximity Mode Info ──
         if (salesType == 'motoris')
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.blue.withOpacity(0.2)),
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade50, Colors.white],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               children: [
-                const Icon(LucideIcons.info, size: 16, color: Colors.blue),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Motoris mode active: 300m tolerance enabled.',
-                    style: TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold),
+                const Icon(LucideIcons.mapPin, color: Colors.blue, size: 24),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Motoris Mode Active',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'GPS tolerance set to 300m for this visit.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

@@ -10,6 +10,8 @@ export interface Customer {
   latitude?: number;
   longitude?: number;
   territory_id?: string;
+  type?: string;
+  company_name?: string;
   created_at: string;
   updated_at: string;
 }

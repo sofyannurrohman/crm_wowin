@@ -34,7 +34,7 @@ class TaskModel extends Task {
           ? (json['destinations'] as List).map((e) => TaskDestinationModel.fromJson(e)).toList() 
           : [],
       status: TaskStatus.values.firstWhere(
-        (e) => e.name == (json['status'] ?? 'pending'),
+        (e) => e.toString().split('.').last == (json['status'] ?? 'pending'),
         orElse: () => TaskStatus.pending,
       ),
       dueDate: json['due_date'] != null ? DateTime.tryParse(json['due_date']) : null,
@@ -58,7 +58,7 @@ class TaskModel extends Task {
       'title': title,
       'description': description,
       'destinations': destinations.map((e) => (e as TaskDestinationModel).toJson()).toList(),
-      'status': status.name,
+      'status': status.toString().split('.').last,
       'due_date': dueDate?.toUtc().toIso8601String(),
       'completed_at': completedAt?.toUtc().toIso8601String(),
     };

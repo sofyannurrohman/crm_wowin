@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type AuthHandler struct {
@@ -51,12 +52,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		role = models.UserRole(req.Role)
 	}
 
+	salesType := models.SalesType(req.SalesType)
 	user := &models.User{
 		Name:         req.Name,
 		Email:        req.Email,
 		PasswordHash: req.Password, // usecase will bcrypt-hash this
 		Role:         role,
 		Status:       models.UserStatusActive,
+		SalesType:    &salesType,
+	}
+
+	if req.SalesType == "" {
+		user.SalesType = nil
 	}
 
 	createdUser, err := h.userUC.Register(c.Request.Context(), user)
@@ -100,7 +107,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 // ListUsers retrieves all registered users
 func (h *AuthHandler) ListUsers(c *gin.Context) {
-	users, err := h.userUC.ListUsers(c.Request.Context())
+	var warehouseID *uuid.UUID
+	if wID := c.Query("warehouse_id"); wID != "" {
+		if u, err := uuid.Parse(wID); err == nil {
+			warehouseID = &u
+		}
+	}
+
+	users, err := h.userUC.ListUsers(c.Request.Context(), warehouseID)
 	if err != nil {
 		response.MapDBError(c, err)
 		return

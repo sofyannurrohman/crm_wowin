@@ -10,7 +10,7 @@ import (
 type TerritoryRepository interface {
 	Create(ctx context.Context, territory *models.Territory) error
 	GetByID(ctx context.Context, id uuid.UUID) (*models.Territory, error)
-	List(ctx context.Context) ([]*models.Territory, error)
+	List(ctx context.Context, warehouseID *uuid.UUID) ([]*models.Territory, error)
 	Update(ctx context.Context, territory *models.Territory) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	

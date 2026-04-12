@@ -29,6 +29,10 @@ type VisitSchedule struct {
 	Notes       *string        `json:"notes,omitempty"`
 	CreatedAt   utils.FlexTime   `json:"created_at"`
 	UpdatedAt   utils.FlexTime   `json:"updated_at"`
+
+	// Joined fields
+	SalesName    string `json:"sales_name,omitempty"`
+	CustomerName string `json:"customer_name,omitempty"`
 }
 
 type VisitType string
@@ -59,7 +63,10 @@ type VisitActivity struct {
 	Notes             *string    `json:"notes,omitempty"`
 	Outcome           *string    `json:"outcome,omitempty"`
 	SignaturePath     string     `json:"signature_path"`
+	PaymentMethod     string     `json:"payment_method,omitempty"`
+	PaymentRef        *string    `json:"payment_ref,omitempty"`
 	DealItems         []DealItem `json:"deal_items,omitempty"`
+	PriceOverride     *float64   `json:"price_override,omitempty"`
 	TaskCompleted     bool       `json:"task_completed"` // True if all destinations in task are done
 	CreatedAt         utils.FlexTime  `json:"created_at"`
 }

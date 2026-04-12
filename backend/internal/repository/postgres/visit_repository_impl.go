@@ -32,52 +32,67 @@ func (r *visitRepoImpl) CreateSchedule(ctx context.Context, s *models.VisitSched
 }
 
 func (r *visitRepoImpl) GetScheduleByID(ctx context.Context, id uuid.UUID) (*models.VisitSchedule, error) {
-	query := `SELECT id, sales_id, lead_id, customer_id, deal_id, scheduled_date, notes, created_at, updated_at
-			  FROM visit_schedules WHERE id=$1`
+	query := `SELECT vs.id, vs.sales_id, vs.lead_id, vs.customer_id, vs.deal_id, vs.scheduled_date, 
+					 vs.title, vs.objective, vs.status, vs.notes, vs.created_at, vs.updated_at,
+					 u.name as sales_name, c.name as customer_name
+			  FROM visit_schedules vs
+			  LEFT JOIN users u ON vs.sales_id = u.id
+			  LEFT JOIN customers c ON vs.customer_id = c.id
+			  WHERE vs.id=$1`
 	var s models.VisitSchedule
+	var salesName, customerName *string
 	err := r.db.QueryRow(ctx, query, id).Scan(
-		&s.ID, &s.SalesID, &s.LeadID, &s.CustomerID, &s.DealID, &s.Date, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
+		&s.ID, &s.SalesID, &s.LeadID, &s.CustomerID, &s.DealID, &s.Date, 
+		&s.Title, &s.Objective, &s.Status, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
+		&salesName, &customerName,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, dberrors.ErrNotFound
 	}
+	if salesName != nil { s.SalesName = *salesName }
+	if customerName != nil { s.CustomerName = *customerName }
 	return &s, err
 }
 
 func (r *visitRepoImpl) ListSchedules(ctx context.Context, filter repository.ScheduleFilter) ([]*models.VisitSchedule, error) {
-	baseQuery := `SELECT id, sales_id, customer_id, deal_id, scheduled_date, notes, created_at, updated_at 
-				  FROM visit_schedules WHERE 1=1`
+	baseQuery := `SELECT vs.id, vs.sales_id, vs.lead_id, vs.customer_id, vs.deal_id, vs.scheduled_date, 
+						 vs.title, vs.objective, vs.status, vs.notes, vs.created_at, vs.updated_at,
+						 u.name as sales_name, c.name as customer_name
+				  FROM visit_schedules vs
+				  LEFT JOIN users u ON vs.sales_id = u.id
+				  LEFT JOIN customers c ON vs.customer_id = c.id
+				  WHERE 1=1`
 
 	args := []interface{}{}
 	argCount := 1
 
 	if filter.SalesID != nil {
-		baseQuery += fmt.Sprintf(" AND sales_id = $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND vs.sales_id = $%d", argCount)
 		args = append(args, *filter.SalesID)
 		argCount++
 	}
 	if filter.LeadID != nil {
-		baseQuery += fmt.Sprintf(" AND lead_id = $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND vs.lead_id = $%d", argCount)
 		args = append(args, *filter.LeadID)
 		argCount++
 	}
 	if filter.CustomerID != nil {
-		baseQuery += fmt.Sprintf(" AND customer_id = $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND vs.customer_id = $%d", argCount)
 		args = append(args, *filter.CustomerID)
 		argCount++
 	}
 	if filter.StartDate != nil {
-		baseQuery += fmt.Sprintf(" AND scheduled_date >= $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND vs.scheduled_date >= $%d", argCount)
 		args = append(args, *filter.StartDate)
 		argCount++
 	}
 	if filter.EndDate != nil {
-		baseQuery += fmt.Sprintf(" AND scheduled_date <= $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND vs.scheduled_date <= $%d", argCount)
 		args = append(args, *filter.EndDate)
 		argCount++
 	}
 
-	baseQuery += " ORDER BY scheduled_date ASC, created_at ASC"
+	baseQuery += " ORDER BY vs.scheduled_date ASC, vs.created_at ASC"
 
 	rows, err := r.db.Query(ctx, baseQuery, args...)
 	if err != nil {
@@ -89,11 +104,18 @@ func (r *visitRepoImpl) ListSchedules(ctx context.Context, filter repository.Sch
 	var results []*models.VisitSchedule
 	for rows.Next() {
 		var s models.VisitSchedule
-		err := rows.Scan(&s.ID, &s.SalesID, &s.LeadID, &s.CustomerID, &s.DealID, &s.Date, &s.Notes, &s.CreatedAt, &s.UpdatedAt)
+		var salesName, customerName *string
+		err := rows.Scan(
+			&s.ID, &s.SalesID, &s.LeadID, &s.CustomerID, &s.DealID, &s.Date, 
+			&s.Title, &s.Objective, &s.Status, &s.Notes, &s.CreatedAt, &s.UpdatedAt,
+			&salesName, &customerName,
+		)
 		if err != nil {
 			fmt.Printf("❌ Database scan error (ListSchedules): %v\n", err)
 			return nil, err
 		}
+		if salesName != nil { s.SalesName = *salesName }
+		if customerName != nil { s.CustomerName = *customerName }
 		results = append(results, &s)
 	}
 

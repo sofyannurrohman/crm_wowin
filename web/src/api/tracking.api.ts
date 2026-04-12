@@ -13,8 +13,9 @@ export async function fetchTrackingSession(salesId: string, date: string) {
 }
 
 // Territory API
-export async function fetchTerritories() {
-  return client.get<ApiResponse<Territory[]>>('/territories')
+export async function fetchTerritories(warehouseId?: string) {
+  const params = warehouseId ? `?warehouse_id=${warehouseId}` : ''
+  return client.get<ApiResponse<Territory[]>>(`/territories${params}`)
 }
 
 export async function createTerritory(data: Partial<Territory>) {
