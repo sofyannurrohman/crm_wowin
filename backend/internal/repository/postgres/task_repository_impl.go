@@ -119,6 +119,9 @@ func (r *taskRepoImpl) GetByDestinationID(ctx context.Context, destID uuid.UUID)
 	var taskID uuid.UUID
 	err := r.db.QueryRow(ctx, "SELECT task_id FROM task_destinations WHERE id = $1", destID).Scan(&taskID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil // destination not found — not an error for callers
+		}
 		return nil, err
 	}
 	return r.GetByID(ctx, taskID)

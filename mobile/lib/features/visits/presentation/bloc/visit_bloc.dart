@@ -149,10 +149,9 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
       outcome: event.outcome,
       priceOverride: event.priceOverride,
       priceOverrideNote: event.priceOverrideNote,
-      dealId: event.dealId,
-      dealItems: event.dealItems,
       paymentMethod: event.paymentMethod,
       paymentRef: event.paymentRef,
+      receiptPhotoFile: event.receiptPhotoFile,
       signatureBytes: event.signatureBytes,
     );
 

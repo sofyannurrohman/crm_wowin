@@ -16,6 +16,7 @@ export interface Product {
   description?: string
   unit?: string
   price: number          // backend: price (maps from 'base_price' in DB)
+  image_path?: string
   is_active: boolean
   created_at: string
   updated_at: string
@@ -49,6 +50,14 @@ export async function updateProduct(id: string, data: Partial<CreateProductPaylo
 
 export async function deleteProduct(id: string) {
   return client.delete<ApiResponse<any>>(`/products/${id}`)
+}
+
+export async function uploadProductImage(id: string, file: File) {
+  const formData = new FormData()
+  formData.append('image', file)
+  return client.post<ApiResponse<Product>>(`/products/${id}/image`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
 }
 
 // Categories

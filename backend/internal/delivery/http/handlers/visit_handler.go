@@ -9,6 +9,7 @@ import (
 	"crm_wowin_backend/pkg/utils"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -133,6 +134,7 @@ func (h *VisitHandler) UpdateSchedule(c *gin.Context) {
 // === EXECUTION FOOTPRINTS (ACTIVITIES) ===
 
 func (h *VisitHandler) LogActivity(c *gin.Context) {
+	fmt.Printf("DEBUG: VisitHandler.LogActivity hit | Method: %s | Content-Type: %s\n", c.Request.Method, c.GetHeader("Content-Type"))
 	// 1. Bound the maximum memory of parsed form multipart items to ~8MB (rest goes to temp disk)
 	err := c.Request.ParseMultipartForm(8 << 20)
 	if err != nil {
@@ -202,6 +204,16 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 			}
 			if err := utils.ProcessAndSaveImage(sigHeader, sigSavePath, 1080, 1080, 85); err == nil {
 				signaturePath = "/uploads/signatures/" + filepath.Base(sigSavePath)
+			}
+		}
+
+		// Capture Checkout Photo/Receipt if provided
+		checkoutPhotoFile, checkoutPhotoHeader, errCheckout := c.Request.FormFile("checkout_photo")
+		if errCheckout == nil {
+			defer checkoutPhotoFile.Close()
+			checkoutPhotoSavePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
+			if err := utils.ProcessAndSaveImage(checkoutPhotoHeader, checkoutPhotoSavePath, 1080, 1080, 75); err == nil {
+				placePath = "/uploads/visits/" + filepath.Base(checkoutPhotoSavePath)
 			}
 		}
 	}
@@ -328,10 +340,19 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 		}
 	}
 
+	if activity.ScheduleID != nil && *activity.ScheduleID == uuid.Nil { activity.ScheduleID = nil }
+	if activity.TaskDestinationID != nil && *activity.TaskDestinationID == uuid.Nil { activity.TaskDestinationID = nil }
+	if activity.CustomerID != nil && *activity.CustomerID == uuid.Nil { activity.CustomerID = nil }
+	if activity.LeadID != nil && *activity.LeadID == uuid.Nil { activity.LeadID = nil }
+
 	// 4. Register logical algorithm mapping
 	respAct, err := h.uc.LogActivity(c.Request.Context(), &activity)
 	if err != nil {
-		response.Fail(c, http.StatusForbidden, err.Error())
+		if errors.Is(err, dberrors.ErrNotFound) {
+			response.Fail(c, http.StatusNotFound, "No active check-in found. Please check-in first.")
+			return
+		}
+		response.Fail(c, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -355,6 +376,7 @@ func (h *VisitHandler) GetActivitiesBySchedule(c *gin.Context) {
 }
 
 func (h *VisitHandler) ListActivities(c *gin.Context) {
+	fmt.Println("DEBUG: VisitHandler.ListActivities hit")
 	var filter repository.ActivityFilter
 	
 	// Role-aware enforcement

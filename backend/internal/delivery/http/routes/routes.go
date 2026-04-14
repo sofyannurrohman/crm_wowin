@@ -100,6 +100,7 @@ func SetupRouter(
 		prodGroup.GET("", productHandler.ListProducts)
 		prodGroup.GET("/:id", productHandler.GetProduct)
 		prodGroup.PUT("/:id", productHandler.UpdateProduct)
+		prodGroup.POST("/:id/image", productHandler.UploadImage)
 		prodGroup.DELETE("/:id", productHandler.DeleteProduct)
 		
 		// Sales Field & Visit Executions

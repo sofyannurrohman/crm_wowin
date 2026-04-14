@@ -23,6 +23,7 @@ type Product struct {
 	Description *string    `json:"description,omitempty"`
 	Unit        *string    `json:"unit,omitempty"`
 	Price       float64    `json:"price"` // Mapped from 'base_price' in DB
+	ImagePath   *string    `json:"image_path,omitempty"`
 	IsActive    bool       `json:"is_active"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`

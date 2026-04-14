@@ -353,7 +353,9 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          isCheckIn ? 'Check-In' : 'Check-Out',
+                          isCheckIn 
+                              ? 'Check-In at ${item.customerName ?? item.leadName ?? (item.notes?.startsWith("Visit to") == true ? item.notes!.replaceFirst("Visit to ", "") : "Unknown Location")}' 
+                              : 'Check-Out at ${item.customerName ?? item.leadName ?? (item.notes?.startsWith("Visit to") == true ? item.notes!.replaceFirst("Visit to ", "") : "Unknown Location")}',
                           style: const TextStyle(color: _textPrimary, fontSize: 15, fontWeight: FontWeight.w800),
                         ),
                       ),
@@ -364,6 +366,20 @@ class _RouteHistoryPageState extends State<RouteHistoryPage> {
                     ],
                   ),
                   const SizedBox(height: 4),
+                  if (!isCheckIn && item.outcome == 'deal_won' && item.dealAmount != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6.0),
+                      child: Row(
+                        children: [
+                          const Icon(LucideIcons.sparkles, color: Colors.amber, size: 14),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Deal Closed Won: ${NumberFormat.currency(locale: "id", symbol: "Rp ", decimalDigits: 0).format(item.dealAmount)}',
+                            style: const TextStyle(color: _green, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (item.notes != null && item.notes!.isNotEmpty)
                     Text(
                       item.notes!,

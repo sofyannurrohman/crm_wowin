@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
@@ -26,10 +27,35 @@ class _CustomerListPageState extends State<CustomerListPage> {
   String _selectedFilter = 'All';
   final List<String> _filters = ['All', 'Prospects', 'Active', 'Inactive'];
 
-  static const Color _orange = Color(0xFFE8622A);
+  static const Color _primaryGreen = Color(0xFF0D8549);
   static const Color _navy = Color(0xFF1A237E);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _chipBg = Color(0xFFE8EEF6);
+
+  Future<void> _launchWA(String? phone) async {
+    if (phone == null || phone.isEmpty) return;
+    String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '62${cleanPhone.substring(1)}';
+    }
+    final url = Uri.parse('whatsapp://send?phone=$cleanPhone');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      final webUrl = Uri.parse('https://wa.me/$cleanPhone');
+      if (await canLaunchUrl(webUrl)) {
+        await launchUrl(webUrl);
+      }
+    }
+  }
+
+  Future<void> _launchMaps(double? lat, double? lng) async {
+    if (lat == null || lng == null) return;
+    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   void initState() {
@@ -67,6 +93,15 @@ class _CustomerListPageState extends State<CustomerListPage> {
     return Scaffold(
       backgroundColor: _bg,
       drawer: const AppSidebar(),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: _primaryGreen,
+        onPressed: () => context.pushNamed(kRouteAddCustomer),
+        icon: const Icon(LucideIcons.plus, color: Colors.white),
+        label: const Text(
+          'Tambah Pelanggan Baru',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -78,7 +113,7 @@ class _CustomerListPageState extends State<CustomerListPage> {
                 builder: (context, state) {
                   if (state is CustomerLoading) {
                     return const Center(
-                      child: CircularProgressIndicator(color: _orange),
+                      child: CircularProgressIndicator(color: _primaryGreen),
                     );
                   } else if (state is CustomersLoaded) {
                     if (state.customers.isEmpty) {
@@ -97,13 +132,17 @@ class _CustomerListPageState extends State<CustomerListPage> {
                       );
                     }
                     return RefreshIndicator(
-                      color: _orange,
+                      color: _primaryGreen,
                       onRefresh: () async => _fetchCustomers(),
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: state.customers.length,
                         itemBuilder: (context, index) {
-                          return _CustomerCard(customer: state.customers[index]).animateEntrance(
+                          return _CustomerCard(
+                            customer: state.customers[index],
+                            onWA: () => _launchWA(state.customers[index].phone),
+                            onMaps: () => _launchMaps(state.customers[index].latitude, state.customers[index].longitude),
+                          ).animateEntrance(
                             delay: Duration(milliseconds: index * 50),
                             offset: const Offset(0, 10),
                           );
@@ -140,10 +179,10 @@ class _CustomerListPageState extends State<CustomerListPage> {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _orange.withOpacity(0.1),
+                  color: _primaryGreen.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(LucideIcons.menu, color: _orange, size: 22),
+                child: const Icon(LucideIcons.menu, color: _primaryGreen, size: 22),
               ),
             ),
           ),
@@ -152,20 +191,10 @@ class _CustomerListPageState extends State<CustomerListPage> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF1A1A1A),
+              color: Color(0xFF111827),
             ),
           ),
-          GestureDetector(
-            onTap: () => context.pushNamed(kRouteAddCustomer),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: _orange,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(LucideIcons.plus, color: Colors.white, size: 22),
-            ),
-          ),
+          const SizedBox(width: 40), // Spacing instead of button
         ],
       ),
     );
@@ -216,7 +245,7 @@ class _CustomerListPageState extends State<CustomerListPage> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 decoration: BoxDecoration(
-                  color: isSelected ? _orange : _chipBg,
+                  color: isSelected ? _primaryGreen : _chipBg,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 alignment: Alignment.center,
@@ -241,9 +270,11 @@ class _CustomerListPageState extends State<CustomerListPage> {
 
 class _CustomerCard extends StatelessWidget {
   final Customer customer;
-  const _CustomerCard({required this.customer});
+  final VoidCallback onWA;
+  final VoidCallback onMaps;
+  const _CustomerCard({required this.customer, required this.onWA, required this.onMaps});
 
-  static const Color _orange = Color(0xFFE8622A);
+  static const Color _primaryGreen = Color(0xFF0D8549);
   static const Color _navy = Color(0xFF1A237E);
 
   @override
@@ -254,7 +285,7 @@ class _CustomerCard extends StatelessWidget {
         statusColor = const Color(0xFF10B981);
         break;
       case 'PROSPECT':
-        statusColor = _orange;
+        statusColor = const Color(0xFFF59E0B);
         break;
       case 'INACTIVE':
         statusColor = const Color(0xFF6B7280);
@@ -316,8 +347,8 @@ class _CustomerCard extends StatelessWidget {
                           customer.name,
                           style: const TextStyle(
                             fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1A1A1A),
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF111827),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -355,9 +386,9 @@ class _CustomerCard extends StatelessWidget {
                   // Action Buttons
                   Row(
                     children: [
-                      _buildActionBtn(LucideIcons.phone),
+                      _buildActionBtn(LucideIcons.messageCircle, Colors.green, onWA),
                       const SizedBox(width: 8),
-                      _buildActionBtn(LucideIcons.map),
+                      _buildActionBtn(LucideIcons.map, Colors.blue, onMaps),
                     ],
                   ),
                 ],
@@ -386,14 +417,17 @@ class _CustomerCard extends StatelessWidget {
     );
   }
 
-  Widget _buildActionBtn(IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF2F4F8),
-        shape: BoxShape.circle,
+  Widget _buildActionBtn(IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: color, size: 20),
       ),
-      child: Icon(icon, color: _orange, size: 18),
     );
   }
 }

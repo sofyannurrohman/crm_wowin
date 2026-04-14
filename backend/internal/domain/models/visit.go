@@ -68,5 +68,8 @@ type VisitActivity struct {
 	DealItems         []DealItem `json:"deal_items,omitempty"`
 	PriceOverride     *float64   `json:"price_override,omitempty"`
 	TaskCompleted     bool       `json:"task_completed"` // True if all destinations in task are done
+	CustomerName      string     `json:"customer_name,omitempty"`
+	LeadName          string     `json:"lead_name,omitempty"`
+	DealAmount        *float64   `json:"deal_amount,omitempty"`
 	CreatedAt         utils.FlexTime  `json:"created_at"`
 }

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../../../core/router/route_constants.dart';
 
 import '../bloc/visit_bloc.dart';
@@ -80,6 +82,8 @@ class _CheckOutPageState extends State<CheckOutPage> {
   DateTime? _nextVisitDate;
   Position? _currentPosition;
   bool _isLoadingLocation = true;
+  XFile? _receiptPhoto;
+  final ImagePicker _picker = ImagePicker();
 
   static const Color _orange = Color(0xFFE8622A);
   static const Color _lightOrangeBg = Color(0xFFFFF7ED);
@@ -93,6 +97,17 @@ class _CheckOutPageState extends State<CheckOutPage> {
     _determinePosition();
     if (widget.activityNotes != null) {
       _visitResultController.text = widget.activityNotes!;
+    }
+    
+    // Calculate total from dealItems and pre-fill price override if empty
+    if (widget.dealItems != null && widget.dealItems!.isNotEmpty) {
+      double total = 0;
+      for (var item in widget.dealItems!) {
+        total += (item['subtotal'] ?? 0).toDouble();
+      }
+      if (_priceOverrideController.text.isEmpty) {
+        _priceOverrideController.text = total.toStringAsFixed(0);
+      }
     }
   }
 
@@ -161,7 +176,17 @@ class _CheckOutPageState extends State<CheckOutPage> {
     
     return null;
   }
-
+  Future<void> _takeReceiptPhoto() async {
+    final XFile? photo = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
+    if (photo != null) {
+      setState(() {
+        _receiptPhoto = photo;
+      });
+    }
+  }
   void _submitCheckOut() {
     if (_isSubmitting) return;
     
@@ -171,6 +196,17 @@ class _CheckOutPageState extends State<CheckOutPage> {
       String formattedDate = '';
       if (_nextVisitDate != null) {
         formattedDate = DateFormat('yyyy-MM-dd').format(_nextVisitDate!);
+      }
+
+      if (_selectedOutcome == 'deal_won' && _receiptPhoto == null) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bukti nota pembayaran wajib diunggah untuk Deal Won!'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
       }
 
       context.read<VisitBloc>().add(
@@ -192,6 +228,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
               signatureBytes: _signatureBytes,
               paymentMethod: _paymentMethod,
               paymentRef: _paymentRef,
+              receiptPhotoFile: _receiptPhoto,
             ),
           );
     }
@@ -287,6 +324,10 @@ class _CheckOutPageState extends State<CheckOutPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildDurationCard(),
+                      if (widget.dealItems != null && widget.dealItems!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _buildDealSummaryCard(),
+                      ],
                       const SizedBox(height: 24),
                       _buildLabel('Visit Outcome'),
                       _buildOutcomeDropdown(),
@@ -365,6 +406,81 @@ class _CheckOutPageState extends State<CheckOutPage> {
                   color: _textPrimary,
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  double _calculateTotal() {
+    double total = 0;
+    if (widget.dealItems != null) {
+      for (var item in widget.dealItems!) {
+        total += (item['subtotal'] ?? 0).toDouble();
+      }
+    }
+    return total;
+  }
+
+  Widget _buildDealSummaryCard() {
+    final total = _calculateTotal();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(LucideIcons.shoppingBag, color: Colors.blue, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'DEAL SUMMARY',
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${widget.dealItems?.length ?? 0} Items',
+                style: TextStyle(
+                  color: Colors.blue.shade700,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Grand Total',
+                style: TextStyle(
+                  color: _textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Rp ${NumberFormat('#,###', 'id_ID').format(total)}',
+                style: const TextStyle(
+                  color: _orange,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],
@@ -526,31 +642,54 @@ class _CheckOutPageState extends State<CheckOutPage> {
   }
 
   Widget _buildPhotoUploadField() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.grey.shade300,
-          width: 1.5,
-          style: BorderStyle.solid, 
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(LucideIcons.camera, color: Colors.grey.shade500, size: 20),
-          const SizedBox(width: 12),
-          Text(
-            'Add visit photos or document scans',
-            style: TextStyle(
-              color: Colors.grey.shade600,
-              fontSize: 14,
-            ),
+    return GestureDetector(
+      onTap: _takeReceiptPhoto,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: (_selectedOutcome == 'deal_won' && _receiptPhoto == null) ? Colors.red.shade300 : Colors.grey.shade300,
+            width: 1.5,
+            style: BorderStyle.solid, 
           ),
-        ],
+        ),
+        child: _receiptPhoto != null 
+          ? Column(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    File(_receiptPhoto!.path),
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Tap untuk ganti foto nota',
+                  style: TextStyle(color: _orange, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ],
+            )
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(LucideIcons.camera, color: (_selectedOutcome == 'deal_won') ? Colors.red : Colors.grey.shade500, size: 20),
+                const SizedBox(width: 12),
+                Text(
+                  _selectedOutcome == 'deal_won' ? 'Upload Bukti Nota (WAJIB)' : 'Add visit photos or document scans',
+                  style: TextStyle(
+                    color: (_selectedOutcome == 'deal_won') ? Colors.red : Colors.grey.shade600,
+                    fontSize: 14,
+                    fontWeight: _selectedOutcome == 'deal_won' ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
       ),
     );
   }
@@ -615,7 +754,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
             _buildInventoryCheckButton(),
             const SizedBox(height: 16),
             PaymentForm(
-              amount: 0.0, // Should be calculated from dealItems
+              amount: _calculateTotal(),
               onChanged: (method, ref) {
                 setState(() {
                   _paymentMethod = method;

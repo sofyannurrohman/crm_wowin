@@ -91,6 +91,14 @@ func (u *dealUseCaseImpl) UpdateDeal(ctx context.Context, d *models.Deal) (*mode
 	// Auto compute close states if switched directly bypassing board 
 	if d.Status != models.DealStatusOpen && existing.Status == models.DealStatusOpen {
 		d.ClosedAt = utils.ToFlexTimePtr(time.Now())
+		
+		if d.Status == models.DealStatusWon && d.CustomerID != nil {
+			cust, err := u.custRepo.GetByID(ctx, *d.CustomerID)
+			if err == nil && cust.Status == models.CustomerStatusProspect {
+				cust.Status = models.CustomerStatusActive
+				_ = u.custRepo.Update(ctx, cust)
+			}
+		}
 	}
 
 	err = u.dealRepo.Update(ctx, d)
@@ -116,6 +124,15 @@ func (u *dealUseCaseImpl) ChangeDealStage(ctx context.Context, dealID uuid.UUID,
 		}
 		existing.ClosedAt = utils.ToFlexTimePtr(time.Now())
 		
+		// Auto-activate customer if it was a prospect
+		if newStage == models.DealStageClosedWon && existing.CustomerID != nil {
+			cust, err := u.custRepo.GetByID(ctx, *existing.CustomerID)
+			if err == nil && cust.Status == models.CustomerStatusProspect {
+				cust.Status = models.CustomerStatusActive
+				_ = u.custRepo.Update(ctx, cust)
+			}
+		}
+
 		// Update the whole record to capture Status and ClosedAt
 		return u.dealRepo.Update(ctx, existing)
 	}

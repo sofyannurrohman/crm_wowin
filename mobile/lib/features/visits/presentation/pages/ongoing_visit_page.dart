@@ -286,12 +286,69 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
                     children: [
                       const Icon(LucideIcons.package, size: 16, color: _orange),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(it['name'], style: const TextStyle(fontWeight: FontWeight.bold))),
-                      Text('Rp ${NumberFormat('#,###', 'id_ID').format(it['unit_price'])}'),
-                      IconButton(
-                        icon: const Icon(LucideIcons.trash2, size: 16, color: Colors.red),
-                        onPressed: () => setState(() => _selectedDealItems.removeAt(entry.key)),
-                      )
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(it['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text(
+                              'Rp ${NumberFormat('#,###', 'id_ID').format(it['unit_price'])} / ${it['unit']}',
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Quantity Controls
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(LucideIcons.minusCircle, size: 18, color: Colors.grey),
+                              onPressed: () {
+                                setState(() {
+                                  if (it['quantity'] > 1) {
+                                    it['quantity'] -= 1;
+                                    it['subtotal'] = it['quantity'] * it['unit_price'];
+                                  } else {
+                                    _selectedDealItems.removeAt(entry.key);
+                                  }
+                                });
+                              },
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(4),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                it['quantity'].toStringAsFixed(0),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(LucideIcons.plusCircle, size: 18, color: _orange),
+                              onPressed: () {
+                                setState(() {
+                                  it['quantity'] += 1;
+                                  it['subtotal'] = it['quantity'] * it['unit_price'];
+                                });
+                              },
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(4),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Subtotal
+                      Text(
+                        'Rp ${NumberFormat('#,###', 'id_ID').format(it['subtotal'])}',
+                        style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF1F2937), fontSize: 13),
+                      ),
                     ],
                   ),
                 );

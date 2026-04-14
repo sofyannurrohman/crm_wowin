@@ -16,8 +16,12 @@ class VisitActivityModel extends VisitActivity {
     super.distance,
     required super.isOffline,
     super.notes,
+    super.outcome,
     super.dealId,
     super.dealTitle,
+    super.customerName,
+    super.leadName,
+    super.dealAmount,
     super.taskCompleted = false,
     required super.createdAt,
   });
@@ -38,8 +42,12 @@ class VisitActivityModel extends VisitActivity {
       distance: (json['distance'] != null) ? (json['distance'] as num).toDouble() : null,
       isOffline: json['is_offline'] ?? false,
       notes: json['notes'],
+      outcome: json['outcome'],
       dealId: json['deal_id'],
       dealTitle: json['deal_title'],
+      customerName: json['customer_name'],
+      leadName: json['lead_name'],
+      dealAmount: (json['deal_amount'] != null) ? (json['deal_amount'] as num).toDouble() : null,
       taskCompleted: json['task_completed'] ?? false,
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']).toLocal() 

@@ -5,6 +5,12 @@ import (
 	"crm_wowin_backend/internal/domain/dberrors"
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
+	"crm_wowin_backend/pkg/utils"
+	"fmt"
+	"mime/multipart"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -23,6 +29,7 @@ type ProductUseCase interface {
 	ListProducts(ctx context.Context, filter repository.ProductFilter) ([]*models.Product, error)
 	UpdateProduct(ctx context.Context, product *models.Product) (*models.Product, error)
 	DeleteProduct(ctx context.Context, id uuid.UUID) error
+	UploadProductImage(ctx context.Context, id uuid.UUID, fileHeader *multipart.FileHeader) (*models.Product, error)
 
 	// Deal Items
 	AddDealItem(ctx context.Context, item *models.DealItem) (*models.DealItem, error)
@@ -35,13 +42,15 @@ type productUseCaseImpl struct {
 	productRepo repository.ProductRepository
 	itemRepo    repository.DealItemRepository
 	dealRepo    repository.DealRepository
+	uploadDir   string
 }
 
-func NewProductUseCase(pr repository.ProductRepository, ir repository.DealItemRepository, dr repository.DealRepository) ProductUseCase {
+func NewProductUseCase(pr repository.ProductRepository, ir repository.DealItemRepository, dr repository.DealRepository, uploadDir string) ProductUseCase {
 	return &productUseCaseImpl{
 		productRepo: pr,
 		itemRepo:    ir,
 		dealRepo:    dr,
+		uploadDir:   uploadDir,
 	}
 }
 
@@ -109,6 +118,43 @@ func (u *productUseCaseImpl) UpdateProduct(ctx context.Context, p *models.Produc
 
 func (u *productUseCaseImpl) DeleteProduct(ctx context.Context, id uuid.UUID) error {
 	return u.productRepo.Delete(ctx, id)
+}
+
+func (u *productUseCaseImpl) UploadProductImage(ctx context.Context, id uuid.UUID, fileHeader *multipart.FileHeader) (*models.Product, error) {
+	product, err := u.productRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Prepare file path
+	subDir := filepath.Join("products", time.Now().Format("2006/01"))
+	saveDir := filepath.Join(u.uploadDir, subDir)
+	os.MkdirAll(saveDir, 0755)
+
+	fileName := fmt.Sprintf("%s_%d.jpg", id.String(), time.Now().Unix())
+	savePath := filepath.Join(saveDir, fileName)
+
+	// Use existing util to process image
+	// Need to import crm_wowin_backend/pkg/utils but it's already used in handlers
+	// Wait, I can't import utils here if it causes circular dependency, 
+	// but utils is in pkg, so it should be fine.
+	// Actually, let's check imports in usecase.
+	
+	// Add "crm_wowin_backend/pkg/utils" to imports.
+	
+	if err := utils.ProcessAndSaveImage(fileHeader, savePath, 1080, 1080, 80); err != nil {
+		return nil, err
+	}
+
+	// Update product with new image path
+	imagePath := "/uploads/" + filepath.Join(subDir, fileName)
+	product.ImagePath = &imagePath
+
+	if err := u.productRepo.Update(ctx, product); err != nil {
+		return nil, err
+	}
+
+	return product, nil
 }
 
 

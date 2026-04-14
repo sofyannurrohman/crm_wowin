@@ -20,14 +20,13 @@ class TaskListPage extends StatefulWidget {
 }
 
 class _TaskListPageState extends State<TaskListPage> {
-  // changed orange -> new green #0D8549
-  static const Color _orange = Color(0xFF0D8549);
+  static const Color _primaryGreen = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
 
   int _selectedTab = 0;
-  final List<String> _tabs = ['To-do', 'In Progress', 'Completed'];
+  final List<String> _tabs = ['Sedang Berjalan', 'Selesai'];
 
   @override
   void initState() {
@@ -36,18 +35,14 @@ class _TaskListPageState extends State<TaskListPage> {
   }
 
   void _fetchTasks() {
-    ent.TaskStatus? status;
-    if (_selectedTab == 0) status = ent.TaskStatus.pending;
-    if (_selectedTab == 1) status = ent.TaskStatus.in_progress;
-    if (_selectedTab == 2) status = ent.TaskStatus.done;
-
     final authState = context.read<AuthBloc>().state;
     String? salesId;
     if (authState is Authenticated && authState.user.role == 'sales') {
       salesId = authState.user.id;
     }
 
-    context.read<TaskBloc>().add(FetchTasks(status: status, salesId: salesId));
+    // Always fetch all, we filter locally for the tabs
+    context.read<TaskBloc>().add(FetchTasks(status: null, salesId: salesId));
   }
 
   @override
@@ -56,7 +51,7 @@ class _TaskListPageState extends State<TaskListPage> {
       listener: (context, state) {
         if (state is TaskOperationSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: const Color(0xFF0D8549)),
+            SnackBar(content: Text(state.message), backgroundColor: _primaryGreen),
           );
           _fetchTasks();
         } else if (state is TaskError) {
@@ -69,6 +64,16 @@ class _TaskListPageState extends State<TaskListPage> {
         backgroundColor: _bg,
         appBar: _buildAppBar(context),
         drawer: const AppSidebar(),
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: _primaryGreen,
+          onPressed: () {
+            context.pushNamed(kRouteNewTask).then((_) {
+              _fetchTasks();
+            });
+          },
+          icon: const Icon(LucideIcons.plus, color: Colors.white),
+          label: const Text('Buat Rencana Kunjungan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ),
         body: Column(
           children: [
             _buildFilterChips(),
@@ -76,12 +81,19 @@ class _TaskListPageState extends State<TaskListPage> {
               child: BlocBuilder<TaskBloc, TaskState>(
                 builder: (context, state) {
                   if (state is TaskLoading) {
-                    return const Center(child: CircularProgressIndicator(color: _orange));
+                    return const Center(child: CircularProgressIndicator(color: _primaryGreen));
                   } else if (state is TasksLoaded) {
-                    if (state.tasks.isEmpty) {
+                    List<ent.Task> displayTasks = state.tasks;
+                    if (_selectedTab == 0) {
+                      displayTasks = displayTasks.where((t) => t.status != ent.TaskStatus.done).toList();
+                    } else {
+                      displayTasks = displayTasks.where((t) => t.status == ent.TaskStatus.done).toList();
+                    }
+
+                    if (displayTasks.isEmpty) {
                       return _buildEmptyState();
                     }
-                    return _buildTaskList(state.tasks);
+                    return _buildTaskList(displayTasks);
                   } else if (state is TaskError) {
                     return _buildErrorState(state.message);
                   }
@@ -99,7 +111,7 @@ class _TaskListPageState extends State<TaskListPage> {
                         ElevatedButton(
                           onPressed: _fetchTasks,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _orange,
+                            backgroundColor: _primaryGreen,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             elevation: 0,
                           ),
@@ -147,7 +159,7 @@ class _TaskListPageState extends State<TaskListPage> {
               child: ElevatedButton(
                 onPressed: _fetchTasks,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _orange,
+                  backgroundColor: _primaryGreen,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 0,
                 ),
@@ -190,8 +202,8 @@ class _TaskListPageState extends State<TaskListPage> {
             icon: const Icon(LucideIcons.refreshCw, size: 18),
             label: const Text('Perbarui Data'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: _orange,
-              side: const BorderSide(color: _orange),
+              foregroundColor: _primaryGreen,
+              side: const BorderSide(color: _primaryGreen),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
@@ -215,14 +227,14 @@ class _TaskListPageState extends State<TaskListPage> {
               color: const Color(0xFFEFFBF5),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(LucideIcons.list, color: _orange, size: 22),
+            child: const Icon(LucideIcons.list, color: _primaryGreen, size: 22),
           ),
           const SizedBox(width: 12),
           const Text(
-            'Tasks',
+            'Rencana Kunjungan',
             style: TextStyle(
               color: _textPrimary,
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -232,24 +244,6 @@ class _TaskListPageState extends State<TaskListPage> {
         IconButton(
           icon: const Icon(LucideIcons.search, color: Color(0xFF4B5563), size: 24),
           onPressed: () {},
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 16.0),
-          child: GestureDetector(
-            onTap: () {
-              context.pushNamed(kRouteNewTask).then((_) {
-                _fetchTasks(); // Refresh when returning
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: _orange,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(LucideIcons.plus, color: Colors.white, size: 22),
-            ),
-          ),
         ),
       ],
       bottom: PreferredSize(
@@ -269,7 +263,7 @@ class _TaskListPageState extends State<TaskListPage> {
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
-                          color: isSelected ? _orange : Colors.transparent,
+                          color: isSelected ? _primaryGreen : Colors.transparent,
                           width: 2,
                         ),
                       ),
@@ -278,7 +272,7 @@ class _TaskListPageState extends State<TaskListPage> {
                     child: Text(
                       _tabs[index],
                       style: TextStyle(
-                        color: isSelected ? _orange : _textSecondary,
+                        color: isSelected ? _primaryGreen : _textSecondary,
                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                         fontSize: 14,
                       ),
@@ -375,9 +369,9 @@ class _TaskListPageState extends State<TaskListPage> {
                 width: 20,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: isCompleted ? _orange : Colors.transparent,
+                  color: isCompleted ? _primaryGreen : Colors.transparent,
                   borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: isCompleted ? _orange : Colors.grey.shade300, width: 1.5),
+                  border: Border.all(color: isCompleted ? _primaryGreen : Colors.grey.shade300, width: 1.5),
                 ),
                 child: isCompleted ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
               ),
@@ -438,7 +432,7 @@ class _TaskListPageState extends State<TaskListPage> {
                             value: 'edit',
                             child: Row(
                               children: [
-                                Icon(LucideIcons.pencil, size: 16, color: Color(0xFF0D8549)),
+                                Icon(LucideIcons.pencil, size: 16, color: _primaryGreen),
                                 SizedBox(width: 12),
                                 Text('Edit Tugas'),
                               ],

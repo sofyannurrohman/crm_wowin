@@ -77,6 +77,7 @@ class CheckOutSubmitted extends VisitEvent {
   final String? outcome;
   final String? paymentMethod;
   final String? paymentRef;
+  final XFile? receiptPhotoFile;
   final dynamic signatureBytes; // Uint8List? or similar
 
   const CheckOutSubmitted({
@@ -98,6 +99,7 @@ class CheckOutSubmitted extends VisitEvent {
     this.outcome,
     this.paymentMethod,
     this.paymentRef,
+    this.receiptPhotoFile,
     this.signatureBytes,
   });
 
@@ -121,6 +123,7 @@ class CheckOutSubmitted extends VisitEvent {
         outcome,
         paymentMethod,
         paymentRef,
+        receiptPhotoFile,
         signatureBytes,
       ];
 }

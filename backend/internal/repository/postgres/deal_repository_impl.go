@@ -74,21 +74,42 @@ func (r *dealRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Deal,
 		SELECT 	d.id, d.title, d.customer_id, d.lead_id, d.contact_id, d.assigned_to, d.stage, d.status, d.amount, 
 				d.probability, d.expected_close, d.closed_at, d.lost_reason, d.description, 
 				d.created_by, d.created_at, d.updated_at,
-				c.id, c.name, c.company_name, c.email, c.phone, c.address
+				c.id, COALESCE(c.name, l.name), COALESCE(c.company_name, l.company), COALESCE(c.email, l.email), COALESCE(c.phone, l.phone), COALESCE(c.address, l.address)
 		FROM deals d
 		LEFT JOIN customers c ON d.customer_id = c.id
+		LEFT JOIN leads l ON d.lead_id = l.id
 		WHERE d.id = $1
 	`
 	var d models.Deal
-	var cust models.Customer
+	var custID *uuid.UUID
+	var custName, custCompany, custEmail, custPhone, custAddress *string
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&d.ID, &d.Title, &d.CustomerID, &d.LeadID, &d.ContactID, &d.AssignedTo, &d.Stage, &d.Status, &d.Amount,
 		&d.Probability, &d.ExpectedClose, &d.ClosedAt, &d.LostReason, &d.Description,
 		&d.CreatedBy, &d.CreatedAt, &d.UpdatedAt,
-		&cust.ID, &cust.Name, &cust.CompanyName, &cust.Email, &cust.Phone, &cust.Address,
+		&custID, &custName, &custCompany, &custEmail, &custPhone, &custAddress,
 	)
-	if err == nil {
-		d.Customer = &cust
+	if err == nil && custName != nil {
+		cust := &models.Customer{}
+		if custID != nil {
+			cust.ID = *custID
+		}
+		if custName != nil {
+			cust.Name = *custName
+		}
+		if custCompany != nil {
+			cust.CompanyName = custCompany
+		}
+		if custEmail != nil {
+			cust.Email = custEmail
+		}
+		if custPhone != nil {
+			cust.Phone = custPhone
+		}
+		if custAddress != nil {
+			cust.Address = custAddress
+		}
+		d.Customer = cust
 	}
 
 	if err != nil {
@@ -124,9 +145,10 @@ func (r *dealRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.Deal,
 func (r *dealRepoImpl) List(ctx context.Context, filter repository.DealFilter) ([]*models.Deal, error) {
 	baseQuery := `SELECT d.id, d.title, d.customer_id, d.lead_id, d.contact_id, d.assigned_to, d.stage, d.status, d.amount, 
 				d.probability, d.expected_close, d.closed_at, d.created_by, d.created_at,
-				c.name, c.company_name
+				COALESCE(c.name, l.name) as name, COALESCE(c.company_name, l.company) as company_name
 				FROM deals d
 				LEFT JOIN customers c ON d.customer_id = c.id
+				LEFT JOIN leads l ON d.lead_id = l.id
 				WHERE 1=1 `
 	
 	args := []interface{}{}

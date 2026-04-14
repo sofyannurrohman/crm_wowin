@@ -70,7 +70,6 @@ class CheckInPage extends StatefulWidget {
 
 class _CheckInPageState extends State<CheckInPage> {
   final PageController _pageController = PageController();
-  final TextEditingController _notesController = TextEditingController();
   final MapController _mapController = MapController();
 
   // Wizard State — now 5 steps: Select, Proximity, Photo (store), Photo (selfie), Summary
@@ -357,7 +356,6 @@ class _CheckInPageState extends State<CheckInPage> {
     _gpsTimer?.cancel();
     _positionStreamSubscription?.cancel();
     _pageController.dispose();
-    _notesController.dispose();
     _mapController.dispose();
     _cameraController?.dispose();
     _faceDetectorService.dispose();
@@ -487,7 +485,7 @@ class _CheckInPageState extends State<CheckInPage> {
         longitude: _currentPosition?.longitude ?? 0.0,
         photoFile: _storefrontPhoto!,
         selfiePhotoFile: _selfiePhoto!,
-        notes: _notesController.text,
+        notes: '',
         dealId: widget.dealId,
         overrideReason: _overrideReason,
         customerId: (_selectedCustomer?.id == 'external' || _selectedCustomer?.id == null) ? null : _selectedCustomer!.id,
@@ -1107,33 +1105,7 @@ class _CheckInPageState extends State<CheckInPage> {
           ),
           const SizedBox(height: 16),
 
-          // Notes Section
-          _buildActivitySection(
-            title: 'CATATAN HASIL KUNJUNGAN',
-            icon: LucideIcons.edit3,
-            color: Colors.amber[800]!,
-            children: [
-              TextField(
-                controller: _notesController,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Tuliskan poin penting kunjungan...',
-                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
-                  filled: true,
-                  fillColor: Colors.grey[50],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[200]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[200]!),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
+
 
           // Submit Button
           BlocConsumer<VisitBloc, VisitState>(

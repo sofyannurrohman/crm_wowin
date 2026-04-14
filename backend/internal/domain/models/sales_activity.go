@@ -38,6 +38,9 @@ type SalesActivity struct {
 	Address           *string        `json:"address,omitempty"`
 	Outcome           *string        `json:"outcome,omitempty"`
 	SignaturePath     *string        `json:"signature_path,omitempty"`
+	CustomerName      *string        `json:"customer_name,omitempty"`
+	LeadName          *string        `json:"lead_name,omitempty"`
+	DealAmount        *float64       `json:"deal_amount,omitempty"`
 	ActivityAt        utils.FlexTime  `json:"activity_at"`
 	CreatedAt         utils.FlexTime  `json:"created_at"`
 	UpdatedAt         utils.FlexTime  `json:"updated_at"`

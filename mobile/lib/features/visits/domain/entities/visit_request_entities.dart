@@ -51,6 +51,7 @@ class CheckOutRequest {
   final List<Map<String, dynamic>>? dealItems;
   final String? paymentMethod;
   final String? paymentRef;
+  final XFile? receiptPhotoFile;
   final dynamic signatureBytes;
 
   CheckOutRequest({
@@ -72,6 +73,7 @@ class CheckOutRequest {
     this.dealItems,
     this.paymentMethod,
     this.paymentRef,
+    this.receiptPhotoFile,
     this.signatureBytes,
   });
 }

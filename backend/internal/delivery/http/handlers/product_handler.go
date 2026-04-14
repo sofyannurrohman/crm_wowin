@@ -12,11 +12,12 @@ import (
 )
 
 type ProductHandler struct {
-	uc usecase.ProductUseCase
+	uc      usecase.ProductUseCase
+	upldir  string
 }
 
-func NewProductHandler(uc usecase.ProductUseCase) *ProductHandler {
-	return &ProductHandler{uc: uc}
+func NewProductHandler(uc usecase.ProductUseCase, uploadDir string) *ProductHandler {
+	return &ProductHandler{uc: uc, upldir: uploadDir}
 }
 
 // === Categories ===
@@ -165,6 +166,34 @@ func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 		return
 	}
 	response.OK(c, nil, "product deleted")
+}
+
+func (h *ProductHandler) UploadImage(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Fail(c, http.StatusBadRequest, "invalid product id")
+		return
+	}
+
+	err = c.Request.ParseMultipartForm(5 << 20) // 5MB limit
+	if err != nil {
+		response.Fail(c, http.StatusBadRequest, "failed to parse multipart request")
+		return
+	}
+
+	_, fileHeader, err := c.Request.FormFile("image")
+	if err != nil {
+		response.Fail(c, http.StatusBadRequest, "image file is required")
+		return
+	}
+
+	product, err := h.uc.UploadProductImage(c.Request.Context(), id, fileHeader)
+	if err != nil {
+		response.Fail(c, http.StatusInternalServerError, "failed to upload image: "+err.Error())
+		return
+	}
+
+	response.OK(c, product, "product image uploaded")
 }
 
 // === Deal Items ===

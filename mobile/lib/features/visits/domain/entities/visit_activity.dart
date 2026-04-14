@@ -20,6 +20,9 @@ class VisitActivity extends Equatable {
   final String? outcome;
   final String? dealId;
   final String? dealTitle;
+  final String? customerName;
+  final String? leadName;
+  final double? dealAmount;
   final bool taskCompleted;
   final DateTime createdAt;
 
@@ -41,6 +44,9 @@ class VisitActivity extends Equatable {
     this.outcome,
     this.dealId,
     this.dealTitle,
+    this.customerName,
+    this.leadName,
+    this.dealAmount,
     this.taskCompleted = false,
     required this.createdAt,
   });
@@ -63,6 +69,9 @@ class VisitActivity extends Equatable {
       outcome: json['outcome'],
       dealId: json['deal_id'],
       dealTitle: json['deal_title'],
+      customerName: json['customer_name'],
+      leadName: json['lead_name'],
+      dealAmount: (json['deal_amount'] as num?)?.toDouble(),
       taskCompleted: json['task_completed'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
     );
@@ -86,6 +95,9 @@ class VisitActivity extends Equatable {
         outcome,
         dealId,
         dealTitle,
+        customerName,
+        leadName,
+        dealAmount,
         taskCompleted,
         createdAt,
       ];

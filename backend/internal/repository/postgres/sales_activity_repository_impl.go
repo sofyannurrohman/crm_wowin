@@ -94,9 +94,13 @@ func (r *salesActivityRepoImpl) List(ctx context.Context, filter repository.Sale
 
 	query := `SELECT sa.id, sa.user_id, sa.lead_id, sa.customer_id, sa.deal_id, sa.task_destination_id, sa.type, sa.title, sa.notes, sa.latitude, sa.longitude, 
 	            sa.check_in_time, sa.check_out_time, sa.selfie_photo_path, sa.place_photo_path, sa.address, sa.outcome, sa.activity_at, sa.created_at, sa.updated_at, sa.distance, sa.is_offline,
-				d.title as deal_title
+				d.title as deal_title, d.amount as deal_amount,
+				c.name as customer_name,
+				l.name as lead_name
 			  FROM sales_activities sa
-			  LEFT JOIN deals d ON sa.deal_id = d.id`
+			  LEFT JOIN deals d ON sa.deal_id = d.id
+			  LEFT JOIN customers c ON sa.customer_id = c.id
+			  LEFT JOIN leads l ON sa.lead_id = l.id`
 	if len(where) > 0 {
 		w := strings.Join(where, " AND ")
 		w = strings.ReplaceAll(w, "user_id", "sa.user_id")
@@ -121,7 +125,7 @@ func (r *salesActivityRepoImpl) List(ctx context.Context, filter repository.Sale
 			&a.Type, &a.Title, &a.Notes, &a.Latitude, &a.Longitude,
 			&a.CheckInTime, &a.CheckOutTime, &a.SelfiePhotoPath, &a.PlacePhotoPath, &a.Address, &a.Outcome,
 			&a.ActivityAt, &a.CreatedAt, &a.UpdatedAt, &a.Distance, &a.IsOffline,
-			&a.DealTitle,
+			&a.DealTitle, &a.DealAmount, &a.CustomerName, &a.LeadName,
 		)
 		if err != nil {
 			return nil, err

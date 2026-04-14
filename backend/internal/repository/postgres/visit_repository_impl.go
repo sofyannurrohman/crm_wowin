@@ -169,12 +169,21 @@ func (r *visitRepoImpl) LogActivity(ctx context.Context, a *models.VisitActivity
 					checkout_at = NOW(),
 					checkout_location = ST_SetSRID(ST_MakePoint($1, $2), 4326),
 					status = 'completed',
-					result_notes = COALESCE(result_notes || '\n' || $3, $3)
-				  WHERE (schedule_id = $4 OR task_destination_id = $5 OR (customer_id = $6 AND sales_id = $8) OR (lead_id = $7 AND sales_id = $8)) 
+					result_notes = CASE WHEN $3::text IS NOT NULL THEN COALESCE(result_notes || E'\n' || $3, $3) ELSE result_notes END,
+					place_photo_path = COALESCE($9, place_photo_path)
+				  WHERE (
+					($4::uuid IS NOT NULL AND schedule_id = $4) OR 
+					($5::uuid IS NOT NULL AND task_destination_id = $5) OR 
+					($6::uuid IS NOT NULL AND customer_id = $6 AND sales_id = $8) OR 
+					($7::uuid IS NOT NULL AND lead_id = $7 AND sales_id = $8)
+				  ) 
 				  AND checkout_at IS NULL
 				  RETURNING id, created_at`
-		err := r.db.QueryRow(ctx, query, a.Longitude, a.Latitude, a.Notes, a.ScheduleID, a.TaskDestinationID, a.CustomerID, a.LeadID, a.SalesID).
+		err := r.db.QueryRow(ctx, query, a.Longitude, a.Latitude, a.Notes, a.ScheduleID, a.TaskDestinationID, a.CustomerID, a.LeadID, a.SalesID, a.PlacePhotoPath).
 			Scan(&a.ID, &a.CreatedAt)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("no active check-in found for this target: %w", dberrors.ErrNotFound)
+		}
 		return err
 	}
 }

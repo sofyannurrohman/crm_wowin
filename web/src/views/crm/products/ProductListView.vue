@@ -2,13 +2,13 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import {
   fetchProducts, fetchCategories, createProduct, updateProduct, deleteProduct,
-  createCategory, updateCategory,
+  createCategory, updateCategory, uploadProductImage,
   type Product, type ProductCategory, type CreateProductPayload
 } from '@/api/products.api'
 import {
   Plus, Search, Loader2, Package, Edit, Trash2, Tag,
   LayoutGrid, RefreshCw, FolderPlus,
-  ToggleLeft, ToggleRight, AlertTriangle, Check
+  ToggleLeft, ToggleRight, AlertTriangle, Check, Image as ImageIcon, Upload, X
 } from 'lucide-vue-next'
 import { useDebounce } from '@vueuse/core'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/toast/use-toast'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { API_BASE_URL } from '@/constants'
 
 const { toast } = useToast()
 
@@ -66,6 +67,26 @@ const showCategoryDialog = ref(false)
 const editingCategory = ref<ProductCategory | null>(null)
 const categoryForm = ref({ name: '' })
 const savingCategory = ref(false)
+
+// ==================== Image State ====================
+const imageFile = ref<File | null>(null)
+const imagePreview = ref<string | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+
+function onFileSelected(e: Event) {
+  const target = e.target as HTMLInputElement
+  if (target.files && target.files[0]) {
+    const file = target.files[0]
+    imageFile.value = file
+    imagePreview.value = URL.createObjectURL(file)
+  }
+}
+
+function removeImage() {
+  imageFile.value = null
+  imagePreview.value = null
+  if (fileInput.value) fileInput.value.value = ''
+}
 
 // ==================== Computed ====================
 const filteredProducts = computed(() => {
@@ -121,6 +142,8 @@ watch([debouncedSearch, selectedCategory], loadProducts)
 function openCreate() {
   editingProduct.value = null
   formData.value = { sku: '', name: '', category_id: '', description: '', unit: 'pcs', price: 0, is_active: true }
+  imageFile.value = null
+  imagePreview.value = null
   showProductDialog.value = true
 }
 
@@ -135,6 +158,8 @@ function openEdit(product: Product) {
     price: product.price,
     is_active: product.is_active
   }
+  imageFile.value = null
+  imagePreview.value = product.image_path ? API_BASE_URL + product.image_path : null
   showProductDialog.value = true
 }
 
@@ -147,13 +172,23 @@ async function handleSave() {
       sku: formData.value.sku || undefined,
       description: formData.value.description || undefined,
     }
+    
+    let productId = editingProduct.value?.id
+    
     if (editingProduct.value) {
       await updateProduct(editingProduct.value.id, payload)
       toast({ title: 'Produk diperbarui', description: `"${formData.value.name}" berhasil diperbarui.` })
     } else {
-      await createProduct(payload)
+      const res = await createProduct(payload)
+      productId = res.data.data.id
       toast({ title: 'Produk ditambahkan', description: `"${formData.value.name}" berhasil dibuat.` })
     }
+
+    // Upload image if selected
+    if (productId && imageFile.value) {
+      await uploadProductImage(productId, imageFile.value)
+    }
+
     showProductDialog.value = false
     loadProducts()
   } catch (e: any) {
@@ -384,8 +419,14 @@ const formatDate = (val: string) =>
                   </TableCell>
                   <TableCell>
                     <div class="flex items-center gap-2">
-                      <div class="h-8 w-8 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
-                        <Package class="w-4 h-4 text-muted-foreground" />
+                      <div class="h-10 w-10 min-w-[40px] rounded-md bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden border">
+                        <img 
+                          v-if="product.image_path" 
+                          :src="API_BASE_URL + product.image_path" 
+                          class="h-full w-full object-cover"
+                          alt="Product"
+                        />
+                        <Package v-else class="w-5 h-5 text-muted-foreground" />
                       </div>
                       <div>
                         <p class="font-medium leading-tight">{{ product.name }}</p>
@@ -514,6 +555,53 @@ const formatDate = (val: string) =>
         </DialogHeader>
 
         <form @submit.prevent="handleSave" class="space-y-4 pt-2">
+          <!-- Image Upload Section -->
+          <div class="space-y-2">
+            <Label>Foto Produk</Label>
+            <div class="flex items-start gap-4">
+              <div 
+                class="w-32 h-32 rounded-lg border-2 border-dashed border-muted-foreground/25 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-primary/50 transition-colors"
+                @click="() => fileInput?.click()"
+              >
+                <img v-if="imagePreview" :src="imagePreview" class="w-full h-full object-cover" />
+                <div v-else class="flex flex-col items-center gap-2 text-muted-foreground">
+                  <Upload class="w-6 h-6" />
+                  <span class="text-[10px] font-medium uppercase tracking-wider">Upload Foto</span>
+                </div>
+                
+                <div v-if="imagePreview" class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <span class="text-white text-xs font-semibold">Ganti Foto</span>
+                </div>
+              </div>
+              
+              <div class="flex-1 space-y-1">
+                <p class="text-sm font-medium">Aturan Foto</p>
+                <ul class="text-[11px] text-muted-foreground list-disc list-inside space-y-0.5">
+                  <li>Format: JPG, PNG, WEBP</li>
+                  <li>Maksimum ukuran: 5 MB</li>
+                  <li>Rasio ideal: 1:1 (Kotak)</li>
+                </ul>
+                <Button 
+                  v-if="imagePreview" 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  class="h-7 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 mt-2 px-2"
+                  @click.stop="removeImage"
+                >
+                  <X class="w-3 h-3 mr-1" /> Hapus Foto
+                </Button>
+                <input 
+                  type="file" 
+                  ref="fileInput" 
+                  class="hidden" 
+                  accept="image/*" 
+                  @change="onFileSelected"
+                />
+              </div>
+            </div>
+          </div>
+
           <div class="grid grid-cols-2 gap-4">
             <div class="space-y-2">
               <Label for="sku">Kode SKU</Label>

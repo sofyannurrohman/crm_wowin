@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../bloc/lead_bloc.dart';
 import '../bloc/lead_event.dart';
@@ -23,14 +24,38 @@ class LeadListPage extends StatefulWidget {
 class _LeadListPageState extends State<LeadListPage> {
   final TextEditingController _searchController = TextEditingController();
   
-  // changed orange -> new green #0D8549
-  static const Color _orange = Color(0xFF0D8549);
+  static const Color _primaryGreen = Color(0xFF0D8549);
   static const Color _bg = Color(0xFFF9FAFB);
   static const Color _textPrimary = Color(0xFF111827);
   static const Color _textSecondary = Color(0xFF6B7280);
 
   int _selectedTabIndex = 0;
-  final List<String> _tabs = ['Semua', 'Baru', 'Dihubungi', 'Memenuhi Syarat'];
+  final List<String> _tabs = ['Baru', 'Memenuhi Syarat'];
+
+  Future<void> _launchWA(String? phone) async {
+    if (phone == null || phone.isEmpty) return;
+    String cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '62${cleanPhone.substring(1)}';
+    }
+    final url = Uri.parse('whatsapp://send?phone=$cleanPhone');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      final webUrl = Uri.parse('https://wa.me/$cleanPhone');
+      if (await canLaunchUrl(webUrl)) {
+        await launchUrl(webUrl);
+      }
+    }
+  }
+
+  Future<void> _launchMaps(double? lat, double? lng) async {
+    if (lat == null || lng == null) return;
+    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   void initState() {
@@ -42,15 +67,9 @@ class _LeadListPageState extends State<LeadListPage> {
     String? status;
     switch (_selectedTabIndex) {
       case 0:
-        status = null;
-        break;
-      case 1:
         status = 'new';
         break;
-      case 2:
-        status = 'contacted';
-        break;
-      case 3:
+      case 1:
         status = 'qualified';
         break;
     }
@@ -76,6 +95,12 @@ class _LeadListPageState extends State<LeadListPage> {
       backgroundColor: _bg,
       appBar: _buildAppBar(),
       drawer: const AppSidebar(),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: _primaryGreen,
+        onPressed: () => context.pushNamed(kRouteAddLead),
+        icon: const Icon(LucideIcons.plus, color: Colors.white),
+        label: const Text('Buat Calon Pelanggan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+      ),
       body: BlocListener<LeadBloc, LeadState>(
         listener: (context, state) {
           if (state is LeadOperationSuccess) {
@@ -114,7 +139,7 @@ class _LeadListPageState extends State<LeadListPage> {
               color: const Color(0xFFEFFBF5),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(LucideIcons.users, color: _orange, size: 24),
+            child: const Icon(LucideIcons.users, color: _primaryGreen, size: 24),
           ),
           const SizedBox(width: 16),
           Column(
@@ -140,20 +165,7 @@ class _LeadListPageState extends State<LeadListPage> {
         ],
       ),
       actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 20.0),
-          child: GestureDetector(
-            onTap: () => context.pushNamed(kRouteAddLead),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: _orange,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(LucideIcons.plus, color: Colors.white, size: 20),
-            ),
-          ),
-        ),
+        // Plus action removed because we replaced it with FAB
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1.0),
@@ -216,10 +228,10 @@ class _LeadListPageState extends State<LeadListPage> {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
-                color: isSelected ? _orange : Colors.white,
+                color: isSelected ? _primaryGreen : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isSelected ? _orange : Colors.grey.shade200,
+                  color: isSelected ? _primaryGreen : Colors.grey.shade200,
                 ),
               ),
               alignment: Alignment.center,
@@ -264,7 +276,7 @@ class _LeadListPageState extends State<LeadListPage> {
     return BlocBuilder<LeadBloc, LeadState>(
       builder: (context, state) {
         if (state is LeadLoading) {
-          return const Center(child: CircularProgressIndicator(color: _orange));
+          return const Center(child: CircularProgressIndicator(color: _primaryGreen));
         } else if (state is LeadsLoaded) {
           if (state.leads.isEmpty) {
             return Center(
@@ -277,7 +289,7 @@ class _LeadListPageState extends State<LeadListPage> {
           
           return RefreshIndicator(
             onRefresh: () async => _fetchLeads(),
-            color: _orange,
+            color: _primaryGreen,
             child: ListView.separated(
               padding: const EdgeInsets.all(20),
               itemCount: state.leads.length,
@@ -492,14 +504,45 @@ class _LeadListPageState extends State<LeadListPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'DITAMBAHKAN BARU-BARU INI', // Backend mapping when tracking is available
-                      style: TextStyle(
-                        color: _textSecondary.withOpacity(0.7),
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
+                    Row(
+                      children: [
+                        if (lead.phone != null && lead.phone.isNotEmpty)
+                          GestureDetector(
+                            onTap: () => _launchWA(lead.phone),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(LucideIcons.messageCircle, color: Colors.green, size: 16),
+                            ),
+                          ),
+                        if (lead.latitude != null && lead.longitude != null)
+                          GestureDetector(
+                            onTap: () => _launchMaps(lead.latitude, lead.longitude),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(LucideIcons.mapPin, color: Colors.blue, size: 16),
+                            ),
+                          ),
+                        if (lead.phone == null && lead.latitude == null)
+                          Text(
+                            'DITAMBAHKAN BARU-BARU INI',
+                            style: TextStyle(
+                              color: _textSecondary.withOpacity(0.7),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                      ],
                     ),
                     PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert, size: 20, color: Color(0xFF9CA3AF)),
@@ -605,7 +648,7 @@ class _LeadListPageState extends State<LeadListPage> {
   }
 
   Color _getInitialsTextColor(String initials) {
-    if (initials == 'MK') return _orange;
+    if (initials == 'MK') return _primaryGreen;
     return const Color(0xFF4B5563); // For EP
   }
 

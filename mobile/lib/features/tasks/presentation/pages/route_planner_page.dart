@@ -328,39 +328,41 @@ class _RoutePlannerPageState extends State<RoutePlannerPage> {
                   ),
                   dealTitle: dest.dealTitle,
                   status: dest.status,
-                  onTap: () async {
+                  onTap: () {
                     if (dest.status == TaskStatus.done || _isProcessing) return;
                     
                     setState(() => _isProcessing = true);
                     
-                    try {
-                      if (dest.status == TaskStatus.in_progress) {
-                        await context.pushNamed(kRouteOngoingVisit, extra: {
-                          'scheduleId': 'task',
-                          'customerName': destName,
-                          'leadId': dest.leadId,
-                          'customerId': dest.customerId,
-                          'taskDestinationId': dest.id,
-                          'checkInTime': dest.updatedAt,
-                          'dealId': dest.dealId,
-                        });
-                        return;
-                      }
-
-                      await context.pushNamed(kRouteCheckIn, extra: {
+                    // Debounce to prevent double clicks, without waiting for the route to pop
+                    // since GoRouter pushReplacement might leave Future hanging
+                    Future.delayed(const Duration(milliseconds: 500), () {
+                      if (mounted) setState(() => _isProcessing = false);
+                    });
+                    
+                    if (dest.status == TaskStatus.in_progress) {
+                      context.pushNamed(kRouteOngoingVisit, extra: {
                         'scheduleId': 'task',
                         'customerName': destName,
-                        'customerAddress': destAddress,
-                        'targetLat': dest.targetLatitude,
-                        'targetLng': dest.targetLongitude,
+                        'leadId': dest.leadId,
+                        'customerId': dest.customerId,
                         'taskDestinationId': dest.id,
+                        'checkInTime': dest.updatedAt ?? DateTime.now(),
                         'dealId': dest.dealId,
                       });
-                    } finally {
-                      if (mounted) setState(() => _isProcessing = false);
-                      // Don't refetch tasks here, the pop from CheckOutPage already triggers an update if needed,
-                      // and fetching blindly can cause layout race conditions.
+                      return;
                     }
+
+                    context.pushNamed(kRouteCheckIn, extra: {
+                      'scheduleId': 'task',
+                      'customerName': destName,
+                      'customerAddress': destAddress,
+                      'targetLat': dest.targetLatitude,
+                      'targetLng': dest.targetLongitude,
+                      'taskDestinationId': dest.id,
+                      'dealId': dest.dealId,
+                      'customerId': dest.customerId,
+                      'leadId': dest.leadId,
+                    });
                   },
 
                 );

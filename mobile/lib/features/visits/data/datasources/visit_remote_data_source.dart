@@ -52,7 +52,7 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
   Future<void> checkIn(CheckInRequest request) async {
     try {
       final formData = FormData.fromMap({
-        'schedule_id': request.scheduleId == 'adhoc' ? null : request.scheduleId,
+        'schedule_id': (request.scheduleId == 'adhoc' || request.scheduleId == 'task') ? null : request.scheduleId,
         'type': 'check-in',
         'latitude': request.latitude,
         'longitude': request.longitude,
@@ -105,11 +105,11 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
     try {
       // ... same implementation ...
       final formMap = <String, dynamic>{
-        'schedule_id': request.scheduleId == 'adhoc' ? null : request.scheduleId,
+        'schedule_id': (request.scheduleId == 'adhoc' || request.scheduleId == 'task') ? null : request.scheduleId,
         'type': 'check-out',
         'latitude': request.latitude,
         'longitude': request.longitude,
-        'visit_result': request.visitResult,
+        'notes': request.visitResult,           // backend reads 'notes', not 'visit_result'
         'next_action': request.nextAction,
         'next_visit_date': request.nextVisitDate,
         'inventory_data': request.inventoryData,
@@ -130,10 +130,18 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
           request.signatureBytes,
           filename: 'signature_${DateTime.now().millisecondsSinceEpoch}.png',
         );
-      } else if (request.signaturePath != null && request.signaturePath!.isNotEmpty) {
         formMap['signature_photo'] = await MultipartFile.fromFile(
           request.signaturePath!,
           filename: request.signaturePath!.split('/').last,
+        );
+      }
+
+      if (request.receiptPhotoFile != null) {
+        formMap['checkout_photo'] = MultipartFile.fromBytes(
+          await request.receiptPhotoFile!.readAsBytes(),
+          filename: request.receiptPhotoFile!.name.isEmpty 
+              ? 'receipt_${DateTime.now().millisecondsSinceEpoch}.jpg' 
+              : request.receiptPhotoFile!.name,
         );
       }
 
