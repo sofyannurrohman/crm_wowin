@@ -10,9 +10,9 @@ import '../../features/auth/presentation/bloc/auth_state.dart';
 class AppSidebar extends StatelessWidget {
   const AppSidebar({super.key});
 
-  // changed orange -> new green #0D8549
-  static const Color _orange = Color(0xFF0D8549);
-  static const Color _navy = Color(0xFF1A237E);
+  // Emerald Green Theme
+  static const Color _primaryGreen = Color(0xFF059669);
+  static const Color _darkGreen = Color(0xFF064E3B);
 
   @override
   Widget build(BuildContext context) {
@@ -63,8 +63,8 @@ class AppSidebar extends StatelessWidget {
           ),
           _buildDrawerItem(
             context, 
-            LucideIcons.briefcase, 
-            l10n.dealsPipeline, 
+            LucideIcons.columns, 
+            'Pipeline Kanban', 
             () => _navigate(context, kRouteDeals),
           ),
           
@@ -144,7 +144,7 @@ class AppSidebar extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.only(top: 60, bottom: 24, left: 24, right: 24),
           decoration: const BoxDecoration(
-            color: _orange,
+            color: _primaryGreen,
             borderRadius: BorderRadius.only(
               bottomRight: Radius.circular(32),
             ),

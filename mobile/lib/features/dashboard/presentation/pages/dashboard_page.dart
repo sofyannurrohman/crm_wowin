@@ -18,7 +18,6 @@ import '../../domain/entities/visit_recommendation.dart';
 import '../../domain/entities/kpi_dashboard.dart';
 import '../../../deals/domain/entities/deal.dart';
 import '../../../visits/domain/entities/visit_activity.dart';
-import '../widgets/active_visit_card.dart';
 import '../widgets/next_visit_card.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
@@ -41,10 +40,11 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _currentNavIndex = 0;
 
-  static const Color _green = Color(0xFF0D8549);
-  static const Color _navy = Color(0xFF1E3A8A);
+  static const Color _primaryGreen = Color(0xFF059669);
+  static const Color _darkGreen = Color(0xFF064E3B);
   static const Color _bg = Color(0xFFF9FAFB);
-  static const Color _orange = Color(0xFFF97316);
+  static const Color _accentGreen = Color(0xFF10B981);
+  static const Color _lightGreen = Color(0xFFECFDF5);
 
   @override
   void initState() {
@@ -70,7 +70,7 @@ class _DashboardPageState extends State<DashboardPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // header now uses _orange (green)
+            // header uses emerald green gradient
             _buildHeader(context, l10n),
             // Scrollable body
             Expanded(
@@ -99,7 +99,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ],
                 child: RefreshIndicator(
-                  color: _orange,
+                  color: _primaryGreen,
                   onRefresh: () async {
                     _fetchDashboardData();
                   },
@@ -112,7 +112,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         return const SizedBox(
                           height: 300,
                           child: Center(
-                            child: CircularProgressIndicator(color: _orange),
+                            child: CircularProgressIndicator(color: _primaryGreen),
                           ),
                         );
                       } else if (state is DashboardLoaded) {
@@ -146,8 +146,14 @@ class _DashboardPageState extends State<DashboardPage> {
             ? authState.user.name
             : 'Sales';
         return Container(
-          color: _orange,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_primaryGreen, _darkGreen],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           child: Row(
             children: [
               // Hamburger Menu
@@ -158,18 +164,24 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(width: 8),
               // Avatar
               Container(
-                width: 44,
-                height: 44,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
-                  color: Colors.white24,
+                  border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: const ClipOval(
                   child: Icon(
                     LucideIcons.user,
                     color: Colors.white,
-                    size: 26,
+                    size: 28,
                   ),
                 ),
               ),
@@ -179,19 +191,20 @@ class _DashboardPageState extends State<DashboardPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      l10n.welcomeBackGeneral,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
+                      l10n.welcomeBackGeneral.toUpperCase(),
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
                       ),
                     ),
                     Text(
                       userName.isEmpty ? 'Sales' : userName,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ],
@@ -200,21 +213,28 @@ class _DashboardPageState extends State<DashboardPage> {
               // Notification bell
               Stack(
                 children: [
-                  IconButton(
-                    icon: const Icon(LucideIcons.bell,
-                        color: Colors.white, size: 22),
-                    onPressed: () =>
-                        context.pushNamed(kRouteNotifications),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(LucideIcons.bell,
+                          color: Colors.white, size: 22),
+                      onPressed: () =>
+                          context.pushNamed(kRouteNotifications),
+                    ),
                   ),
                   Positioned(
-                    right: 8,
-                    top: 8,
+                    right: 10,
+                    top: 10,
                     child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1A237E),
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _accentGreen,
                         shape: BoxShape.circle,
+                        border: Border.all(color: _darkGreen, width: 2),
                       ),
                     ),
                   ),
@@ -247,56 +267,46 @@ class _DashboardPageState extends State<DashboardPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Active Visit Card Integration
+        // --- HERO SECTION (Daily Actions) ---
+        _buildHeroSection(d, l10n).animateEntrance(delay: const Duration(milliseconds: 100)),
+        const SizedBox(height: 16),
+        // Next Visit Card Integration
         BlocBuilder<VisitBloc, VisitState>(
           builder: (context, visitState) {
-            final hasActiveVisit = visitState is VisitSuccess && visitState.scheduleId != null;
-            
-            return Column(
-              children: [
-                if (hasActiveVisit)
-                  ActiveVisitCard(
-                    scheduleId: visitState.scheduleId!,
-                    customerId: visitState.customerId,
-                    leadId: visitState.leadId,
-                    taskDestinationId: visitState.taskDestinationId,
-                    customerName: visitState.customerName ?? 'Pelanggan',
-                    startTime: visitState.checkInTime ?? DateTime.now(),
-                  ).animateEntrance(delay: const Duration(milliseconds: 100))
-                else if (nextOptimizedStop != null)
-                  NextVisitCard(
-                    nextStop: VisitRecommendation(
-                      id: nextOptimizedStop!.id,
-                      name: nextOptimizedStop!.name,
-                      address: nextOptimizedStop!.address,
-                      latitude: nextOptimizedStop!.latitude ?? 0,
-                      longitude: nextOptimizedStop!.longitude ?? 0,
-                      reason: 'Optimized via Route Planner',
-                      customerId: nextOptimizedStop!.customerId,
-                      leadId: nextOptimizedStop!.leadId,
-                      taskDestinationId: nextOptimizedStop!.id,
-                      type: nextOptimizedStop!.customerId != null ? 'customer' : 'lead',
-                      status: 'scheduled',
-                      priority: 'medium',
-                      daysSinceLast: 0,
-                    ),
-                    parentTask: nextOptimizedStop!.parentTask,
-                  ).animateEntrance(delay: const Duration(milliseconds: 100))
-                else if (d.nextStop != null)
-                  Builder(
-                    builder: (context) {
-                      final parentTask = (state as DashboardLoaded).routeTasks.whereType<Task>().firstWhere(
-                        (t) => t.destinations.any((dest) => dest.id == d.nextStop!.taskDestinationId),
-                        orElse: () => null as dynamic,
-                      );
-                      return NextVisitCard(
-                        nextStop: d.nextStop!,
-                        parentTask: parentTask,
-                      ).animateEntrance(delay: const Duration(milliseconds: 100));
-                    },
-                  ),
-              ],
-            );
+            if (nextOptimizedStop != null) {
+              return NextVisitCard(
+                nextStop: VisitRecommendation(
+                  id: nextOptimizedStop!.id,
+                  name: nextOptimizedStop!.name,
+                  address: nextOptimizedStop!.address,
+                  latitude: nextOptimizedStop!.latitude ?? 0,
+                  longitude: nextOptimizedStop!.longitude ?? 0,
+                  reason: 'Optimized via Route Planner',
+                  customerId: nextOptimizedStop!.customerId,
+                  leadId: nextOptimizedStop!.leadId,
+                  taskDestinationId: nextOptimizedStop!.id,
+                  type: nextOptimizedStop!.customerId != null ? 'customer' : 'lead',
+                  status: 'scheduled',
+                  priority: 'medium',
+                  daysSinceLast: 0,
+                ),
+                parentTask: nextOptimizedStop!.parentTask,
+              ).animateEntrance(delay: const Duration(milliseconds: 100));
+            } else if (d.nextStop != null) {
+              return Builder(
+                builder: (context) {
+                  final parentTask = (state as DashboardLoaded).routeTasks.whereType<Task>().firstWhere(
+                    (t) => t.destinations.any((dest) => dest.id == d.nextStop!.taskDestinationId),
+                    orElse: () => null as dynamic,
+                  );
+                  return NextVisitCard(
+                    nextStop: d.nextStop!,
+                    parentTask: parentTask,
+                  ).animateEntrance(delay: const Duration(milliseconds: 100));
+                },
+              );
+            }
+            return const SizedBox();
           },
         ),
 
@@ -309,7 +319,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 icon: LucideIcons.calendarCheck,
                 value: '${d.visitsToday}',
                 badge: '${d.visitsToday}/${d.visitsTarget} Kunjungan',
-                badgeColor: d.visitsToday >= d.visitsTarget ? const Color(0xFF10B981) : _navy,
+                badgeColor: d.visitsToday >= d.visitsTarget ? const Color(0xFF10B981) : _primaryGreen,
               ).animateEntrance(delay: const Duration(milliseconds: 200)),
             ),
             const SizedBox(width: 12),
@@ -354,12 +364,12 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             GestureDetector(
               onTap: () => context.pushNamed(kRouteTasks),
-              child: Text(
-                l10n.viewCalendar,
-                style: const TextStyle(
+              child: const Text(
+                'Lihat Semua',
+                style: TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _navy,
+                  fontWeight: FontWeight.w700,
+                  color: _primaryGreen,
                 ),
               ),
             ),
@@ -379,6 +389,84 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  Widget _buildHeroSection(KpiDashboard d, AppLocalizations l10n) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildHeroCard(
+            label: 'BOOKING HARI INI',
+            value: d.todayBooking,
+            icon: LucideIcons.shoppingCart,
+            color: const Color(0xFF4F46E5), // Indigo
+            l10n: l10n,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildHeroCard(
+            label: 'SETORAN HARI INI',
+            value: d.todayCollection,
+            icon: LucideIcons.wallet,
+            color: const Color(0xFFD97706), // Amber
+            l10n: l10n,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroCard({
+    required String label,
+    required double value,
+    required IconData icon,
+    required Color color,
+    required AppLocalizations l10n,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, color.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _formatCurrency(value, l10n.currencySymbol),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // KPI mini card
   // ---------------------------------------------------------------------------
@@ -393,55 +481,60 @@ class _DashboardPageState extends State<DashboardPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
           ),
         ],
+        border: Border.all(color: Colors.black.withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: _navy),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF8E8E93),
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: _lightGreen,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: _primaryGreen),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: _darkGreen.withOpacity(0.6),
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
               fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1A1A1A),
+              fontWeight: FontWeight.w900,
+              color: _darkGreen,
+              height: 1.1,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: badgeColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(20),
+              color: _accentGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
               badge,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: badgeColor,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: _accentGreen,
               ),
             ),
           ),
@@ -460,15 +553,16 @@ class _DashboardPageState extends State<DashboardPage> {
     final targetStr = _formatCurrency(target, l10n.currencySymbol);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _primaryGreen.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -479,61 +573,82 @@ class _DashboardPageState extends State<DashboardPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                l10n.monthlyTargetProgress,
+                'Monthly Target Revenue (Invoice)'.toUpperCase(),
                 style: const TextStyle(
-                  fontSize: 15,
+                  fontSize: 10,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF1A1A1A),
+                  color: Colors.grey,
+                  letterSpacing: 1.0,
                 ),
               ),
-              RichText(
-                text: TextSpan(
-                  style:
-                      const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                  children: [
-                    TextSpan(
-                      text: revenueStr,
-                      style: const TextStyle(color: _navy),
-                    ),
-                    const TextSpan(
-                      text: ' / ',
-                      style: TextStyle(color: Color(0xFF8E8E93)),
-                    ),
-                    TextSpan(
-                      text: targetStr,
-                      style: const TextStyle(color: _navy),
-                    ),
-                  ],
+              Text(
+                '${percentage.toStringAsFixed(0)}%',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: _primaryGreen,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 10,
-              backgroundColor: const Color(0xFFE5E7EB),
-              valueColor: const AlwaysStoppedAnimation<Color>(_navy),
-            ),
-          ),
-          const SizedBox(height: 10),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${percentage.toStringAsFixed(0)}% ${l10n.revenueGoalAchieved}',
+                revenueStr,
                 style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF8E8E93),
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: _darkGreen,
                 ),
               ),
+              const SizedBox(width: 8),
+              Text(
+                '/ $targetStr',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Stack(
+            children: [
+              Container(
+                height: 8,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: pct,
+                child: Container(
+                  height: 8,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [_primaryGreen, _accentGreen],
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(LucideIcons.clock, size: 12, color: Colors.orange),
+              const SizedBox(width: 4),
               Text(
                 '$daysLeft ${l10n.daysLeft}',
                 style: const TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF8E8E93),
+                  fontWeight: FontWeight.w700,
+                  color: Colors.orange,
                 ),
               ),
             ],
@@ -698,25 +813,33 @@ class _DashboardPageState extends State<DashboardPage> {
                 Column(
                   children: [
                     Container(
-                      width: 28,
-                      height: 28,
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
-                        color: step.status == TaskStatus.done ? _green : Colors.white,
+                        color: step.status == TaskStatus.done ? _primaryGreen : Colors.white,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          if (step.status != TaskStatus.done)
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                        ],
                         border: Border.all(
-                          color: step.status == TaskStatus.done ? _green : Colors.grey.withOpacity(0.3),
+                          color: step.status == TaskStatus.done ? _primaryGreen : Colors.grey.withOpacity(0.3),
                           width: 2,
                         ),
                       ),
                       child: Center(
                         child: step.status == TaskStatus.done
-                            ? const Icon(LucideIcons.check, size: 16, color: Colors.white)
+                            ? const Icon(LucideIcons.check, size: 18, color: Colors.white)
                             : Text(
                                 '${index + 1}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[700],
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  color: _darkGreen,
                                 ),
                               ),
                       ),
@@ -761,17 +884,17 @@ class _DashboardPageState extends State<DashboardPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  step.isWarehouse ? 'TITIK MULAI' : 'TUJUAN ${index + 1}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    color: step.isWarehouse ? Colors.blue : _green,
-                                    letterSpacing: 0.5,
+                                  Text(
+                                    step.isWarehouse ? 'TITIK MULAI' : 'TUJUAN ${index + 1}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w900,
+                                      color: step.isWarehouse ? Colors.blue : _primaryGreen,
+                                      letterSpacing: 1.0,
+                                    ),
                                   ),
-                                ),
-                                if (step.status == TaskStatus.done)
-                                  const Icon(LucideIcons.checkCircle2, color: _green, size: 14),
+                                  if (step.status == TaskStatus.done)
+                                    const Icon(LucideIcons.checkCircle2, color: _primaryGreen, size: 16),
                               ],
                             ),
                             const SizedBox(height: 4),
@@ -812,7 +935,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildTaskItem(Task task, AppLocalizations l10n) {
-    const Color priorityColor = _navy;
+    const Color priorityColor = _primaryGreen;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -848,7 +971,7 @@ class _DashboardPageState extends State<DashboardPage> {
                            Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: priorityColor.withOpacity(0.1),
+                              color: _primaryGreen.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Row(
@@ -859,7 +982,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 Text(
                                   'TUGAS HARI INI',
                                   style: TextStyle(
-                                    color: priorityColor,
+                                    color: _primaryGreen,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.5,
@@ -932,7 +1055,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 );
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: priorityColor,
+                                backgroundColor: _primaryGreen,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
@@ -954,7 +1077,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildRecommendationItem(VisitRecommendation item, AppLocalizations l10n) {
     final bool isHigh = item.priority == 'high';
-    final Color priorityColor = isHigh ? Colors.red : (item.priority == 'medium' ? const Color(0xFF0D8549) : _navy);
+    final Color priorityColor = isHigh ? Colors.red : (item.priority == 'medium' ? _accentGreen : _darkGreen);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1108,7 +1231,7 @@ class _DashboardPageState extends State<DashboardPage> {
         break;
       case 'scheduled':
         label = 'Terjadwal';
-        color = _navy;
+        color = _darkGreen;
         icon = LucideIcons.calendar;
         break;
     }
@@ -1153,8 +1276,8 @@ class _DashboardPageState extends State<DashboardPage> {
             GestureDetector(
               onTap: () => context.pushNamed(kRouteDeals),
               child: const Text(
-                'View Board',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: _navy),
+                'Lihat Semua',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _primaryGreen),
               ),
             ),
           ],
@@ -1180,9 +1303,13 @@ class _DashboardPageState extends State<DashboardPage> {
         width: 200,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _navy,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: _navy.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+          gradient: const LinearGradient(
+            colors: [_darkGreen, _primaryGreen],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [BoxShadow(color: _darkGreen.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1236,8 +1363,8 @@ class _DashboardPageState extends State<DashboardPage> {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), shape: BoxShape.circle),
-        child: Icon(activity.type == 'check_in' ? LucideIcons.mapPin : LucideIcons.checkSquare, size: 16, color: _navy),
+        decoration: BoxDecoration(color: _lightGreen, shape: BoxShape.circle),
+        child: Icon(activity.type == 'check_in' ? LucideIcons.mapPin : LucideIcons.checkSquare, size: 16, color: _primaryGreen),
       ),
       title: Text(activity.type == 'check_in' ? 'Check-in di Lapangan' : 'Check-out Selesai', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
       subtitle: Text(activity.notes ?? '-', style: const TextStyle(fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -1251,10 +1378,10 @@ class _DashboardPageState extends State<DashboardPage> {
       onPressed: () {
         context.pushNamed(kRouteCheckIn);
       },
-      backgroundColor: _navy,
-      elevation: 4,
+      backgroundColor: _accentGreen,
+      elevation: 6,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(20),
       ),
       icon: const Icon(LucideIcons.userCheck, color: Colors.white, size: 20),
       label: Text(
@@ -1262,7 +1389,7 @@ class _DashboardPageState extends State<DashboardPage> {
         style: const TextStyle(
           color: Colors.white,
           fontSize: 15,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );

@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/banner_model.dart';
-import 'dart:io';
+import 'dart:typed_data';
 
 abstract class BannerRemoteDataSource {
   Future<BannerModel> createBanner({
@@ -14,7 +14,7 @@ abstract class BannerRemoteDataSource {
     String? address,
     String? customerId,
     String? leadId,
-    File? photo,
+    Uint8List? photoBytes,
   });
   Future<List<BannerModel>> getBanners({String? salesId, String? customerId, String? leadId});
 }
@@ -34,7 +34,7 @@ class BannerRemoteDataSourceImpl implements BannerRemoteDataSource {
     String? address,
     String? customerId,
     String? leadId,
-    File? photo,
+    Uint8List? photoBytes,
   }) async {
     try {
       final Map<String, dynamic> data = {
@@ -48,10 +48,10 @@ class BannerRemoteDataSourceImpl implements BannerRemoteDataSource {
         if (leadId != null) 'lead_id': leadId,
       };
 
-      if (photo != null) {
-        data['photo'] = await MultipartFile.fromFile(
-          photo.path,
-          filename: photo.path.split('/').last,
+      if (photoBytes != null) {
+        data['photo'] = MultipartFile.fromBytes(
+          photoBytes,
+          filename: 'banner_${DateTime.now().millisecondsSinceEpoch}.jpg',
         );
       }
 

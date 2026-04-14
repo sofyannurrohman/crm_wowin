@@ -43,6 +43,8 @@ import '../../features/activities/presentation/pages/add_sales_activity_page.dar
 import '../../features/activities/domain/entities/sales_activity.dart';
 import '../../features/banners/presentation/pages/add_banner_page.dart';
 import '../../features/visits/presentation/pages/ongoing_visit_page.dart';
+import '../../features/inventory/presentation/pages/inventory_transfer_page.dart';
+import '../../features/leads/presentation/pages/quick_lead_page.dart';
 
 
 
@@ -142,6 +144,7 @@ final GoRouter appRouter = GoRouter(
               ? (args['activitySubmitTime'] as DateTime).difference(args['checkInTime'] as DateTime)
               : null,
           activityNotes: args['activityNotes'] as String?,
+          customerName: args['customerName'] as String?,
         );
       },
     ),
@@ -373,6 +376,16 @@ final GoRouter appRouter = GoRouter(
           customer: extras['customer'] as Customer?,
         );
       },
+    ),
+    GoRoute(
+      name: kRouteInventoryTransfer,
+      path: '/inventory/transfer',
+      builder: (context, state) => const InventoryTransferPage(),
+    ),
+    GoRoute(
+      name: kRouteQuickLead,
+      path: '/leads/quick',
+      builder: (context, state) => const QuickLeadPage(),
     ),
   ],
   redirect: (context, state) async {

@@ -18,6 +18,7 @@ const (
 type Payment struct {
 	ID          uuid.UUID     `json:"id"`
 	ActivityID  uuid.UUID     `json:"activity_id"`
+	InvoiceID   *uuid.UUID    `json:"invoice_id,omitempty"`
 	Amount      float64       `json:"amount"`
 	Method      PaymentMethod `json:"method"`
 	ReferenceNo *string       `json:"reference_no,omitempty"`

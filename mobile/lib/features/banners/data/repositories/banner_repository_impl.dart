@@ -2,7 +2,7 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/banner.dart';
 import '../datasources/banner_remote_data_source.dart';
-import 'dart:io';
+import 'dart:typed_data';
 
 abstract class BannerRepository {
   Future<Either<Failure, BannerEntity>> createBanner({
@@ -14,7 +14,7 @@ abstract class BannerRepository {
     String? address,
     String? customerId,
     String? leadId,
-    File? photo,
+    Uint8List? photoBytes,
   });
   Future<Either<Failure, List<BannerEntity>>> getBanners({String? salesId, String? customerId, String? leadId});
 }
@@ -34,7 +34,7 @@ class BannerRepositoryImpl implements BannerRepository {
     String? address,
     String? customerId,
     String? leadId,
-    File? photo,
+    Uint8List? photoBytes,
   }) async {
     try {
       final banner = await remoteDataSource.createBanner(
@@ -46,7 +46,7 @@ class BannerRepositoryImpl implements BannerRepository {
         address: address,
         customerId: customerId,
         leadId: leadId,
-        photo: photo,
+        photoBytes: photoBytes,
       );
       return Right(banner);
     } catch (e) {

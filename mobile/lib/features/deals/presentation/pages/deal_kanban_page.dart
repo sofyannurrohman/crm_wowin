@@ -11,6 +11,14 @@ import '../bloc/deal_state.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
 import '../../../auth/presentation/bloc/auth_state.dart' as auth;
 import '../../../auth/presentation/bloc/auth_event.dart' as auth;
+import '../../../../core/widgets/app_sidebar.dart';
+
+// Emerald Green Palette
+const Color _primaryEmerald = Color(0xFF059669);
+const Color _darkEmerald = Color(0xFF064E3B);
+const Color _accentEmerald = Color(0xFF10B981);
+const Color _lightEmerald = Color(0xFFECFDF5);
+const Color _bgEmerald = Color(0xFFF9FAFB);
 
 class DealKanbanPage extends StatefulWidget {
   const DealKanbanPage({super.key});
@@ -42,13 +50,13 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
   };
 
   final Map<String, Color> _stageColors = {
-    'prospect': const Color(0xFF3B82F6),
-    'survey': const Color(0xFF8B5CF6),
-    'negotiation': const Color(0xFFF59E0B),
-    'closing': const Color(0xFF10B981),
+    'prospect': const Color(0xFF6B7280), // Slate/Grey
+    'survey': const Color(0xFF8B5CF6),    // Violet
+    'negotiation': const Color(0xFFF59E0B), // Amber
+    'closing': const Color(0xFF10B981),   // Emerald
     'pre_order': const Color(0xFF6366F1), // Indigo
-    'closed_won': const Color(0xFF059669),
-    'closed_lost': const Color(0xFFEF4444),
+    'closed_won': const Color(0xFF059669), // Emerald Dark
+    'closed_lost': const Color(0xFFEF4444), // Red
   };
 
   @override
@@ -70,8 +78,15 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: _bgEmerald,
+      drawer: const AppSidebar(),
       appBar: AppBar(
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(LucideIcons.menu, color: _darkEmerald),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
         title: const Text('Deal Kanban Pipeline', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF111827))),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -89,9 +104,9 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
               icon: const Icon(LucideIcons.plus, size: 16),
               label: const Text('Add Deal', style: TextStyle(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE8622A),
+                backgroundColor: _primaryEmerald,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
@@ -110,7 +125,7 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
         child: BlocBuilder<DealBloc, DealState>(
           builder: (context, state) {
             if (state is DealLoading && _lastDeals.isEmpty) {
-              return const Center(child: CircularProgressIndicator(color: Color(0xFFE8622A)));
+              return const Center(child: CircularProgressIndicator(color: _primaryEmerald));
             }
 
             if (state is DealsLoaded) {
@@ -180,25 +195,45 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: stageColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                          child: Text(
-                            _stageLabels[stage]!,
-                            style: TextStyle(color: stageColor, fontSize: 11, fontWeight: FontWeight.w900),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(color: stageColor.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(width: 8, height: 8, decoration: BoxDecoration(color: stageColor, shape: BoxShape.circle)),
+                              const SizedBox(width: 6),
+                              Text(
+                                _stageLabels[stage]!,
+                                style: const TextStyle(color: Color(0xFF1F2937), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                              ),
+                            ],
                           ),
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                          child: Text(deals.length.toString(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF6B7280))),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
+                          child: Text(
+                            deals.length.toString(),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: stageColor),
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     Text(
                       'Rp ${NumberFormat('#,###', 'id_ID').format(totalAmount)}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF111827)),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _darkEmerald),
+                    ),
+                    Text(
+                      'TOTAL VALUE',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey.shade400, letterSpacing: 1.0),
                     ),
                   ],
                 ),
@@ -263,10 +298,10 @@ class _CardContent extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF3F4F6)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -308,13 +343,13 @@ class _CardContent extends StatelessWidget {
             children: [
               Text(
                 'Rp ${NumberFormat('#,###', 'id_ID').format(deal.amount ?? 0)}',
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFFE8622A)),
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: _primaryEmerald),
               ),
               if (deal.probability != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: const Color(0xFFE8622A).withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                  child: Text('${deal.probability}%', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFE8622A))),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: _lightEmerald, borderRadius: BorderRadius.circular(6)),
+                  child: Text('${deal.probability}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _primaryEmerald)),
                 ),
             ],
           ),

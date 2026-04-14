@@ -28,5 +28,9 @@ class KpiDashboard {
   double get monthlyRevenue => summary.monthlyRevenue;
   double get monthlyTarget => summary.monthlyTarget;
   int get visitsTarget => summary.visitsTarget;
+  double get todayBooking => summary.todayBooking;
+  double get todayCollection => summary.todayCollection;
+  double get totalBooking => summary.totalBooking;
+  double get totalCollection => summary.totalCollection;
   VisitRecommendation? get nextStop => summary.nextStop;
 }

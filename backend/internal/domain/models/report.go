@@ -20,6 +20,10 @@ type KpiSummary struct {
 	TargetMetPercentage float64 `json:"target_met_percentage"` // progress %
 	MonthlyTarget       float64 `json:"monthly_target"`        // monthly target amount
 	MonthlyRevenue      float64 `json:"monthly_revenue"`       // won deals this month
+	TotalBooking        float64 `json:"total_booking"`         // Sum of won deals
+	TotalCollection     float64 `json:"total_collection"`      // Sum of settled invoice payments
+	TodayBooking        float64 `json:"today_booking"`         // Deals won today
+	TodayCollection     float64 `json:"today_collection"`      // Payments today
 	DaysLeft            int     `json:"days_left"`             // days left in month
 	
 	NextStop *VisitRecommendation `json:"next_stop"`

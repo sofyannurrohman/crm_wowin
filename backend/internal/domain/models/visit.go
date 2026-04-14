@@ -71,5 +71,6 @@ type VisitActivity struct {
 	CustomerName      string     `json:"customer_name,omitempty"`
 	LeadName          string     `json:"lead_name,omitempty"`
 	DealAmount        *float64   `json:"deal_amount,omitempty"`
+	InvoiceID         *uuid.UUID `json:"invoice_id,omitempty"`
 	CreatedAt         utils.FlexTime  `json:"created_at"`
 }

@@ -31,6 +31,10 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
           monthlyRevenue: 0,
           monthlyTarget: 65000,
           visitsTarget: 150,
+          todayBooking: 0,
+          todayCollection: 0,
+          totalBooking: 0,
+          totalCollection: 0,
         ),
         daysLeft: 0,
       );

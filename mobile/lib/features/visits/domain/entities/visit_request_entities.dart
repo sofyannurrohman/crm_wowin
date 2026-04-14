@@ -53,6 +53,7 @@ class CheckOutRequest {
   final String? paymentRef;
   final XFile? receiptPhotoFile;
   final dynamic signatureBytes;
+  final String? invoiceId;
 
   CheckOutRequest({
     required this.scheduleId,
@@ -75,5 +76,6 @@ class CheckOutRequest {
     this.paymentRef,
     this.receiptPhotoFile,
     this.signatureBytes,
+    this.invoiceId,
   });
 }

@@ -25,7 +25,7 @@ class BannerBloc extends Bloc<BannerEvent, BannerState> {
       address: event.address,
       customerId: event.customerId,
       leadId: event.leadId,
-      photo: event.photo,
+      photoBytes: event.photoBytes,
     );
 
     result.fold(

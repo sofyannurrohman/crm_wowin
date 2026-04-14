@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'dart:io';
+import 'dart:typed_data';
 
 abstract class BannerEvent extends Equatable {
   const BannerEvent();
@@ -17,7 +17,7 @@ class CreateBannerSubmitted extends BannerEvent {
   final String? address;
   final String? customerId;
   final String? leadId;
-  final File? photo;
+  final Uint8List? photoBytes;
 
   const CreateBannerSubmitted({
     required this.shopName,
@@ -28,7 +28,7 @@ class CreateBannerSubmitted extends BannerEvent {
     this.address,
     this.customerId,
     this.leadId,
-    this.photo,
+    this.photoBytes,
   });
 
   @override
@@ -41,7 +41,7 @@ class CreateBannerSubmitted extends BannerEvent {
         address,
         customerId,
         leadId,
-        photo,
+        photoBytes,
       ];
 }
 

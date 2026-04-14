@@ -27,6 +27,8 @@ func SetupRouter(
 	salesActivityHandler *handlers.SalesActivityHandler,
 	warehouseHandler *handlers.WarehouseHandler,
 	bannerHandler *handlers.BannerHandler,
+	invoiceHandler *handlers.InvoiceHandler,
+	stockTransferHandler *handlers.StockTransferHandler,
 ) {
 
 	v1 := r.Group("/api/v1")
@@ -88,6 +90,11 @@ func SetupRouter(
 		productsGroup.POST("", productHandler.AddDealItem)
 		productsGroup.PUT("/:id", productHandler.UpdateDealItem)
 		productsGroup.DELETE("/:id", productHandler.RemoveDealItem)
+		
+		// Invoices & AR
+		invoiceGroup := protected.Group("/invoices")
+		invoiceGroup.GET("/customer/:customerId", invoiceHandler.GetCustomerInvoices)
+		invoiceGroup.GET("/:id", invoiceHandler.GetInvoice)
 		
 		// Product & Categories Catalogs
 		catGroup := protected.Group("/categories")
@@ -179,6 +186,14 @@ func SetupRouter(
 		bannerGroup := protected.Group("/banners")
 		bannerGroup.POST("", bannerHandler.Create)
 		bannerGroup.GET("", bannerHandler.List)
+
+		// Stock Transfers (Loading/Unloading)
+		transferGroup := protected.Group("/inventory/transfers")
+		transferGroup.POST("", stockTransferHandler.CreateTransfer)
+		transferGroup.GET("", stockTransferHandler.ListTransfers)
+		transferGroup.GET("/:id", stockTransferHandler.GetTransfer)
+		transferGroup.PATCH("/:id/approve", stockTransferHandler.ApproveTransfer)
+		transferGroup.PATCH("/:id/reject", stockTransferHandler.RejectTransfer)
 
 		// Warehouses
 		warehouseHandler.RegisterRoutes(protected)

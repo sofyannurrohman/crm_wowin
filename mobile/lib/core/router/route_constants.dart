@@ -35,3 +35,6 @@ const String kRouteOngoingVisit = 'ongoing_visit';
 const String kRouteAddSalesActivity = 'add_sales_activity';
 const String kRouteRoutePlanner = 'route_planner';
 const String kRouteAddBanner = 'add_banner';
+const String kRouteInventoryTransfer = 'inventory_transfer';
+const String kRouteInvoices = 'invoices';
+const String kRouteQuickLead = 'quick_lead';

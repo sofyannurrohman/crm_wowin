@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/visit_activity.dart';
+import '../../../customers/domain/entities/invoice.dart';
 
 abstract class VisitState extends Equatable {
   const VisitState();
@@ -22,6 +23,7 @@ class VisitSuccess extends VisitState {
   final String? currentDealId;
   final bool isTaskCompleted;
   final String? taskDestinationId;
+  final List<Invoice> invoices;
 
   const VisitSuccess(this.message, {
     this.scheduleId,
@@ -32,6 +34,7 @@ class VisitSuccess extends VisitState {
     this.currentDealId,
     this.isTaskCompleted = false,
     this.taskDestinationId,
+    this.invoices = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -45,6 +48,7 @@ class VisitSuccess extends VisitState {
       'currentDealId': currentDealId,
       'isTaskCompleted': isTaskCompleted,
       'taskDestinationId': taskDestinationId,
+      'invoices': invoices.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -59,11 +63,14 @@ class VisitSuccess extends VisitState {
       currentDealId: map['currentDealId'],
       isTaskCompleted: map['isTaskCompleted'] ?? false,
       taskDestinationId: map['taskDestinationId'],
+      invoices: map['invoices'] != null 
+          ? (map['invoices'] as List).map((e) => Invoice.fromJson(e)).toList() 
+          : const [],
     );
   }
 
   @override
-  List<Object?> get props => [message, scheduleId, customerId, leadId, customerName, checkInTime, currentDealId, isTaskCompleted, taskDestinationId];
+  List<Object?> get props => [message, scheduleId, customerId, leadId, customerName, checkInTime, currentDealId, isTaskCompleted, taskDestinationId, invoices];
 }
 
 class VisitError extends VisitState {

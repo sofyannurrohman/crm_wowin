@@ -40,6 +40,7 @@ type visitUseCaseImpl struct {
 	userRepo     repository.UserRepository
 	vanStockRepo repository.VanStockRepository
 	paymentRepo  repository.PaymentRepository
+	invoiceRepo  repository.InvoiceRepository
 }
 
 func NewVisitUseCase(
@@ -52,6 +53,7 @@ func NewVisitUseCase(
 	ur repository.UserRepository,
 	vsr repository.VanStockRepository,
 	pr repository.PaymentRepository,
+	ir repository.InvoiceRepository,
 ) VisitUseCase {
 	return &visitUseCaseImpl{
 		visitRepo:    vr,
@@ -63,6 +65,7 @@ func NewVisitUseCase(
 		userRepo:     ur,
 		vanStockRepo: vsr,
 		paymentRepo:  pr,
+		invoiceRepo:  ir,
 	}
 }
 
@@ -400,6 +403,35 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 					newDeal.Stage = models.DealStageClosedWon
 					newDeal.Status = models.DealStatusWon
 				}
+
+				// --- Automated Invoicing for Canvas/Motoris (Revenue Separation Rule) ---
+				if user.SalesType != nil && (*user.SalesType == models.SalesTypeCanvas || *user.SalesType == models.SalesTypeMotoris) {
+					invStatus := models.InvoiceStatusUnpaid
+					paidAmt := 0.0
+					if activity.PaymentMethod == "cash" {
+						invStatus = models.InvoiceStatusPaid
+						paidAmt = dAmount
+					}
+
+					invoice := &models.Invoice{
+						CustomerID:    *newDeal.CustomerID,
+						DealID:        &newDeal.ID,
+						InvoiceNo:     fmt.Sprintf("INV-%d", time.Now().UnixNano()/1e6),
+						Amount:        dAmount,
+						PaidAmount:    paidAmt,
+						Status:        invStatus,
+						SignaturePath: activity.SignaturePath,
+					}
+					
+					if invStatus == models.InvoiceStatusUnpaid {
+						due := utils.FlexTime{Time: time.Now().AddDate(0, 0, 7)}
+						invoice.DueAt = &due
+					}
+
+					if err := u.invoiceRepo.Create(ctx, invoice); err != nil {
+						fmt.Printf("⚠️ failed to auto-generate invoice: %v\n", err)
+					}
+				}
 			}
 
 			if err := u.dealRepo.Create(ctx, newDeal); err != nil {
@@ -460,8 +492,29 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 			}
 		}
 
-		// AUTOMATIC WON LOGIC for existing deals
+		// Sync existing deal data if updated during visit
 		if activity.DealID != nil {
+			existingDeal, err := u.dealRepo.GetByID(ctx, *activity.DealID)
+			if err == nil && existingDeal != nil {
+				updated := false
+				if activity.PriceOverride != nil {
+					existingDeal.Amount = activity.PriceOverride
+					updated = true
+				} else if len(activity.DealItems) > 0 {
+					var dAmount float64
+					for _, it := range activity.DealItems {
+						dAmount += it.UnitPrice * it.Quantity
+					}
+					existingDeal.Amount = &dAmount
+					existingDeal.Items = activity.DealItems
+					updated = true
+				}
+
+				if updated {
+					_ = u.dealRepo.Update(ctx, existingDeal)
+				}
+			}
+
 			isWon := false
 			if activity.Outcome != nil && *activity.Outcome == "deal_won" {
 				isWon = true
@@ -525,9 +578,62 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 					u.convertLeadToCustomerInline(ctx, *activity.LeadID, activity.SalesID)
 				}
 				
-				if activity.CustomerID != nil {
-					u.activateCustomerIfProspect(ctx, *activity.CustomerID)
-				}
+			}
+		}
+
+		// --- Collection (Tagihan) Logic ---
+		if activity.Outcome != nil && *activity.Outcome == "collection" {
+			if activity.InvoiceID == nil {
+				return nil, errors.New("invoice_id is required for collection outcome")
+			}
+
+			// Validate Invoice belonging to customer
+			invoice, err := u.invoiceRepo.GetByID(ctx, *activity.InvoiceID)
+			if err != nil || invoice == nil {
+				return nil, errors.New("invalid invoice_id for collection")
+			}
+			if activity.CustomerID != nil && invoice.CustomerID != *activity.CustomerID {
+				return nil, errors.New("invoice does not belong to the selected customer")
+			}
+
+			// Record Payment
+			payAmount := 0.0
+			if activity.PriceOverride != nil {
+				payAmount = *activity.PriceOverride
+			}
+			
+			if payAmount <= 0 {
+				return nil, errors.New("payment amount must be greater than zero for collection")
+			}
+
+			payMethod := models.PaymentMethodCash
+			if activity.PaymentMethod != "" {
+				payMethod = models.PaymentMethod(activity.PaymentMethod)
+			}
+
+			payment := &models.Payment{
+				ActivityID:  activity.ID,
+				InvoiceID:   activity.InvoiceID,
+				Amount:      payAmount,
+				Method:      payMethod,
+				ReferenceNo: activity.PaymentRef,
+			}
+			if err := u.paymentRepo.Create(ctx, payment); err != nil {
+				return nil, fmt.Errorf("failed to record collection payment: %w", err)
+			}
+
+			// Update Invoice State
+			invoice.PaidAmount += payAmount
+			invoice.SignaturePath = activity.SignaturePath
+			
+			if invoice.PaidAmount >= invoice.Amount {
+				invoice.Status = models.InvoiceStatusPaid
+			} else {
+				invoice.Status = models.InvoiceStatusPartial
+			}
+
+			if err := u.invoiceRepo.Update(ctx, invoice); err != nil {
+				return nil, fmt.Errorf("failed to update invoice status: %w", err)
 			}
 		}
 	}

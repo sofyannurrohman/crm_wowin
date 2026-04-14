@@ -4,6 +4,8 @@ import '../../domain/usecases/check_out_usecase.dart';
 import '../../domain/usecases/get_activities.dart';
 import '../../domain/usecases/get_active_visit.dart';
 import '../../domain/entities/visit_request_entities.dart';
+import '../../../customers/domain/repositories/invoice_repository.dart';
+import '../../../customers/domain/entities/invoice.dart';
 import 'visit_event.dart';
 import 'visit_state.dart';
 
@@ -12,12 +14,14 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
   final CheckOutUseCase checkOutUseCase;
   final GetActivities getActivitiesUseCase;
   final GetActiveVisitUseCase getActiveVisitUseCase;
+  final InvoiceRepository invoiceRepository;
 
   VisitBloc({
     required this.checkInUseCase,
     required this.checkOutUseCase,
     required this.getActivitiesUseCase,
     required this.getActiveVisitUseCase,
+    required this.invoiceRepository,
   }) : super(VisitInitial()) {
     on<CheckInSubmitted>(_onCheckInSubmitted);
     on<CheckOutSubmitted>(_onCheckOutSubmitted);
@@ -113,7 +117,15 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
     );
 
     final result = await checkInUseCase(request);
-
+    
+    // Fetch invoices if it's a customer visit
+    List<Invoice> invoices = [];
+    if (event.customerId != null) {
+      try {
+        invoices = await invoiceRepository.getCustomerInvoices(event.customerId!);
+      } catch (_) {}
+    }
+    
     result.fold(
       (failure) => emit(VisitError(failure.message)),
       (_) => emit(VisitSuccess(
@@ -124,6 +136,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
         customerName: event.customerName,
         checkInTime: DateTime.now(),
         taskDestinationId: event.taskDestinationId,
+        invoices: invoices,
       )),
     );
   }
@@ -153,6 +166,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
       paymentRef: event.paymentRef,
       receiptPhotoFile: event.receiptPhotoFile,
       signatureBytes: event.signatureBytes,
+      invoiceId: event.invoiceId,
     );
 
     final result = await checkOutUseCase(request);

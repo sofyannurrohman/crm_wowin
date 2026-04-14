@@ -7,7 +7,7 @@ import {
   PanelLeft, LogOut, LayoutDashboard, Users, UserPlus, FileText,
   Calendar, Map, MapPin, BarChart3, Settings, ChevronDown,
   Sun, Moon, Bell, Search, Target, Flame, Package, ClipboardList, Timer,
-  AlertCircle, Clock, Warehouse
+  AlertCircle, Clock, Warehouse, KanbanSquare
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -96,6 +96,7 @@ const navigation = [
   { name: 'Pelanggan', href: '/customers', icon: Users, group: 'crm' },
   { name: 'Prospek', href: '/leads', icon: UserPlus, group: 'crm' },
   { name: 'Penjualan', href: '/deals', icon: FileText, group: 'crm' },
+  { name: 'Pipeline Kanban', href: '/deals/kanban', icon: KanbanSquare, group: 'crm' },
   { name: 'Produk', href: '/products', icon: Package, group: 'crm' },
   { name: 'Tugas', href: '/tasks', icon: ClipboardList, group: 'crm' },
   { name: 'Kunjungan', href: '/visits', icon: Calendar, group: 'sales' },

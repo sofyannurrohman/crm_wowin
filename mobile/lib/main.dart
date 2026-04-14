@@ -24,6 +24,8 @@ import 'features/settings/presentation/bloc/settings_bloc.dart';
 import 'features/activities/presentation/bloc/sales_activity_bloc.dart';
 import 'features/products/presentation/bloc/product_bloc.dart';
 import 'features/banners/presentation/bloc/banner_bloc.dart';
+import 'features/inventory/presentation/bloc/inventory_bloc.dart';
+import 'features/inventory/presentation/bloc/inventory_event.dart';
 
 import 'core/theme/app_theme.dart';
 
@@ -97,6 +99,9 @@ class WowinCrmApp extends StatelessWidget {
         ),
         BlocProvider<BannerBloc>(
           create: (_) => sl<BannerBloc>(),
+        ),
+        BlocProvider<InventoryBloc>(
+          create: (_) => sl<InventoryBloc>()..add(const FetchInventory()),
         ),
       ],
       child: MaterialApp.router(

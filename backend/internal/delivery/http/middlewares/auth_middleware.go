@@ -44,7 +44,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		// Inject user context payload (id, role, email) natively into Gin Context
 		c.Set("user_id", claims.UserID.String())
 		c.Set("user_email", claims.Email)
-		c.Set("user_role", claims.Role)
+		c.Set("user_role", string(claims.Role))
 		
 		c.Next()
 	}

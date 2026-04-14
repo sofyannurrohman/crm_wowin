@@ -79,6 +79,7 @@ class CheckOutSubmitted extends VisitEvent {
   final String? paymentRef;
   final XFile? receiptPhotoFile;
   final dynamic signatureBytes; // Uint8List? or similar
+  final String? invoiceId;
 
   const CheckOutSubmitted({
     required this.scheduleId,
@@ -101,6 +102,7 @@ class CheckOutSubmitted extends VisitEvent {
     this.paymentRef,
     this.receiptPhotoFile,
     this.signatureBytes,
+    this.invoiceId,
   });
 
   @override
@@ -125,6 +127,7 @@ class CheckOutSubmitted extends VisitEvent {
         paymentRef,
         receiptPhotoFile,
         signatureBytes,
+        invoiceId,
       ];
 }
 

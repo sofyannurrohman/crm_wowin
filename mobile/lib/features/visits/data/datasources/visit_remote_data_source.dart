@@ -123,16 +123,13 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
         'override_note': request.priceOverrideNote,
         'payment_method': request.paymentMethod,
         'payment_ref': request.paymentRef,
+        'invoice_id': request.invoiceId,
       };
 
       if (request.signatureBytes != null) {
         formMap['signature_photo'] = MultipartFile.fromBytes(
-          request.signatureBytes,
+          request.signatureBytes!,
           filename: 'signature_${DateTime.now().millisecondsSinceEpoch}.png',
-        );
-        formMap['signature_photo'] = await MultipartFile.fromFile(
-          request.signaturePath!,
-          filename: request.signaturePath!.split('/').last,
         );
       }
 

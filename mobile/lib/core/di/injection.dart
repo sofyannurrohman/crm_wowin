@@ -90,6 +90,14 @@ import '../../features/activities/presentation/bloc/sales_activity_bloc.dart';
 import '../../features/banners/data/datasources/banner_remote_data_source.dart';
 import '../../features/banners/data/repositories/banner_repository_impl.dart';
 import '../../features/banners/presentation/bloc/banner_bloc.dart';
+import '../../features/customers/data/datasources/invoice_remote_data_source.dart';
+import '../../features/customers/data/repositories/invoice_repository_impl.dart';
+import '../../features/customers/domain/repositories/invoice_repository.dart';
+import '../../features/inventory/data/datasources/inventory_remote_data_source.dart';
+import '../../features/inventory/data/repositories/inventory_repository_impl.dart';
+import '../../features/inventory/domain/repositories/inventory_repository.dart';
+import '../../features/inventory/presentation/bloc/inventory_bloc.dart';
+import '../services/receipt_service.dart';
 
 
 final sl = GetIt.instance;
@@ -100,6 +108,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => TokenStorage(sl()));
   sl.registerLazySingleton(() => DioClient().dio);
   sl.registerLazySingleton(() => LocalDbHelper());
+  sl.registerLazySingleton<ReceiptService>(() => ReceiptService());
 
   // Data sources
   sl.registerLazySingleton<AuthRemoteDataSource>(
@@ -141,6 +150,12 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton<BannerRemoteDataSource>(
     () => BannerRemoteDataSourceImpl(sl()),
+  );
+  sl.registerLazySingleton<InvoiceRemoteDataSource>(
+    () => InvoiceRemoteDataSourceImpl(sl()),
+  );
+  sl.registerLazySingleton<InventoryRemoteDataSource>(
+    () => InventoryRemoteDataSourceImpl(dio: sl()),
   );
 
 
@@ -187,6 +202,12 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton<BannerRepository>(
     () => BannerRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<InvoiceRepository>(
+    () => InvoiceRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<InventoryRepository>(
+    () => InventoryRepositoryImpl(remoteDataSource: sl()),
   );
 
 
@@ -236,6 +257,7 @@ Future<void> initDependencies() async {
         checkOutUseCase: sl(),
         getActivitiesUseCase: sl(),
         getActiveVisitUseCase: sl(),
+        invoiceRepository: sl(),
       ));
   sl.registerFactory(() => AttendanceBloc(repository: sl()));
   sl.registerFactory(() => NotificationBloc(repository: sl()));
@@ -283,6 +305,7 @@ Future<void> initDependencies() async {
   sl.registerFactory(() => SettingsBloc(sl()));
   sl.registerFactory(() => SalesActivityBloc(repository: sl()));
   sl.registerFactory(() => BannerBloc(repository: sl()));
+  sl.registerFactory(() => InventoryBloc(repository: sl()));
 
 
 }

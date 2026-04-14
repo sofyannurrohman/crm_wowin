@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -31,7 +32,7 @@ class _AddBannerPageState extends State<AddBannerPage> {
   final _dimensionsController = TextEditingController();
   final _addressController = TextEditingController();
 
-  File? _photo;
+  XFile? _photo;
   LatLng? _location;
   final ImagePicker _picker = ImagePicker();
 
@@ -69,12 +70,12 @@ class _AddBannerPageState extends State<AddBannerPage> {
     );
     if (pickedFile != null) {
       setState(() {
-        _photo = File(pickedFile.path);
+        _photo = pickedFile;
       });
     }
   }
 
-  void _submit() {
+  void _submit() async {
     if (_formKey.currentState!.validate()) {
       if (_location == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -83,6 +84,8 @@ class _AddBannerPageState extends State<AddBannerPage> {
         return;
       }
 
+      final bytes = _photo != null ? await _photo!.readAsBytes() : null;
+
       context.read<BannerBloc>().add(CreateBannerSubmitted(
             shopName: _shopNameController.text,
             content: _contentController.text,
@@ -90,7 +93,7 @@ class _AddBannerPageState extends State<AddBannerPage> {
             latitude: _location!.latitude,
             longitude: _location!.longitude,
             address: _addressController.text,
-            photo: _photo,
+            photoBytes: bytes,
             leadId: widget.lead?.id,
             customerId: widget.customer?.id,
           ));
@@ -312,7 +315,9 @@ Link Maps: https://www.google.com/maps/search/?api=1&query=${banner.latitude},${
         child: _photo != null
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.file(_photo!, fit: BoxFit.cover),
+                child: kIsWeb
+                  ? Image.network(_photo!.path, fit: BoxFit.cover)
+                  : Image.file(File(_photo!.path), fit: BoxFit.cover),
               )
             : const Column(
                 mainAxisAlignment: MainAxisAlignment.center,

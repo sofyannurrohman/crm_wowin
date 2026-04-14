@@ -4,7 +4,7 @@ part 'inventory_item.freezed.dart';
 part 'inventory_item.g.dart';
 
 @freezed
-class InventoryItem with _$InventoryItem {
+abstract class InventoryItem with _$InventoryItem {
   const factory InventoryItem({
     required String id,
     @JsonKey(name: 'product_id') required String productId,

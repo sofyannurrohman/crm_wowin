@@ -22,16 +22,16 @@ func (r *paymentRepositoryImpl) Create(ctx context.Context, p *models.Payment) e
 	if p.ID == uuid.Nil {
 		p.ID = uuid.New()
 	}
-	query := `INSERT INTO payments (id, activity_id, amount, method, reference_no, photo_path) VALUES ($1, $2, $3, $4, $5, $6)`
-	_, err := r.db.Exec(ctx, query, p.ID, p.ActivityID, p.Amount, p.Method, p.ReferenceNo, p.PhotoPath)
+	query := `INSERT INTO payments (id, activity_id, invoice_id, amount, method, reference_no, photo_path) VALUES ($1, $2, $3, $4, $5, $6, $7)`
+	_, err := r.db.Exec(ctx, query, p.ID, p.ActivityID, p.InvoiceID, p.Amount, p.Method, p.ReferenceNo, p.PhotoPath)
 	return err
 }
 
 func (r *paymentRepositoryImpl) GetByActivityID(ctx context.Context, activityID uuid.UUID) (*models.Payment, error) {
-	query := `SELECT id, activity_id, amount, method, reference_no, photo_path, created_at FROM payments WHERE activity_id = $1`
+	query := `SELECT id, activity_id, invoice_id, amount, method, reference_no, photo_path, created_at FROM payments WHERE activity_id = $1`
 	p := &models.Payment{}
 	err := r.db.QueryRow(ctx, query, activityID).Scan(
-		&p.ID, &p.ActivityID, &p.Amount, &p.Method, &p.ReferenceNo, &p.PhotoPath, &p.CreatedAt,
+		&p.ID, &p.ActivityID, &p.InvoiceID, &p.Amount, &p.Method, &p.ReferenceNo, &p.PhotoPath, &p.CreatedAt,
 	)
 	if err == pgx.ErrNoRows {
 		return nil, nil

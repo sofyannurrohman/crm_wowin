@@ -26,21 +26,21 @@ _VisitRecommendation _$VisitRecommendationFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$VisitRecommendationToJson(
-        _VisitRecommendation instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'name': instance.name,
-      'type': instance.type,
-      'status': instance.status,
-      'priority': instance.priority,
-      'reason': instance.reason,
-      'last_visit_at': instance.lastVisitAt,
-      'days_since_last': instance.daysSinceLast,
-      'address': instance.address,
-      'latitude': instance.latitude,
-      'longitude': instance.longitude,
-      'customer_id': instance.customerId,
-      'lead_id': instance.leadId,
-      'task_destination_id': instance.taskDestinationId,
-      'deal_id': instance.dealId,
-    };
+  _VisitRecommendation instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'type': instance.type,
+  'status': instance.status,
+  'priority': instance.priority,
+  'reason': instance.reason,
+  'last_visit_at': instance.lastVisitAt,
+  'days_since_last': instance.daysSinceLast,
+  'address': instance.address,
+  'latitude': instance.latitude,
+  'longitude': instance.longitude,
+  'customer_id': instance.customerId,
+  'lead_id': instance.leadId,
+  'task_destination_id': instance.taskDestinationId,
+  'deal_id': instance.dealId,
+};

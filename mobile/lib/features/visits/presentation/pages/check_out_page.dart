@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -11,16 +12,19 @@ import '../../../../core/router/route_constants.dart';
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
+import '../../../customers/domain/entities/invoice.dart';
 import '../../../deals/presentation/bloc/deal_bloc.dart';
 import '../../../deals/presentation/bloc/deal_event.dart';
 import '../../../tasks/presentation/bloc/task_bloc.dart';
 import '../../../tasks/presentation/bloc/task_event.dart';
+import '../../../../core/services/receipt_service.dart';
 
 import '../widgets/signature_pad.dart';
 import '../widgets/payment_form.dart';
 import '../widgets/stock_check_sheet.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
 import '../../../auth/presentation/bloc/auth_state.dart' as auth;
+import '../../../../core/di/injection.dart';
 
 class CheckOutPage extends StatefulWidget {
   final String scheduleId;
@@ -31,6 +35,7 @@ class CheckOutPage extends StatefulWidget {
   final List<Map<String, dynamic>>? dealItems;
   final Duration? duration;
   final String? activityNotes;
+  final String? customerName;
 
   const CheckOutPage({
     super.key,
@@ -42,6 +47,7 @@ class CheckOutPage extends StatefulWidget {
     this.dealItems,
     this.duration,
     this.activityNotes,
+    this.customerName,
   });
 
   @override
@@ -68,16 +74,19 @@ class _CheckOutPageState extends State<CheckOutPage> {
 
   String? _selectedOutcome;
   final Map<String, String> _outcomeOptions = {
-    'negotiation': 'Ongoing / Negotiation (Negosiasi)',
-    'deal_won': 'Deal Won (Bungkus! 🚀)',
-    'deal_lost': 'Rejected / Lost (Gagal)',
-    'follow_up': 'Follow Up Needed (Perlu Follow Up)',
+    'negotiation': 'Tahap Negosiasi',
+    'deal_won': 'Tawaran Berhasil',
+    'collection': 'Tagihan (Collection)',
+    'deal_lost': 'Tawaran Ditolak',
+    'follow_up': 'Perlu Follow Up',
   };
 
   // Specialized workflow state
   dynamic _signatureBytes;
   String? _paymentMethod;
   String? _paymentRef;
+  String? _selectedInvoiceId;
+  String? _selectedInvoiceNo;
 
   DateTime? _nextVisitDate;
   Position? _currentPosition;
@@ -164,8 +173,16 @@ class _CheckOutPageState extends State<CheckOutPage> {
     }
   }
 
-  String? _mapResultToStage(String result, String? nextStep) {
-    // If it's a manual text result, we can check for keywords or just use the next step
+  String? _mapResultToStage(String result, String? nextStep, {String? outcome}) {
+    // 1. Prioritize explicit outcome selection
+    if (outcome != null) {
+      if (outcome == 'deal_won') return 'closed_won';
+      if (outcome == 'deal_lost') return 'closed_lost';
+      if (outcome == 'negotiation') return 'negotiation';
+      if (outcome == 'follow_up') return 'qualification';
+    }
+
+    // 2. Fallback to manual text results or next steps
     final res = result.toLowerCase();
     
     if (nextStep == 'Close Deal') return 'closed_won';
@@ -225,6 +242,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
               dealId: widget.dealId,
               dealItems: widget.dealItems,
               outcome: _selectedOutcome,
+              invoiceId: _selectedInvoiceId,
               signatureBytes: _signatureBytes,
               paymentMethod: _paymentMethod,
               paymentRef: _paymentRef,
@@ -277,7 +295,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
             // ── Deal Pipeline Automation ──
             final dealIdToUpdate = widget.dealId ?? state.currentDealId;
             if (dealIdToUpdate != null) {
-              final targetStage = _mapResultToStage(_visitResultController.text, _selectedNextStep);
+              final targetStage = _mapResultToStage(_visitResultController.text, _selectedNextStep, outcome: _selectedOutcome);
               if (targetStage != null) {
                 context.read<DealBloc>().add(
                   UpdateDealStageSubmitted(
@@ -299,12 +317,13 @@ class _CheckOutPageState extends State<CheckOutPage> {
             context.read<TaskBloc>().add(const FetchTasks());
 
             if (state.isTaskCompleted) {
-              // Redirect to task list if everything is finished
               context.goNamed(kRouteTasks);
             } else {
-              // Return to route planner (maps) for the next stops
-              // We return true so that the caller (OngoingVisitPage) knows it should also pop
-              context.pop(true);
+              if (_selectedOutcome == 'deal_won' || _selectedOutcome == 'collection') {
+                _showSuccessDialog(state.currentDealId ?? 'NEW');
+              } else {
+                context.pop(true);
+              }
             }
           } else if (state is VisitError) {
             setState(() => _isSubmitting = false);
@@ -313,52 +332,56 @@ class _CheckOutPageState extends State<CheckOutPage> {
             );
           }
         },
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildDurationCard(),
-                      if (widget.dealItems != null && widget.dealItems!.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        _buildDealSummaryCard(),
-                      ],
-                      const SizedBox(height: 24),
-                      _buildLabel('Visit Outcome'),
-                      _buildOutcomeDropdown(),
-                      const SizedBox(height: 20),
-                      
-                      // Specialized Contextual Widgets
-                      _buildSpecializedWorkflowWidgets(),
-                      
-                      const SizedBox(height: 20),
-                      _buildLabel('Visit Notes / Remarks'),
-                      _buildSummaryField(),
-                      const SizedBox(height: 20),
-                      if (widget.dealId != null || widget.taskDestinationId != null) ...[
-                        _buildLabel('Price Adjustment (Optional)'),
-                        _buildPriceOverrideFields(),
-                        const SizedBox(height: 20),
-                      ],
-                      _buildLabel('Next Step'),
-                      _buildNextStepDropdown(),
-                      const SizedBox(height: 20),
-                      _buildLabel('Follow-up Date'),
-                      _buildDatePickerField(),
-                      const SizedBox(height: 20),
-                      _buildPhotoUploadField(),
-                    ],
+        child: BlocBuilder<VisitBloc, VisitState>(
+          builder: (context, state) {
+            return Column(
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildDurationCard(),
+                          if (widget.dealItems != null && widget.dealItems!.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            _buildDealSummaryCard(),
+                          ],
+                          const SizedBox(height: 24),
+                          _buildLabel('Visit Outcome'),
+                          _buildOutcomeDropdown(),
+                          const SizedBox(height: 20),
+                          
+                          // Specialized Contextual Widgets
+                          _buildSpecializedWorkflowWidgets(state),
+                          
+                          const SizedBox(height: 20),
+                          _buildLabel('Visit Notes / Remarks'),
+                          _buildSummaryField(),
+                          const SizedBox(height: 20),
+                          if (widget.dealId != null || widget.taskDestinationId != null) ...[
+                            _buildLabel('Price Adjustment (Optional)'),
+                            _buildPriceOverrideFields(),
+                            const SizedBox(height: 20),
+                          ],
+                          _buildLabel('Next Step'),
+                          _buildNextStepDropdown(),
+                          const SizedBox(height: 20),
+                          _buildLabel('Follow-up Date'),
+                          _buildDatePickerField(),
+                          const SizedBox(height: 20),
+                          _buildPhotoUploadField(),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            _buildBottomSection(),
-          ],
+                _buildBottomSection(),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -661,12 +684,19 @@ class _CheckOutPageState extends State<CheckOutPage> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.file(
-                    File(_receiptPhoto!.path),
-                    height: 150,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
+                  child: kIsWeb
+                      ? Image.network(
+                          _receiptPhoto!.path,
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        )
+                      : Image.file(
+                          File(_receiptPhoto!.path),
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                 ),
                 const SizedBox(height: 12),
                 const Text(
@@ -727,7 +757,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
     );
   }
 
-  Widget _buildSpecializedWorkflowWidgets() {
+  Widget _buildSpecializedWorkflowWidgets(VisitState visitState) {
     final authState = context.read<auth.AuthBloc>().state;
     if (authState is! auth.Authenticated) return const SizedBox.shrink();
     final user = authState.user;
@@ -746,8 +776,72 @@ class _CheckOutPageState extends State<CheckOutPage> {
           const SizedBox(height: 24),
         ],
 
-        // ── Canvas: Direct Sales & Inventory ──
-        if (salesType == 'canvas') ...[
+        // ── Collection (Tagihan) Workflow ──
+        if (_selectedOutcome == 'collection') ...[
+          _buildLabel('Select Invoice to Collect'),
+          const SizedBox(height: 8),
+          if (visitState is VisitSuccess && visitState.invoices.isNotEmpty)
+            DropdownButtonFormField<String>(
+              value: _selectedInvoiceId,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade200)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _orange)),
+              ),
+              hint: const Text('Pilih Invoice Pelanggan', style: TextStyle(fontSize: 14)),
+              items: visitState.invoices.map((inv) {
+                return DropdownMenuItem<String>(
+                  value: inv.id,
+                  child: Text('${inv.invoiceNo} (Rp ${NumberFormat('#,###').format(inv.amount - inv.paidAmount)})', style: const TextStyle(fontSize: 13)),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                   _selectedInvoiceId = val;
+                   _selectedInvoiceNo = visitState.invoices.firstWhere((it) => it.id == val).invoiceNo;
+                   // Pre-fill amount with remaining balance
+                   final inv = visitState.invoices.firstWhere((it) => it.id == val);
+                   _priceOverrideController.text = (inv.amount - inv.paidAmount).toStringAsFixed(0);
+                });
+              },
+              validator: (v) => v == null ? 'Pilih invoice' : null,
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+              child: const Row(
+                children: [
+                  Icon(LucideIcons.alertCircle, color: Colors.red, size: 16),
+                  SizedBox(width: 8),
+                  Text('Tidak ada invoice belum lunas ditemukan.', style: TextStyle(color: Colors.red, fontSize: 12)),
+                ],
+              ),
+            ),
+          const SizedBox(height: 20),
+          _buildLabel('Payment Details'),
+          PaymentForm(
+            amount: double.tryParse(_priceOverrideController.text) ?? 0,
+            onChanged: (method, ref) {
+                setState(() {
+                  _paymentMethod = method;
+                  _paymentRef = ref;
+                });
+            },
+          ),
+          const SizedBox(height: 24),
+          _buildLabel('Digital Signature (Customer Confirmation)'),
+          const SizedBox(height: 8),
+          SignaturePad(
+            onChanged: (bytes) => setState(() => _signatureBytes = bytes),
+          ),
+          const SizedBox(height: 24),
+        ],
+
+        // ── Canvas & Motoris (Closed Won): Inventory, Payment & Signature ──
+        if (salesType == 'canvas' || salesType == 'motoris') ...[
           if (_selectedOutcome == 'deal_won') ...[
             _buildLabel('Inventory & Payment Details'),
             const SizedBox(height: 12),
@@ -763,14 +857,20 @@ class _CheckOutPageState extends State<CheckOutPage> {
               },
             ),
             const SizedBox(height: 24),
+            _buildLabel('Digital Signature (Customer Validation)'),
+            const SizedBox(height: 8),
+            SignaturePad(
+              onChanged: (bytes) => setState(() => _signatureBytes = bytes),
+            ),
+            const SizedBox(height: 24),
           ] else ...[
              _buildInventoryCheckButton(),
              const SizedBox(height: 24),
           ]
         ],
 
-        // ── Motoris: Proximity Mode Info ──
-        if (salesType == 'motoris')
+        // ── Motoris (Regular Visit Banner) ──
+        if (salesType == 'motoris' && _selectedOutcome != 'deal_won')
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -932,6 +1032,61 @@ class _CheckOutPageState extends State<CheckOutPage> {
         ],
       ),
     );
+  }
+
+  void _showSuccessDialog(String dealId) {
+    bool isCollection = _selectedOutcome == 'collection';
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Column(
+          children: [
+            Icon(isCollection ? LucideIcons.checkCircle : LucideIcons.partyPopper, color: _orange, size: 48),
+            const SizedBox(height: 16),
+            Text(isCollection ? 'TAGIHAN BERHASIL!' : 'DEAL BERHASIL!', style: const TextStyle(fontWeight: FontWeight.w900, color: _orange)),
+          ],
+        ),
+        content: Text(
+          isCollection 
+            ? 'Pembayaran tagihan telah dicatat dan invoice telah diperbarui. Apakah Anda ingin mengunduh struk bukti bayar?'
+            : 'Laporan kunjungan disimpan dan deal telah diproses. Apakah Anda ingin mengunduh struk sekarang?',
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('TIDAK, NANTI SAJA', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final receiptService = sl<ReceiptService>();
+              await receiptService.generateAndShareReceipt(
+                customerName: widget.customerName ?? 'Pelanggan',
+                invoiceNo: isCollection ? (_selectedInvoiceNo ?? 'INV-COL') : 'INV-${dealId.substring(0, 8).toUpperCase()}',
+                items: isCollection ? [] : (widget.dealItems ?? []),
+                total: double.tryParse(_priceOverrideController.text) ?? 0,
+                paymentMethod: _paymentMethod ?? 'CASH',
+                paymentRef: _paymentRef,
+                signatureBytes: _signatureBytes,
+                isCollection: isCollection,
+              );
+              if (mounted) Navigator.pop(context, true);
+            },
+            icon: const Icon(LucideIcons.download, size: 18),
+            label: const Text('UNDUH STRUK'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _orange,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
+      ),
+    ).then((_) {
+      if (mounted) context.pop(true);
+    });
   }
 }
 

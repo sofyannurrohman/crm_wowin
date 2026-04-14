@@ -4,7 +4,7 @@ import (
 	"context"
 	"crm_wowin_backend/internal/domain/models"
 	"crm_wowin_backend/internal/domain/repository"
-	"fmt"
+	"crm_wowin_backend/pkg/utils"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -18,52 +18,80 @@ func NewReportRepository(db *pgxpool.Pool) repository.ReportRepository {
 }
 
 func (r *reportRepositoryImpl) GetKpiSummary(ctx context.Context, salesID string, role string) (*models.KpiSummary, error) {
-	// Initialize filter parts
-	customerFilter := "WHERE deleted_at IS NULL"
-	dealFilter := "WHERE status = 'open'"
-	winLossFilter := "WHERE status IN ('won', 'lost')"
-	visitFilter := "WHERE DATE(checkin_at) = CURRENT_DATE"
-	leadFilter := "WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)"
-	revenueFilter := "WHERE status = 'won' AND DATE_TRUNC('month', closed_at) = DATE_TRUNC('month', CURRENT_DATE)"
+	// Base filters
+	isSales := role == "sales"
+	
+	query := `
+		WITH kpi AS (
+			SELECT 
+				-- Customers
+				(SELECT COUNT(*) FROM customers WHERE deleted_at IS NULL` + utils.If(isSales, ` AND assigned_to = $1`, "") + `) as total_customers,
+				
+				-- Deals (Active & Pipeline)
+				(SELECT COUNT(*) FROM deals WHERE status = 'open'` + utils.If(isSales, ` AND assigned_to = $1`, "") + `) as active_deals,
+				(SELECT COALESCE(SUM(amount), 0) FROM deals WHERE status = 'open'` + utils.If(isSales, ` AND assigned_to = $1`, "") + `) as pipeline_value,
+				(SELECT COALESCE(
+					(COUNT(*) FILTER (WHERE status = 'won'))::float / NULLIF(COUNT(*), 0) * 100, 0
+				 ) FROM deals WHERE status IN ('won', 'lost')` + utils.If(isSales, ` AND assigned_to = $1`, "") + `) as win_rate,
+				
+				-- Bookings (Deals Won)
+				(SELECT COALESCE(SUM(amount), 0) FROM deals WHERE status = 'won' AND DATE_TRUNC('month', closed_at) = DATE_TRUNC('month', CURRENT_DATE)` + utils.If(isSales, ` AND assigned_to = $1`, "") + `) as monthly_booking,
+				(SELECT COALESCE(SUM(amount), 0) FROM deals WHERE status = 'won' AND DATE(closed_at) = CURRENT_DATE` + utils.If(isSales, ` AND assigned_to = $1`, "") + `) as today_booking,
 
-	// If the user is a salesman, restrict the counts to their own assigned records
-	if role == "sales" {
-		customerFilter += fmt.Sprintf(" AND assigned_to = '%s'", salesID)
-		dealFilter += fmt.Sprintf(" AND assigned_to = '%s'", salesID)
-		winLossFilter += fmt.Sprintf(" AND assigned_to = '%s'", salesID)
-		visitFilter += fmt.Sprintf(" AND sales_id = '%s'", salesID)
-		leadFilter += fmt.Sprintf(" AND assigned_to = '%s'", salesID)
-		revenueFilter += fmt.Sprintf(" AND assigned_to = '%s'", salesID)
-	}
+				-- Revenue (Invoices Issued)
+				(SELECT COALESCE(SUM(amount), 0) FROM invoices i 
+				 JOIN customers c ON i.customer_id = c.id
+				 WHERE DATE_TRUNC('month', i.created_at) = DATE_TRUNC('month', CURRENT_DATE)` + utils.If(isSales, ` AND c.assigned_to = $1`, "") + `) as monthly_revenue,
 
-	query := fmt.Sprintf(`
-		SELECT 
-			(SELECT COUNT(*) FROM customers %s) as total_customers,
-			(SELECT COUNT(*) FROM deals %s) as active_deals,
-			(SELECT COALESCE(SUM(amount), 0) FROM deals %s) as pipeline_value,
-			(SELECT COALESCE(
-				(COUNT(*) FILTER (WHERE status = 'won'))::float / NULLIF(COUNT(*), 0) * 100, 0
-			 ) FROM deals %s) as win_rate,
-			(SELECT COUNT(*) FROM visits %s) as visits_today,
-			(SELECT COUNT(*) FROM leads %s) as new_leads,
-			(SELECT COALESCE(SUM(amount), 0) FROM deals %s) as monthly_revenue,
-			(EXTRACT(DAY FROM (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month') - CURRENT_DATE))::int as days_left
-	`, customerFilter, dealFilter, dealFilter, winLossFilter, visitFilter, leadFilter, revenueFilter)
+				-- Collection (Paid Amount from Invoices / Payments)
+				(SELECT COALESCE(SUM(p.amount), 0) FROM payments p
+				 JOIN sales_activities sa ON p.activity_id = sa.id
+				 WHERE DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', CURRENT_DATE)` + utils.If(isSales, ` AND sa.user_id = $1`, "") + `) as monthly_collection,
+				(SELECT COALESCE(SUM(p.amount), 0) FROM payments p
+				 JOIN sales_activities sa ON p.activity_id = sa.id
+				 WHERE DATE(p.created_at) = CURRENT_DATE` + utils.If(isSales, ` AND sa.user_id = $1`, "") + `) as today_collection,
+
+				-- Others
+				(SELECT COUNT(*) FROM visits WHERE DATE(checkin_at) = CURRENT_DATE` + utils.If(isSales, ` AND sales_id = $1`, "") + `) as visits_today,
+				(SELECT COUNT(*) FROM leads WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)` + utils.If(isSales, ` AND assigned_to = $1`, "") + `) as new_leads,
+				(EXTRACT(DAY FROM (DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month') - CURRENT_DATE))::int as days_left
+		)
+		SELECT * FROM kpi
+	`
 
 	var k models.KpiSummary
 	var daysLeft int
-	err := r.db.QueryRow(ctx, query).Scan(
-		&k.TotalCustomers, &k.TotalActiveDeals, &k.PipelineValue, &k.WinRate,
-		&k.TotalVisitsToday, &k.NewLeads, &k.MonthlyRevenue, &daysLeft,
-	)
+	var monthlyBooking, monthlyCollection float64
+	
+	var err error
+	if isSales {
+		err = r.db.QueryRow(ctx, query, salesID).Scan(
+			&k.TotalCustomers, &k.TotalActiveDeals, &k.PipelineValue, &k.WinRate,
+			&monthlyBooking, &k.TodayBooking, &k.MonthlyRevenue,
+			&monthlyCollection, &k.TodayCollection,
+			&k.TotalVisitsToday, &k.NewLeads, &daysLeft,
+		)
+	} else {
+		err = r.db.QueryRow(ctx, query).Scan(
+			&k.TotalCustomers, &k.TotalActiveDeals, &k.PipelineValue, &k.WinRate,
+			&monthlyBooking, &k.TodayBooking, &k.MonthlyRevenue,
+			&monthlyCollection, &k.TodayCollection,
+			&k.TotalVisitsToday, &k.NewLeads, &daysLeft,
+		)
+	}
+	
 	if err != nil {
 		return nil, err
 	}
-	// Populate Flutter-compatible aliases
+
+	// Populate aliases and computed fields
 	k.ActiveDeals = k.TotalActiveDeals
 	k.VisitsToday = k.TotalVisitsToday
 	k.TotalSales = k.PipelineValue
+	k.TotalBooking = monthlyBooking
+	k.TotalCollection = monthlyCollection
 	k.DaysLeft = daysLeft
+	
 	return &k, nil
 }
 
@@ -71,12 +99,12 @@ func (r *reportRepositoryImpl) GetKpiSummary(ctx context.Context, salesID string
 func (r *reportRepositoryImpl) GetRevenueTrend(ctx context.Context, months int) ([]models.ChartData, error) {
 	query := `
 		SELECT 
-			TO_CHAR(closed_at, 'Mon') as label,
+			TO_CHAR(created_at, 'Mon') as label,
 			SUM(amount) / 1000000 as value
-		FROM deals
-		WHERE status = 'won' AND closed_at >= NOW() - INTERVAL '1 month' * $1
-		GROUP BY TO_CHAR(closed_at, 'Mon'), DATE_TRUNC('month', closed_at)
-		ORDER BY DATE_TRUNC('month', closed_at)
+		FROM invoices
+		WHERE created_at >= NOW() - INTERVAL '1 month' * $1
+		GROUP BY TO_CHAR(created_at, 'Mon'), DATE_TRUNC('month', created_at)
+		ORDER BY DATE_TRUNC('month', created_at)
 	`
 	rows, err := r.db.Query(ctx, query, months)
 	if err != nil {
@@ -125,13 +153,17 @@ func (r *reportRepositoryImpl) GetTopPerformers(ctx context.Context, limit int) 
 	query := `
 		SELECT 
 			u.id::text, u.name, 
-			COUNT(v.id) as total_visits,
-			COUNT(v.id) as completed,
-			COUNT(v.id) FILTER (WHERE v.checkin_distance <= 100) as valid,
-			COALESCE(SUM(d.amount) FILTER (WHERE d.status = 'won'), 0) as revenue
+			COUNT(DISTINCT v.id) as total_visits,
+			COUNT(DISTINCT v.id) as completed,
+			COUNT(DISTINCT v.id) FILTER (WHERE v.checkin_distance <= 100) as valid,
+			COALESCE(SUM(i.amount), 0) as revenue
 		FROM users u
 		LEFT JOIN visits v ON v.sales_id = u.id AND v.checkin_at >= DATE_TRUNC('month', CURRENT_DATE)
-		LEFT JOIN deals d ON d.assigned_to = u.id AND d.status = 'won' AND d.closed_at >= DATE_TRUNC('month', CURRENT_DATE)
+		LEFT JOIN (
+			SELECT i.amount, c.assigned_to, i.created_at
+			FROM invoices i
+			JOIN customers c ON i.customer_id = c.id
+		) i ON i.assigned_to = u.id AND i.created_at >= DATE_TRUNC('month', CURRENT_DATE)
 		WHERE u.role = 'sales'
 		GROUP BY u.id, u.name
 		ORDER BY revenue DESC

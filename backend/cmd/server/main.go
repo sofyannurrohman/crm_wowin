@@ -165,6 +165,8 @@ func main() {
 	salesTargetRepo := postgres.NewSalesTargetRepository(dbpool)
 	vanStockRepo := postgres.NewVanStockRepository(dbpool)
 	paymentRepo := postgres.NewPaymentRepository(dbpool)
+	invoiceRepo := postgres.NewInvoiceRepository(dbpool)
+	stockTransferRepo := postgres.NewStockTransferRepository(dbpool)
 	
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
@@ -181,7 +183,7 @@ func main() {
 	leadUC := usecase.NewLeadUseCase(leadRepo, customerRepo)
 	dealUC := usecase.NewDealUseCase(dealRepo, customerRepo)
 	productUC := usecase.NewProductUseCase(productRepo, dealItemRepo, dealRepo, uploadDir)
-	visitUC := usecase.NewVisitUseCase(visitRepo, customerRepo, taskRepo, salesActivityRepo, leadRepo, dealRepo, userRepo, vanStockRepo, paymentRepo)
+	visitUC := usecase.NewVisitUseCase(visitRepo, customerRepo, taskRepo, salesActivityRepo, leadRepo, dealRepo, userRepo, vanStockRepo, paymentRepo, invoiceRepo)
 	trackingUC := usecase.NewTrackingUseCase(trackingRepo)
 	territoryUC := usecase.NewTerritoryUseCase(territoryRepo)
 	reportUC := usecase.NewReportUseCase(reportRepo, targetRepo, salesTargetRepo, taskRepo)
@@ -192,6 +194,8 @@ func main() {
 	settingsUC := usecase.NewSettingsUseCase(settingsRepo)
 	warehouseUC := usecase.NewWarehouseUseCase(warehouseRepo)
 	bannerUC := usecase.NewBannerUseCase(bannerRepo)
+	invoiceUC := usecase.NewInvoiceUseCase(invoiceRepo)
+	stockTransferUC := usecase.NewStockTransferUseCase(stockTransferRepo, vanStockRepo)
 	
 	authHandler := handlers.NewAuthHandler(userUC)
 	customerHandler := handlers.NewCustomerHandler(customerUC)
@@ -210,9 +214,11 @@ func main() {
 	salesActivityHandler := handlers.NewSalesActivityHandler(salesActivityRepo)
 	warehouseHandler := handlers.NewWarehouseHandler(warehouseUC)
 	bannerHandler := handlers.NewBannerHandler(bannerUC, uploadDir)
+	invoiceHandler := handlers.NewInvoiceHandler(invoiceUC)
+	stockTransferHandler := handlers.NewStockTransferHandler(stockTransferUC)
 
 	// Setup Routes
-	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler, targetHandler, taskHandler, settingsHandler, salesActivityHandler, warehouseHandler, bannerHandler)
+	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler, targetHandler, taskHandler, settingsHandler, salesActivityHandler, warehouseHandler, bannerHandler, invoiceHandler, stockTransferHandler)
 
 	// Additionally inject basic health check underneath v1
 	router.GET("/api/v1/health", func(c *gin.Context) {
