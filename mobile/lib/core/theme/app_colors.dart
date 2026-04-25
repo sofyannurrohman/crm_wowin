@@ -15,6 +15,7 @@ class AppColors {
   static const Color surface = Colors.white;
   static const Color error = Color(0xFFEF4444);
   static const Color success = Color(0xFF10B981);
+  static const Color emerald = Color(0xFF10B981);
 
   // Text
   static const Color textPrimary = Color(0xFF0F172A);

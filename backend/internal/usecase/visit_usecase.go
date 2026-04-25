@@ -761,13 +761,17 @@ func (u *visitUseCaseImpl) FinalizeVisit(ctx context.Context, activityID uuid.UU
 	}
 
 	isWon := false
-	if outcome == "deal_won" {
+	switch outcome {
+	case "closing", "bungkus", "deal_won", "deal":
 		isWon = true
-	} else if outcome == "negotiation" {
-		newDeal.Stage = models.DealStageNegotiation
-	} else if outcome == "deal_lost" || outcome == "rejection" {
+		newDeal.Stage = models.DealStageClosedWon
+		newDeal.Status = models.DealStatusWon
+	case "deal_lost", "rejection", "tolak":
 		newDeal.Stage = models.DealStageClosedLost
 		newDeal.Status = models.DealStatusLost
+	default:
+		newDeal.Stage = models.DealStageNegotiation
+		newDeal.Status = models.DealStatusOpen
 	}
 
 	if isWon {
@@ -783,6 +787,32 @@ func (u *visitUseCaseImpl) FinalizeVisit(ctx context.Context, activityID uuid.UU
 
 	if err := u.dealRepo.Create(ctx, newDeal); err != nil {
 		return err
+	}
+
+	// --- Automated Invoicing for Task Order & Motoris sales ---
+	// For TO and Motoris (if finalized later), we create an Unpaid invoice
+	if user.SalesType != nil && (*user.SalesType == models.SalesTypeTaskOrder || *user.SalesType == models.SalesTypeMotoris) {
+		signature := ""
+		if activity.SignaturePath != nil {
+			signature = *activity.SignaturePath
+		}
+
+		invoice := &models.Invoice{
+			CustomerID:    *newDeal.CustomerID,
+			DealID:        &newDeal.ID,
+			InvoiceNo:     fmt.Sprintf("INV-TO-%d", time.Now().UnixNano()/1e6),
+			Amount:        dAmount,
+			PaidAmount:    0,
+			Status:        models.InvoiceStatusUnpaid,
+			SignaturePath: signature,
+		}
+		// Set due date to 7 days by default
+		due := utils.FlexTime{Time: time.Now().AddDate(0, 0, 7)}
+		invoice.DueAt = &due
+
+		if err := u.invoiceRepo.Create(ctx, invoice); err != nil {
+			fmt.Printf("⚠️ failed to auto-generate invoice: %v\n", err)
+		}
 	}
 
 	// 4. Update Activity Status

@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../domain/entities/visit_recommendation.dart';
 import 'package:wowin_crm/features/tasks/domain/entities/task.dart' as task_ent;
+import '../../../../core/theme/app_colors.dart';
 
 class NextVisitCard extends StatelessWidget {
   final VisitRecommendation nextStop;
@@ -16,8 +17,7 @@ class NextVisitCard extends StatelessWidget {
     this.parentTask,
   });
 
-  static const Color _navy = Color(0xFF1A237E);
-  static const Color _green = Color(0xFF0D8549);
+  static const Color _emerald = AppColors.primary;
 
   Future<void> _openMap() async {
     final url = 'https://www.google.com/maps/search/?api=1&query=${nextStop.latitude},${nextStop.longitude}';
@@ -31,160 +31,140 @@ class NextVisitCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [_navy, Color(0xFF283593)],
-        ),
-        borderRadius: BorderRadius.circular(24),
+        gradient: AppColors.premiumGradient,
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: _navy.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
+            color: _emerald.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Stack(
-        children: [
-          // Decorative circles
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _green.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(LucideIcons.navigation, size: 12, color: Colors.white),
-                          SizedBox(width: 4),
-                          Text(
-                            'TUJUAN BERIKUTNYA',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    const Icon(LucideIcons.moreHorizontal, color: Colors.white70),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  nextStop.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(LucideIcons.mapPin, size: 14, color: Colors.white70),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        nextStop.address,
+                  child: const Row(
+                    children: [
+                      Icon(LucideIcons.navigation, size: 14, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        'TUJUAN BERIKUTNYA',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          if (parentTask != null) {
-                            context.pushNamed(
-                              kRouteRoutePlanner,
-                              extra: parentTask,
-                            );
-                            return;
-                          }
-                          
-                          context.pushNamed(
-                            kRouteCheckIn,
-                            extra: {
-                              'scheduleId': 'task', // Unified with Task Flow
-                              'customerId': nextStop.customerId,
-                              'leadId': nextStop.leadId,
-                              'taskDestinationId': nextStop.taskDestinationId,
-                              'dealId': nextStop.dealId,
-                              'customerName': nextStop.name,
-                              'customerAddress': nextStop.address,
-                              'targetLat': nextStop.latitude,
-                              'targetLng': nextStop.longitude,
-                              'targetRadiusMeters': 200.0,
-                            },
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: _navy,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        icon: const Icon(LucideIcons.userCheck, size: 18),
-                        label: const Text(
-                          'Mulai Kunjungan',
-                          style: TextStyle(fontWeight: FontWeight.w800),
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: IconButton(
-                        onPressed: _openMap,
-                        icon: const Icon(LucideIcons.map, color: Colors.white),
-                        tooltip: 'Buka Map',
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            Text(
+              nextStop.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(LucideIcons.mapPin, size: 18, color: Colors.white70),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    nextStop.address,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.85),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      if (parentTask != null) {
+                        context.pushNamed(
+                          kRouteRoutePlanner,
+                          extra: parentTask,
+                        );
+                        return;
+                      }
+                      
+                      context.pushNamed(
+                        kRouteCheckIn,
+                        extra: {
+                          'scheduleId': 'task',
+                          'customerId': nextStop.customerId,
+                          'leadId': nextStop.leadId,
+                          'taskDestinationId': nextStop.taskDestinationId,
+                          'dealId': nextStop.dealId,
+                          'customerName': nextStop.name,
+                          'customerAddress': nextStop.address,
+                          'targetLat': nextStop.latitude,
+                          'targetLng': nextStop.longitude,
+                          'targetRadiusMeters': 200.0,
+                        },
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: _emerald,
+                      minimumSize: const Size(double.infinity, 64),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(LucideIcons.userCheck, size: 24),
+                    label: const Text(
+                      'MULAI VISIT',
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Container(
+                  height: 64,
+                  width: 64,
+                  decoration: BoxDecoration(
+                    color: Colors.white12,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: IconButton(
+                    onPressed: _openMap,
+                    icon: const Icon(LucideIcons.map, color: Colors.white, size: 28),
+                    tooltip: 'Buka Map',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -92,6 +92,7 @@ func SetupRouter(
 		
 		// Invoices & AR
 		invoiceGroup := protected.Group("/invoices")
+		invoiceGroup.GET("", invoiceHandler.ListInvoices)
 		invoiceGroup.GET("/customer/:customerId", invoiceHandler.GetCustomerInvoices)
 		invoiceGroup.GET("/:id", invoiceHandler.GetInvoice)
 		

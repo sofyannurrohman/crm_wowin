@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
@@ -20,13 +21,8 @@ class TaskListPage extends StatefulWidget {
 }
 
 class _TaskListPageState extends State<TaskListPage> {
-  static const Color _primaryGreen = Color(0xFF0D8549);
-  static const Color _bg = Color(0xFFF9FAFB);
-  static const Color _textPrimary = Color(0xFF111827);
-  static const Color _textSecondary = Color(0xFF6B7280);
-
   int _selectedTab = 0;
-  final List<String> _tabs = ['Sedang Berjalan', 'Selesai'];
+  final List<String> _tabs = ['On Progress', 'Completed'];
 
   @override
   void initState() {
@@ -41,7 +37,6 @@ class _TaskListPageState extends State<TaskListPage> {
       salesId = authState.user.id;
     }
 
-    // Always fetch all, we filter locally for the tabs
     context.read<TaskBloc>().add(FetchTasks(status: null, salesId: salesId));
   }
 
@@ -51,37 +46,46 @@ class _TaskListPageState extends State<TaskListPage> {
       listener: (context, state) {
         if (state is TaskOperationSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: _primaryGreen),
+            SnackBar(
+              content: Text(state.message), 
+              backgroundColor: AppColors.primary,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
           );
           _fetchTasks();
         } else if (state is TaskError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(state.message), 
+              backgroundColor: const Color(0xFFEF4444),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
           );
         }
       },
       child: Scaffold(
-        backgroundColor: _bg,
-        appBar: _buildAppBar(context),
+        backgroundColor: AppColors.background,
         drawer: const AppSidebar(),
         floatingActionButton: FloatingActionButton.extended(
-          backgroundColor: _primaryGreen,
+          backgroundColor: AppColors.primary,
           onPressed: () {
-            context.pushNamed(kRouteNewTask).then((_) {
-              _fetchTasks();
-            });
+            context.pushNamed(kRouteNewTask).then((_) => _fetchTasks());
           },
-          icon: const Icon(LucideIcons.plus, color: Colors.white),
-          label: const Text('Buat Rencana Kunjungan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          icon: const Icon(LucideIcons.plus, color: Colors.white, size: 20),
+          label: const Text('Add Plan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 4,
         ),
         body: Column(
           children: [
-            _buildFilterChips(),
+            _buildPremiumHeader(),
             Expanded(
               child: BlocBuilder<TaskBloc, TaskState>(
                 builder: (context, state) {
                   if (state is TaskLoading) {
-                    return const Center(child: CircularProgressIndicator(color: _primaryGreen));
+                    return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                   } else if (state is TasksLoaded) {
                     List<ent.Task> displayTasks = state.tasks;
                     if (_selectedTab == 0) {
@@ -97,29 +101,7 @@ class _TaskListPageState extends State<TaskListPage> {
                   } else if (state is TaskError) {
                     return _buildErrorState(state.message);
                   }
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(LucideIcons.list, size: 48, color: Colors.grey.withValues(alpha: 0.5)),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Tarik untuk memuat tugas',
-                          style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _fetchTasks,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryGreen,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            elevation: 0,
-                          ),
-                          child: const Text('Refresh', style: TextStyle(color: Colors.white)),
-                        ),
-                      ],
-                    ),
-                  );
+                  return _buildInitialState();
                 },
               ),
             ),
@@ -129,44 +111,158 @@ class _TaskListPageState extends State<TaskListPage> {
     );
   }
 
+  Widget _buildPremiumHeader() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppColors.premiumGradient,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Builder(
+                    builder: (context) => GestureDetector(
+                      onTap: () => Scaffold.of(context).openDrawer(),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(LucideIcons.menu, color: Colors.white, size: 22),
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    'Visit Planning',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _fetchTasks,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(LucideIcons.refreshCw, color: Colors.white, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            _buildTabBar(),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: List.generate(_tabs.length, (index) {
+            final isSelected = _selectedTab == index;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _selectedTab = index),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: isSelected ? [
+                      BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))
+                    ] : null,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _tabs[index],
+                    style: TextStyle(
+                      color: isSelected ? AppColors.primary : Colors.white.withOpacity(0.6),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInitialState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(LucideIcons.clipboardList, size: 64, color: AppColors.textPlaceholder.withOpacity(0.3)),
+          const SizedBox(height: 16),
+          const Text('Tap to load your schedule', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _fetchTasks,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Fetch Schedule', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildErrorState(String message) {
     return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+      child: Padding(
+        padding: const EdgeInsets.all(40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(LucideIcons.alertCircle, size: 64, color: Colors.redAccent),
+            const Icon(LucideIcons.alertTriangle, size: 64, color: Color(0xFFFCA5A5)),
             const SizedBox(height: 24),
-            Text(
-              'Oops!',
-              style: TextStyle(
-                color: _textPrimary,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
+            const Text('Oops!', style: TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.w900)),
             const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey, fontSize: 16),
-            ),
+            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontSize: 16)),
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
-              height: 54,
+              height: 56,
               child: ElevatedButton(
                 onPressed: _fetchTasks,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryGreen,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text(
-                  'Coba Lagi',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
+                child: const Text('Try Again', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white)),
               ),
             ),
           ],
@@ -180,149 +276,23 @@ class _TaskListPageState extends State<TaskListPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.clipboardCheck, size: 80, color: _textSecondary.withOpacity(0.1)),
-          const SizedBox(height: 20),
-          Text(
-            'Tidak ada tugas',
-            style: TextStyle(
-              color: _textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          Icon(LucideIcons.checkCircle, size: 80, color: AppColors.primary.withOpacity(0.1)),
+          const SizedBox(height: 24),
+          const Text('No plans found', style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 8),
-          Text(
-            'Semua tugas untuk filter ini sudah selesai atau belum dibuat.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _textSecondary, fontSize: 14),
-          ),
+          const Text('Your visit schedule for this filter is clear.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500)),
           const SizedBox(height: 32),
           OutlinedButton.icon(
             onPressed: _fetchTasks,
             icon: const Icon(LucideIcons.refreshCw, size: 18),
-            label: const Text('Perbarui Data'),
+            label: const Text('Refresh Data', style: TextStyle(fontWeight: FontWeight.w900)),
             style: OutlinedButton.styleFrom(
-              foregroundColor: _primaryGreen,
-              side: const BorderSide(color: _primaryGreen),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.primary, width: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  AppBar _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      toolbarHeight: 70,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFFBF5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(LucideIcons.list, color: _primaryGreen, size: 22),
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'Rencana Kunjungan',
-            style: TextStyle(
-              color: _textPrimary,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: const Icon(LucideIcons.search, color: Color(0xFF4B5563), size: 24),
-          onPressed: () {},
-        ),
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(48),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-          ),
-          child: Row(
-            children: List.generate(_tabs.length, (index) {
-              final isSelected = _selectedTab == index;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _selectedTab = index),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: isSelected ? _primaryGreen : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _tabs[index],
-                      style: TextStyle(
-                        color: isSelected ? _primaryGreen : _textSecondary,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterChips() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      child: Row(
-        children: [
-          _buildChip('Today', LucideIcons.calendar),
-          const SizedBox(width: 8),
-          _buildChip('Me', LucideIcons.user),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildChip(String label, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: _textSecondary),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              color: _textPrimary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 6),
-          const Icon(LucideIcons.chevronDown, size: 14, color: _textSecondary),
         ],
       ),
     );
@@ -330,9 +300,9 @@ class _TaskListPageState extends State<TaskListPage> {
 
   Widget _buildTaskList(List<ent.Task> tasks) {
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
       itemCount: tasks.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => const SizedBox(height: 16),
       itemBuilder: (context, index) {
         return _buildTaskCard(tasks[index], index);
       },
@@ -346,13 +316,13 @@ class _TaskListPageState extends State<TaskListPage> {
     return GestureDetector(
       onTap: () => context.pushNamed(kRouteRoutePlanner, extra: task),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 8))
           ],
         ),
         child: Row(
@@ -366,14 +336,14 @@ class _TaskListPageState extends State<TaskListPage> {
               },
               child: Container(
                 margin: const EdgeInsets.only(top: 2),
-                width: 20,
-                height: 20,
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
-                  color: isCompleted ? _primaryGreen : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: isCompleted ? _primaryGreen : Colors.grey.shade300, width: 1.5),
+                  color: isCompleted ? AppColors.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: isCompleted ? AppColors.primary : const Color(0xFFCBD5E1), width: 2),
                 ),
-                child: isCompleted ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
+                child: isCompleted ? const Icon(LucideIcons.check, size: 16, color: Colors.white) : null,
               ),
             ),
             const SizedBox(width: 16),
@@ -389,101 +359,58 @@ class _TaskListPageState extends State<TaskListPage> {
                         child: Text(
                           task.title,
                           style: TextStyle(
-                            color: isCompleted ? Colors.grey : _textPrimary,
+                            color: isCompleted ? AppColors.textPlaceholder : AppColors.textPrimary,
                             fontSize: 16,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w900,
                             decoration: isCompleted ? TextDecoration.lineThrough : null,
+                            letterSpacing: -0.3,
                           ),
                         ),
                       ),
-                      PopupMenuButton<String>(
-                        icon: const Icon(LucideIcons.moreVertical, size: 18, color: Color(0xFF6B7280)),
-                        onSelected: (value) async {
-                          if (value == 'edit') {
-                            await context.pushNamed(kRouteNewTask, extra: task);
-                            _fetchTasks();
-                          } else if (value == 'delete') {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                title: const Text('Hapus Tugas?'),
-                                content: Text('Apakah Anda yakin ingin menghapus "${task.title}"? Tindakan ini tidak dapat dibatalkan.'),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.of(ctx).pop(false),
-                                    child: const Text('Batal'),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                                    onPressed: () => Navigator.of(ctx).pop(true),
-                                    child: const Text('Hapus'),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (confirm == true && context.mounted) {
-                              context.read<TaskBloc>().add(DeleteTask(task.id));
-                            }
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem<String>(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(LucideIcons.pencil, size: 16, color: _primaryGreen),
-                                SizedBox(width: 12),
-                                Text('Edit Tugas'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem<String>(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(LucideIcons.trash2, size: 16, color: Colors.red),
-                                SizedBox(width: 12),
-                                Text('Hapus Tugas', style: TextStyle(color: Colors.red)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                      _buildTaskMenu(task),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
                     task.description,
-                    style: const TextStyle(color: _textSecondary, fontSize: 13),
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4, fontWeight: FontWeight.w500),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Icon(isOverdue ? LucideIcons.alertCircle : LucideIcons.clock,
-                           size: 14, color: isOverdue ? Colors.red : _textSecondary),
-                      const SizedBox(width: 6),
-                      Text(
-                        task.dueDate != null ? DateFormat('MMM d, HH:mm').format(task.dueDate!) : 'No deadline',
-                        style: TextStyle(
-                          color: isOverdue ? Colors.red : _textSecondary,
-                          fontSize: 12,
-                          fontWeight: isOverdue ? FontWeight.bold : FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      if (task.customerName != null) ...[
-                        const Icon(LucideIcons.building2, size: 14, color: _textSecondary),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            task.customerName!,
-                            style: const TextStyle(color: _textSecondary, fontSize: 12),
-                            overflow: TextOverflow.ellipsis,
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(isOverdue ? LucideIcons.alertCircle : LucideIcons.calendar,
+                             size: 14, color: isOverdue ? const Color(0xFFEF4444) : AppColors.textSecondary),
+                        const SizedBox(width: 8),
+                        Text(
+                          task.dueDate != null ? DateFormat('MMM d, HH:mm').format(task.dueDate!) : 'No Deadline',
+                          style: TextStyle(
+                            color: isOverdue ? const Color(0xFFEF4444) : AppColors.textPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
-                      ]
-                    ],
+                        if (task.customerName != null) ...[
+                          const SizedBox(width: 16),
+                          const Icon(LucideIcons.building, size: 14, color: AppColors.textSecondary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              task.customerName!,
+                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w900),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ]
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -494,4 +421,59 @@ class _TaskListPageState extends State<TaskListPage> {
     );
   }
 
+  Widget _buildTaskMenu(ent.Task task) {
+    return PopupMenuButton<String>(
+      padding: EdgeInsets.zero,
+      icon: const Icon(LucideIcons.moreHorizontal, size: 20, color: AppColors.textPlaceholder),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      onSelected: (value) async {
+        if (value == 'edit') {
+          await context.pushNamed(kRouteNewTask, extra: task);
+          _fetchTasks();
+        } else if (value == 'delete') {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: const Text('Delete Plan?', style: TextStyle(fontWeight: FontWeight.w900)),
+              content: Text('Are you sure you want to delete "${task.title}"?'),
+              actions: [
+                TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: const Text('Delete'),
+                ),
+              ],
+            ),
+          );
+          if (confirm == true && context.mounted) {
+            context.read<TaskBloc>().add(DeleteTask(task.id));
+          }
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem<String>(
+          value: 'edit',
+          child: Row(
+            children: [
+              Icon(LucideIcons.edit2, size: 16, color: AppColors.primary),
+              SizedBox(width: 12),
+              Text('Edit Plan', style: TextStyle(fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(LucideIcons.trash2, size: 16, color: Color(0xFFEF4444)),
+              SizedBox(width: 12),
+              Text('Delete Plan', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 }

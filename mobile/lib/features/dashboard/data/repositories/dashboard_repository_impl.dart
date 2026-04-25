@@ -7,6 +7,7 @@ import '../datasources/dashboard_remote_data_source.dart';
 
 import 'package:wowin_crm/features/tasks/data/datasources/task_remote_data_source.dart';
 import 'package:wowin_crm/features/tasks/domain/entities/task.dart';
+import 'package:wowin_crm/features/customers/domain/entities/invoice.dart';
 
 class DashboardRepositoryImpl implements DashboardRepository {
   final DashboardRemoteDataSource remoteDataSource;
@@ -44,6 +45,16 @@ class DashboardRepositoryImpl implements DashboardRepository {
       return Right(tasks);
     } catch (e) {
       return Left(ServerFailure('Gagal mengambil rencana kunjungan: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<Invoice>>> getPendingDeliveries() async {
+    try {
+      final invoices = await remoteDataSource.getPendingDeliveries();
+      return Right(invoices);
+    } catch (e) {
+      return Left(ServerFailure('Gagal mengambil daftar pengiriman: ${e.toString()}'));
     }
   }
 }

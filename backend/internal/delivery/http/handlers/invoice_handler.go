@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"crm_wowin_backend/internal/domain/models"
+	"crm_wowin_backend/internal/domain/repository"
 	"crm_wowin_backend/internal/usecase"
 	"net/http"
 
@@ -53,4 +55,21 @@ func (h *InvoiceHandler) GetInvoice(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": invoice})
+}
+
+func (h *InvoiceHandler) ListInvoices(c *gin.Context) {
+	var filter repository.InvoiceFilter
+	
+	if status := c.Query("status"); status != "" {
+		s := models.InvoiceStatus(status)
+		filter.Status = &s
+	}
+
+	invoices, err := h.useCase.ListInvoices(c.Request.Context(), filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": invoices})
 }

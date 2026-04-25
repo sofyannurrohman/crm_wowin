@@ -13,6 +13,7 @@ import '../../../products/presentation/bloc/product_event.dart';
 import '../../../products/presentation/bloc/product_state.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/visit_activity.dart';
+import '../../../../core/api/api_endpoints.dart';
 
 class FinalizeVisitPage extends StatefulWidget {
   final VisitActivity activity;
@@ -28,8 +29,7 @@ class _FinalizeVisitPageState extends State<FinalizeVisitPage> {
   final TextEditingController _notesController = TextEditingController();
   String _selectedOutcome = 'deal_won';
   
-  // Base URL for images
-  static const String _baseUrl = 'http://localhost:8080'; // Change to real IP later
+  static const String _baseUrl = ApiEndpoints.uploadsBaseUrl; 
 
   @override
   void initState() {
@@ -50,7 +50,7 @@ class _FinalizeVisitPageState extends State<FinalizeVisitPage> {
   void _submit() {
     if (_selectedItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tambahkan minimal 1 item!')),
+        const SnackBar(content: Text('Please add at least one item.'), backgroundColor: Color(0xFFF59E0B), behavior: SnackBarBehavior.floating),
       );
       return;
     }
@@ -66,41 +66,37 @@ class _FinalizeVisitPageState extends State<FinalizeVisitPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Dark background for photo viewing
+      backgroundColor: Colors.black, 
       appBar: AppBar(
-        title: Text('Finalisasi: ${widget.activity.customerName ?? 'Kunjungan'}',
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        title: Text('Finalize: ${widget.activity.customerName ?? 'Visit'}',
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.textPrimary)),
         backgroundColor: Colors.white,
         elevation: 0,
+        centerTitle: true,
+        leading: IconButton(onPressed: () => context.pop(), icon: const Icon(LucideIcons.arrowLeft, color: AppColors.textPrimary)),
       ),
       body: BlocListener<VisitBloc, VisitState>(
         listener: (context, state) {
           if (state is VisitSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Berhasil difinalisasi!'), backgroundColor: Colors.green),
+              const SnackBar(content: Text('Visit finalized successfully.'), backgroundColor: AppColors.primary, behavior: SnackBarBehavior.floating),
             );
             context.pop(true);
           } else if (state is VisitError) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              SnackBar(content: Text(state.message), backgroundColor: const Color(0xFFEF4444), behavior: SnackBarBehavior.floating),
             );
           }
         },
         child: Column(
           children: [
-            // Top: Photo Viewer
-            Expanded(
-              flex: 2,
-              child: _buildPhotoViewer(),
-            ),
-            
-            // Bottom: Input Form
+            Expanded(flex: 2, child: _buildPhotoViewer()),
             Expanded(
               flex: 3,
               child: Container(
                 decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
                 ),
                 child: _buildInputSection(),
               ),
@@ -128,24 +124,24 @@ class _FinalizeVisitPageState extends State<FinalizeVisitPage> {
                   if (progress == null) return child;
                   return const Center(child: CircularProgressIndicator(color: Colors.white));
                 },
-                errorBuilder: (context, error, stack) => const Icon(LucideIcons.imageOff, color: Colors.white, size: 48),
+                errorBuilder: (context, error, stack) => const Icon(LucideIcons.imageOff, color: Colors.white24, size: 48),
               ),
             ),
           )
         else
-          const Center(child: Text('Foto tidak tersedia', style: TextStyle(color: Colors.white))),
+          const Center(child: Text('Receipt image not available', style: TextStyle(color: Colors.white54, fontWeight: FontWeight.w600))),
         
         Positioned(
-          bottom: 16,
-          right: 16,
+          bottom: 24,
+          right: 24,
           child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(8)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(color: Colors.black.withOpacity(0.4), borderRadius: BorderRadius.circular(12)),
             child: const Row(
               children: [
-                Icon(LucideIcons.zoomIn, color: Colors.white, size: 16),
-                SizedBox(width: 4),
-                Text('Cubit untuk zoom', style: TextStyle(color: Colors.white, fontSize: 12)),
+                Icon(LucideIcons.zoomIn, color: Colors.white, size: 14),
+                SizedBox(width: 8),
+                Text('Pinch to zoom', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
               ],
             ),
           ),
@@ -157,23 +153,24 @@ class _FinalizeVisitPageState extends State<FinalizeVisitPage> {
   Widget _buildInputSection() {
     return Column(
       children: [
-        // Tab Header / Summary
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('INPUT DETAIL ITEM', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 12, color: Colors.grey)),
-                  SizedBox(height: 4),
-                  Text('Gunakan foto di atas sebagai referensi', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                ],
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('ITEM ENTRY', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 10, color: AppColors.textPlaceholder)),
+                    SizedBox(height: 4),
+                    Text('Refer to the receipt above', style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                  ],
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(16)),
                 child: Text(
                   'Rp ${NumberFormat('#,###', 'id_ID').format(_calculateTotal())}',
                   style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 18),
@@ -187,50 +184,53 @@ class _FinalizeVisitPageState extends State<FinalizeVisitPage> {
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             children: [
-              // List of added items
-              ..._selectedItems.asMap().entries.map((entry) => _buildItemTile(entry.key, entry.value)),
+              ..._selectedItems.asMap().entries.map((entry) => _buildItemTile(entry.key, entry.value).animate().fadeIn().slideX()),
               
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               OutlinedButton.icon(
                 onPressed: _showProductPicker,
-                icon: const Icon(LucideIcons.plus),
-                label: const Text('TAMBAH ITEM BARU'),
+                icon: const Icon(LucideIcons.plus, size: 18),
+                label: const Text('ADD TRANSACTION ITEM', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
                 style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 54),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  foregroundColor: AppColors.primary,
+                  minimumSize: const Size(double.infinity, 60),
+                  side: const BorderSide(color: Color(0xFFE2E8F0), width: 2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
               ),
               
-              const SizedBox(height: 24),
-              const Text('Catatan Tambahan', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
+              const SizedBox(height: 32),
+              const Text('REMARKS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppColors.textPlaceholder, letterSpacing: 1)),
+              const SizedBox(height: 12),
               TextField(
                 controller: _notesController,
+                maxLines: 2,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: 'Misal: Promo bundle, Retur, dll',
+                  hintText: 'e.g., Promo bundle, partial return...',
+                  hintStyle: const TextStyle(color: AppColors.textPlaceholder, fontWeight: FontWeight.w500),
                   filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  fillColor: Colors.white,
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: Color(0xFFF1F5F9))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
                 ),
               ),
-              const SizedBox(height: 100), // Space for fab
+              const SizedBox(height: 40),
             ],
           ),
         ),
         
-        // Final Action
         Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
           child: ElevatedButton(
             onPressed: _submit,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               minimumSize: const Size(double.infinity, 64),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              elevation: 8,
-              shadowColor: AppColors.primary.withOpacity(0.4),
+              elevation: 0,
             ),
-            child: const Text('SIMPAN & FINALISASI DATA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+            child: const Text('FINALIZE VISIT DATA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: -0.3)),
           ),
         ),
       ],
@@ -242,30 +242,40 @@ class _FinalizeVisitPageState extends State<FinalizeVisitPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
       ),
       child: Row(
         children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), shape: BoxShape.circle),
+            child: const Icon(LucideIcons.package, color: AppColors.primary, size: 16),
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(it['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text('${it['quantity']} ${it['unit']} x Rp ${NumberFormat('#,###').format(it['unit_price'])}',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                Text(it['name'], style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.textPrimary)),
+                Text('${it['quantity'].toStringAsFixed(0)} ${it['unit']} x Rp ${NumberFormat('#,###').format(it['unit_price'])}',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
-          Text(
-            'Rp ${NumberFormat('#,###').format(it['subtotal'])}',
-            style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary),
-          ),
-          const SizedBox(width: 12),
-          IconButton(
-            icon: const Icon(LucideIcons.trash2, color: Colors.red, size: 20),
-            onPressed: () => setState(() => _selectedItems.removeAt(index)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                'Rp ${NumberFormat('#,###').format(it['subtotal'])}',
+                style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.textPrimary, fontSize: 14),
+              ),
+              GestureDetector(
+                onTap: () => setState(() => _selectedItems.removeAt(index)),
+                child: const Text('REMOVE', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5)),
+              ),
+            ],
           ),
         ],
       ),
@@ -294,34 +304,61 @@ class _FinalizeVisitPageState extends State<FinalizeVisitPage> {
         child: Column(
           children: [
             const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
             const Padding(
               padding: EdgeInsets.all(24),
-              child: Text('Pilih Produk', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              child: Text('Select Products', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
             ),
             Expanded(
               child: BlocBuilder<ProductBloc, ProductState>(
                 builder: (context, state) {
-                  if (state is ProductLoading) return const Center(child: CircularProgressIndicator());
+                  if (state is ProductLoading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                   if (state is ProductsLoaded) {
-                    return ListView.builder(
+                    return ListView.separated(
                       controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
                       itemCount: state.products.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final product = state.products[index];
-                        return ListTile(
-                          title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text('Rp ${NumberFormat('#,###').format(product.price)}'),
-                          trailing: const Icon(LucideIcons.plusCircle, color: AppColors.primary),
+                        return GestureDetector(
                           onTap: () {
                             _addOrUpdateItem(product);
                             Navigator.pop(context);
                           },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFFF1F5F9), width: 2),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+                                  child: const Icon(LucideIcons.package, color: AppColors.primary, size: 20),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(product.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                                      Text('Rp ${NumberFormat('#,###', 'id_ID').format(product.price)}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(LucideIcons.plusCircle, color: Color(0xFFCBD5E1), size: 22),
+                              ],
+                            ),
+                          ),
                         );
                       },
                     );
                   }
-                  return const Center(child: Text('Gagal memuat produk'));
+                  return const Center(child: Text('Failed to load products'));
                 },
               ),
             ),

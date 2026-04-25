@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/router/route_constants.dart';
@@ -10,14 +11,13 @@ import '../../../../core/di/injection.dart';
 import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
 import '../bloc/customer_state.dart';
-import '../../domain/entities/customer.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart' as auth;
 import '../../../../features/auth/presentation/bloc/auth_state.dart' as auth;
 import '../../../../features/auth/presentation/bloc/auth_event.dart' as auth;
 import 'package:wowin_crm/features/deals/domain/entities/deal.dart';
 import 'package:wowin_crm/features/visits/domain/entities/visit_activity.dart';
 import 'package:wowin_crm/features/visits/domain/entities/visit_schedule.dart';
-import 'package:intl/intl.dart';
+import '../../domain/entities/customer.dart';
 
 class CustomerDetailPage extends StatefulWidget {
   final String id;
@@ -48,6 +48,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     return BlocProvider(
       create: (context) => sl<CustomerBloc>()..add(FetchCustomerDetail(widget.id)),
       child: Scaffold(
+        backgroundColor: AppColors.background,
         body: BlocBuilder<auth.AuthBloc, auth.AuthState>(
           builder: (context, authState) {
             final currentUser = (authState is auth.Authenticated)
@@ -57,7 +58,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
             return BlocBuilder<CustomerBloc, CustomerState>(
               builder: (context, state) {
                 if (state is CustomerLoading) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(child: CircularProgressIndicator(color: AppColors.primary));
                 } else if (state is CustomerDetailLoaded) {
                   final customer = state.customer;
                   final bool isOwner = currentUser != null && 
@@ -66,22 +67,24 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                   final bool isLocked = !isOwner && !isAdmin;
 
                   return Scaffold(
-                    backgroundColor: const Color(0xFFF9FAFB),
+                    backgroundColor: AppColors.background,
+                    extendBodyBehindAppBar: true,
                     appBar: AppBar(
                       backgroundColor: Colors.transparent,
                       elevation: 0,
                       scrolledUnderElevation: 0,
                       leading: IconButton(
                         icon: const Icon(LucideIcons.arrowLeft,
-                            color: AppColors.textPrimary),
+                            color: Colors.white),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       title: const Text(
-                        'Customer Details',
+                        'Customer Profile',
                         style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
                           fontSize: 18,
+                          letterSpacing: -0.5,
                         ),
                       ),
                       centerTitle: true,
@@ -98,16 +101,16 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                                 _showDeleteConfirmation(context, state.customer);
                               }
                             },
-                            icon: const Icon(LucideIcons.moreVertical,
-                                color: AppColors.textPrimary),
+                            icon: const Icon(LucideIcons.moreHorizontal,
+                                color: Colors.white),
                             itemBuilder: (context) => [
                               const PopupMenuItem(
                                 value: 'edit',
                                 child: Row(
                                   children: [
                                     Icon(LucideIcons.edit2, size: 18),
-                                    SizedBox(width: 8),
-                                    const Text('Edit'),
+                                    SizedBox(width: 12),
+                                    Text('Edit Details'),
                                   ],
                                 ),
                               ),
@@ -117,8 +120,8 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                                   children: [
                                     Icon(LucideIcons.trash2,
                                         size: 18, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    const Text('Delete',
+                                    SizedBox(width: 12),
+                                    Text('Delete Customer',
                                         style: TextStyle(color: Colors.red)),
                                   ],
                                 ),
@@ -153,12 +156,12 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                                   kRouteAddBanner,
                                   extra: {'customer': customer},
                                 ),
-                                icon: const Icon(LucideIcons.layout),
-                                label: const Text('Survey Spanduk', style: TextStyle(fontWeight: FontWeight.bold)),
+                                icon: const Icon(LucideIcons.layout, size: 18),
+                                label: const Text('Survey Spanduk', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange.shade700,
+                                  backgroundColor: const Color(0xFFF59E0B),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(vertical: 18),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                   elevation: 0,
                                 ),
@@ -174,10 +177,10 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                                 content: Text(state.message),
-                                backgroundColor: Colors.green),
+                                backgroundColor: AppColors.success),
                           );
                           if (state.message.contains('hapus')) {
-                            Navigator.of(context).pop(); // Back to list on delete
+                            Navigator.of(context).pop(); 
                           }
                         }
                       },
@@ -200,13 +203,14 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Hapus Pelanggan'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Hapus Pelanggan', style: TextStyle(fontWeight: FontWeight.w900)),
         content: Text(
-            'Apakah Anda yakin ingin menghapus ${customer.companyName ?? customer.name}?'),
+            'Apakah Anda yakin ingin menghapus ${customer.companyName ?? customer.name}? Tindakan ini permanen.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Batal'),
+            child: const Text('Batal', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
           ),
           TextButton(
             onPressed: () {
@@ -215,7 +219,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                   .read<CustomerBloc>()
                   .add(DeleteCustomerSubmitted(customer.id));
             },
-            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+            child: const Text('Hapus', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w900)),
           ),
         ],
       ),
@@ -223,49 +227,136 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
   }
 
   Widget _buildContent(Customer customer, CustomerDetailLoaded state, bool isLocked, {String? salesmanName}) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      children: [
-        if (isLocked)
-          Container(
-            margin: const EdgeInsets.only(top: 20),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF7ED),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFFFEDD5)),
-            ),
-            child: Row(
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildPremiumHeader(customer),
+          
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
               children: [
-                const Icon(LucideIcons.lock, color: Color(0xFFF97316), size: 18),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Data ini dikunci karena dimiliki oleh salesman lain${salesmanName != null ? " ($salesmanName)" : ""}.',
-                    style: const TextStyle(
-                      color: Color(0xFFC2410C),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                if (isLocked)
+                  Container(
+                    margin: const EdgeInsets.only(top: 20),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFFEE2E2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.lock, color: Color(0xFFEF4444), size: 20),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            'Data ini dikunci karena dimiliki oleh salesman lain${salesmanName != null ? " ($salesmanName)" : ""}.',
+                            style: const TextStyle(
+                              color: Color(0xFF991B1B),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                
+                const SizedBox(height: 24),
+                _buildContactInfoCard(customer, isLocked),
+                const SizedBox(height: 24),
+                _buildMapSection(customer, isLocked),
+                const SizedBox(height: 32),
+                if (!isLocked) ...[
+                  _buildTabs(),
+                  const SizedBox(height: 20),
+                  _buildTabContent(customer, state),
+                  const SizedBox(height: 100),
+                ],
               ],
             ),
           ),
-        const SizedBox(height: 20),
-        _buildProfileHeader(customer),
-        const SizedBox(height: 24),
-        _buildContactInfoCard(customer, isLocked),
-        const SizedBox(height: 24),
-        _buildMapSection(customer, isLocked),
-        const SizedBox(height: 32),
-        if (!isLocked) ...[
-          _buildTabs(),
-          const SizedBox(height: 16),
-          _buildTabContent(customer, state),
-          const SizedBox(height: 40),
         ],
-      ],
+      ),
+    );
+  }
+
+  Widget _buildPremiumHeader(Customer customer) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppColors.premiumGradient,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                customer.name.substring(0, 1).toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 48,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Text(
+                customer.companyName ?? customer.name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildTag(
+                  customer.industry ?? 'Food & Beverage',
+                  Colors.white.withOpacity(0.15),
+                  Colors.white,
+                ),
+                const SizedBox(width: 10),
+                _buildTag(
+                  customer.status ?? 'Active Client',
+                  AppColors.success.withOpacity(0.8),
+                  Colors.white,
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
     );
   }
 
@@ -275,77 +366,21 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     return '${text.substring(0, 2)}********${text.substring(text.length - 2)}';
   }
 
-  Widget _buildProfileHeader(Customer customer) {
-    return Column(
-      children: [
-        Container(
-          width: 100,
-          height: 100,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Image.asset(
-            'assets/images/logo.png',
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) => const Icon(
-              LucideIcons.building2,
-              size: 40,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          customer.companyName ?? customer.name,
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1F2937),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildTag(
-              customer.industry ?? 'Food',
-              const Color(0xFFF0FDF4),
-              const Color(0xFF0D8549),
-            ),
-            const SizedBox(width: 8),
-            _buildTag(
-              customer.status ?? 'Active Client',
-              const Color(0xFFF0FDF4),
-              const Color(0xFF22C55E),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildTag(String text, Color bgColor, Color textColor) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
       ),
       child: Text(
-        text,
+        text.toUpperCase(),
         style: TextStyle(
           color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.8,
         ),
       ),
     );
@@ -353,15 +388,16 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
 
   Widget _buildContactInfoCard(Customer customer, bool isLocked) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -369,31 +405,31 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
         children: [
           _buildInfoRow(
             LucideIcons.user,
-            'Contact Person',
+            'PIC Name',
             isLocked ? _obscureText(customer.name) : customer.name,
-            iconColor: const Color(0xFF0D8549),
+            iconColor: AppColors.primary,
           ),
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Divider(height: 1, color: Color(0xFFF3F4F6)),
+            padding: EdgeInsets.symmetric(vertical: 18),
+            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
           ),
           _buildInfoRow(
             LucideIcons.phone,
-            'Phone',
+            'Phone Number',
             isLocked ? _obscureText(customer.phone) : (customer.phone ?? '-'),
-            iconColor: const Color(0xFF0D8549),
-            valueColor: const Color(0xFF0D8549),
+            iconColor: const Color(0xFF10B981),
+            valueColor: const Color(0xFF10B981),
           ),
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Divider(height: 1, color: Color(0xFFF3F4F6)),
+            padding: EdgeInsets.symmetric(vertical: 18),
+            child: Divider(height: 1, color: Color(0xFFF1F5F9)),
           ),
           _buildInfoRow(
             LucideIcons.mail,
-            'Email',
+            'Email Address',
             isLocked ? _obscureText(customer.email) : (customer.email ?? '-'),
-            iconColor: const Color(0xFF0D8549),
-            valueColor: const Color(0xFF0D8549),
+            iconColor: const Color(0xFF3B82F6),
+            valueColor: const Color(0xFF3B82F6),
           ),
         ],
       ),
@@ -409,23 +445,36 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
   }) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: iconColor ?? AppColors.textSecondary),
-        const SizedBox(width: 12),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: (iconColor ?? AppColors.textSecondary).withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
           ),
+          child: Icon(icon, size: 18, color: iconColor ?? AppColors.textSecondary),
         ),
-        const Spacer(),
-        Text(
-          value,
-          style: TextStyle(
-            color: valueColor ?? AppColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
+        const SizedBox(width: 14),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: TextStyle(
+                color: valueColor ?? AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -437,14 +486,15 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
 
     return Container(
       clipBehavior: Clip.antiAlias,
-      height: 200,
+      height: 220,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -454,7 +504,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
             FlutterMap(
               options: MapOptions(
                 initialCenter: LatLng(lat, lng),
-                initialZoom: 14.0,
+                initialZoom: 15.0,
                 interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
               ),
               children: [
@@ -466,7 +516,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
                   markers: [
                     Marker(
                       point: LatLng(lat, lng),
-                      child: const Icon(Icons.location_on, color: Color(0xFFF97316), size: 30),
+                      child: const Icon(Icons.location_on, color: Color(0xFFEF4444), size: 36),
                     ),
                   ],
                 ),
@@ -474,48 +524,49 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
             )
           else
             Container(
-              color: Colors.grey[200],
+              color: const Color(0xFFF1F5F9),
               child: const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(LucideIcons.mapPinOff, size: 40, color: Colors.grey),
-                    SizedBox(height: 12),
-                    Text('Lokasi disembunyikan', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                    Icon(LucideIcons.mapPinOff, size: 48, color: AppColors.textPlaceholder),
+                    SizedBox(height: 16),
+                    Text('Location Locked', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w900)),
                   ],
                 ),
               ),
             ),
           Positioned(
-            bottom: 12,
-            left: 12,
-            right: 12,
+            bottom: 16,
+            left: 16,
+            right: 16,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
               child: Row(
                 children: [
-                  const Icon(LucideIcons.mapPin, size: 16, color: Color(0xFFF97316)),
-                  const SizedBox(width: 8),
+                  const Icon(LucideIcons.mapPin, size: 18, color: Color(0xFFEF4444)),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      isLocked ? 'Alamat disembunyikan' : (customer.address ?? 'San José, Costa Rica'),
+                      isLocked ? 'Address hidden for security' : (customer.address ?? 'Jakarta, Indonesia'),
                       style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF374151),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        letterSpacing: -0.3,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -532,21 +583,22 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
     return Container(
       decoration: const BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Color(0xFFF3F4F6), width: 1),
+          bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
         ),
       ),
       child: TabBar(
         controller: _tabController,
-        labelColor: const Color(0xFF0D8549),
+        labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
-        indicatorColor: const Color(0xFF0D8549),
-        indicatorWeight: 3,
+        indicatorColor: AppColors.primary,
+        indicatorWeight: 4,
+        indicatorSize: TabBarIndicatorSize.label,
         dividerColor: Colors.transparent,
-        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: -0.2),
         tabs: const [
-          Tab(text: 'Activity Log'),
+          Tab(text: 'Activity'),
           Tab(text: 'Deals'),
-          Tab(text: 'Visit History'),
+          Tab(text: 'Visits'),
         ],
         onTap: (index) {
           setState(() {});
@@ -570,10 +622,16 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
 
   Widget _buildActivityLog(List<VisitActivity> activities) {
     if (activities.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 40),
-          child: Text('Belum ada log aktivitas', style: TextStyle(color: Color(0xFF6B7280))),
+          padding: const EdgeInsets.symmetric(vertical: 60),
+          child: Column(
+            children: [
+              Icon(LucideIcons.activity, size: 48, color: AppColors.textPlaceholder.withOpacity(0.5)),
+              const SizedBox(height: 16),
+              const Text('No recent activities.', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            ],
+          ),
         ),
       );
     }
@@ -584,7 +642,7 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
       itemCount: activities.length,
       itemBuilder: (context, index) {
         final activity = activities[index];
-        final isCheckIn = activity.type == 'check-in';
+        final isCheckIn = activity.type.toLowerCase().contains('check-in') || activity.type.toLowerCase() == 'checkin';
         
         return IntrinsicHeight(
           child: Row(
@@ -593,61 +651,75 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
               Column(
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: isCheckIn ? const Color(0xFFF0FDF4) : const Color(0xFFF0FDF4),
+                      color: isCheckIn ? AppColors.primary.withOpacity(0.1) : const Color(0xFFF0FDF4),
                       shape: BoxShape.circle,
+                      border: Border.all(color: isCheckIn ? AppColors.primary.withOpacity(0.1) : const Color(0xFFDCFCE7)),
                     ),
                     child: Icon(
-                      isCheckIn ? LucideIcons.mapPin : LucideIcons.logOut,
+                      isCheckIn ? LucideIcons.mapPin : LucideIcons.checkCircle,
                       size: 18,
-                      color: isCheckIn ? const Color(0xFF22C55E) : const Color(0xFF0D8549),
+                      color: isCheckIn ? AppColors.primary : const Color(0xFF10B981),
                     ),
                   ),
                   if (index != activities.length - 1)
                     Expanded(
                       child: Container(
                         width: 2,
-                        color: const Color(0xFFFFE4D6),
+                        color: const Color(0xFFE2E8F0),
                         margin: const EdgeInsets.symmetric(vertical: 4),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 18),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isCheckIn ? 'Check-in Kunjungan' : 'Check-out Kunjungan',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF1F2937),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            isCheckIn ? 'Check-in Visit' : 'Visit Completed',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: AppColors.textPrimary,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          Text(
+                            DateFormat('HH:mm').format(activity.createdAt),
+                            style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 11, fontWeight: FontWeight.w700),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      activity.notes ?? 'Tidak ada catatan.',
-                      style: const TextStyle(
-                        color: Color(0xFF6B7280),
-                        fontSize: 13,
-                        height: 1.4,
+                      const SizedBox(height: 6),
+                      Text(
+                        activity.notes ?? 'Regular client visit and follow-up.',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                          height: 1.5,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      DateFormat('dd MMM yyyy, HH:mm').format(activity.createdAt),
-                      style: const TextStyle(
-                        color: Color(0xFF9CA3AF),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 8),
+                      Text(
+                        DateFormat('EEEE, dd MMM yyyy').format(activity.createdAt),
+                        style: const TextStyle(
+                          color: AppColors.textPlaceholder,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -659,10 +731,16 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
 
   Widget _buildDealsList(List<Deal> deals) {
     if (deals.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 40),
-          child: Text('Tidak ada deal aktif', style: TextStyle(color: Color(0xFF6B7280))),
+          padding: const EdgeInsets.symmetric(vertical: 60),
+          child: Column(
+            children: [
+              Icon(LucideIcons.briefcase, size: 48, color: AppColors.textPlaceholder.withOpacity(0.5)),
+              const SizedBox(height: 16),
+              const Text('No active deals found.', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            ],
+          ),
         ),
       );
     }
@@ -673,35 +751,52 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
       itemBuilder: (context, index) {
         final deal = deals[index];
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFF3F4F6)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(color: Color(0xFFF0FDF4), shape: BoxShape.circle),
-                child: const Icon(LucideIcons.dollarSign, color: Color(0xFF22C55E), size: 20),
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(LucideIcons.dollarSign, color: Color(0xFF10B981), size: 24),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(deal.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(deal.title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppColors.textPrimary)),
                     const SizedBox(height: 4),
-                    Text(deal.stage.toUpperCase(), style: const TextStyle(color: Color(0xFF6B7280), fontSize: 11, fontWeight: FontWeight.w800)),
+                    Text(deal.stage.replaceAll('_', ' ').toUpperCase(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
                   ],
                 ),
               ),
-              Text(
-                'Rp${NumberFormat("#,###").format(deal.amount ?? 0)}',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Rp${NumberFormat("#,###", "id_ID").format(deal.amount ?? 0)}',
+                    style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.primary, fontSize: 15),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Expected', style: TextStyle(color: AppColors.textPlaceholder, fontSize: 10, fontWeight: FontWeight.w600)),
+                ],
               ),
             ],
           ),
@@ -712,10 +807,16 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
 
   Widget _buildVisitHistory(List<VisitSchedule> schedules) {
     if (schedules.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 40),
-          child: Text('Tidak ada jadwal kunjungan', style: TextStyle(color: Color(0xFF6B7280))),
+          padding: const EdgeInsets.symmetric(vertical: 60),
+          child: Column(
+            children: [
+              Icon(LucideIcons.calendarDays, size: 48, color: AppColors.textPlaceholder.withOpacity(0.5)),
+              const SizedBox(height: 16),
+              const Text('No visit schedules.', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            ],
+          ),
         ),
       );
     }
@@ -728,54 +829,54 @@ class _CustomerDetailPageState extends State<CustomerDetailPage>
         final isUpcoming = schedule.date.isAfter(DateTime.now());
         
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFF3F4F6)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFF1F5F9)),
           ),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: isUpcoming ? const Color(0xFFEFF6FF) : const Color(0xFFF3F4F6),
-                  shape: BoxShape.circle,
+                  color: isUpcoming ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   LucideIcons.calendar,
-                  color: isUpcoming ? const Color(0xFF3B82F6) : const Color(0xFF6B7280),
-                  size: 20,
+                  color: isUpcoming ? const Color(0xFF3B82F6) : AppColors.textPlaceholder,
+                  size: 24,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(schedule.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(schedule.title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.textPrimary)),
                     const SizedBox(height: 4),
                     Text(
-                      DateFormat('dd MMM yyyy').format(schedule.date),
-                      style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+                      DateFormat('EEEE, dd MMM yyyy').format(schedule.date),
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: schedule.status == 'completed' ? const Color(0xFFF0FDF4) : const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(6),
+                  color: schedule.status == 'completed' ? const Color(0xFFF0FDF4) : const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   schedule.status.toUpperCase(),
                   style: TextStyle(
-                    color: schedule.status == 'completed' ? const Color(0xFF22C55E) : const Color(0xFF0D8549),
+                    color: schedule.status == 'completed' ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
                     fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ),

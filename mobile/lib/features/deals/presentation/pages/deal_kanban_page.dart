@@ -12,13 +12,7 @@ import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
 import '../../../auth/presentation/bloc/auth_state.dart' as auth;
 import '../../../auth/presentation/bloc/auth_event.dart' as auth;
 import '../../../../core/widgets/app_sidebar.dart';
-
-// Emerald Green Palette
-const Color _primaryEmerald = Color(0xFF059669);
-const Color _darkEmerald = Color(0xFF064E3B);
-const Color _accentEmerald = Color(0xFF10B981);
-const Color _lightEmerald = Color(0xFFECFDF5);
-const Color _bgEmerald = Color(0xFFF9FAFB);
+import '../../../../core/theme/app_colors.dart';
 
 class DealKanbanPage extends StatefulWidget {
   const DealKanbanPage({super.key});
@@ -50,13 +44,13 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
   };
 
   final Map<String, Color> _stageColors = {
-    'prospect': const Color(0xFF6B7280), // Slate/Grey
-    'survey': const Color(0xFF8B5CF6),    // Violet
-    'negotiation': const Color(0xFFF59E0B), // Amber
-    'closing': const Color(0xFF10B981),   // Emerald
-    'pre_order': const Color(0xFF6366F1), // Indigo
-    'closed_won': const Color(0xFF059669), // Emerald Dark
-    'closed_lost': const Color(0xFFEF4444), // Red
+    'prospect': const Color(0xFF64748B),
+    'survey': const Color(0xFF8B5CF6),
+    'negotiation': const Color(0xFFF59E0B),
+    'closing': const Color(0xFF10B981),
+    'pre_order': const Color(0xFF6366F1),
+    'closed_won': const Color(0xFF059669),
+    'closed_lost': const Color(0xFFEF4444),
   };
 
   @override
@@ -78,40 +72,8 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bgEmerald,
+      backgroundColor: AppColors.background,
       drawer: const AppSidebar(),
-      appBar: AppBar(
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(LucideIcons.menu, color: _darkEmerald),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-        title: const Text('Deal Kanban Pipeline', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF111827))),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.refreshCw, size: 20),
-            onPressed: _refreshDeals,
-          ),
-          const SizedBox(width: 8),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: ElevatedButton.icon(
-              onPressed: () => context.push('/deals/add'),
-              icon: const Icon(LucideIcons.plus, size: 16),
-              label: const Text('Add Deal', style: TextStyle(fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryEmerald,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-        ],
-      ),
       body: MultiBlocListener(
         listeners: [
           BlocListener<DealBloc, DealState>(
@@ -122,27 +84,149 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
             },
           ),
         ],
-        child: BlocBuilder<DealBloc, DealState>(
-          builder: (context, state) {
-            if (state is DealLoading && _lastDeals.isEmpty) {
-              return const Center(child: CircularProgressIndicator(color: _primaryEmerald));
-            }
+        child: Column(
+          children: [
+            _buildPremiumHeader(),
+            Expanded(
+              child: BlocBuilder<DealBloc, DealState>(
+                builder: (context, state) {
+                  if (state is DealLoading && _lastDeals.isEmpty) {
+                    return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+                  }
 
-            if (state is DealsLoaded) {
-              _lastDeals = state.deals;
-              return _buildKanbanBoard(state.deals);
-            }
+                  if (state is DealsLoaded) {
+                    _lastDeals = state.deals;
+                    return _buildKanbanBoard(state.deals);
+                  }
 
-            if (state is DealError && _lastDeals.isEmpty) {
-              return Center(child: Text(state.message));
-            }
-            
-            if (_lastDeals.isNotEmpty) {
-              return _buildKanbanBoard(_lastDeals);
-            }
+                  if (state is DealError && _lastDeals.isEmpty) {
+                    return Center(child: Text(state.message));
+                  }
+                  
+                  if (_lastDeals.isNotEmpty) {
+                    return _buildKanbanBoard(_lastDeals);
+                  }
 
-            return const Center(child: Text('No deals found'));
-          },
+                  return const Center(child: Text('No deals found'));
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPremiumHeader() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppColors.premiumGradient,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Builder(
+                    builder: (context) => GestureDetector(
+                      onTap: () => Scaffold.of(context).openDrawer(),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: const Icon(LucideIcons.menu, color: Colors.white, size: 22),
+                      ),
+                    ),
+                  ),
+                  const Column(
+                    children: [
+                      Text(
+                        'Sales Pipeline',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Visual Board Management',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  GestureDetector(
+                    onTap: _refreshDeals,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(LucideIcons.refreshCw, color: Colors.white, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withOpacity(0.05)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(LucideIcons.search, color: Colors.white60, size: 18),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Search deals...',
+                            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () => context.push('/deals/add'),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4)),
+                        ],
+                      ),
+                      child: const Icon(LucideIcons.plus, color: AppColors.primary, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -151,9 +235,9 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
   Widget _buildKanbanBoard(List<Deal> deals) {
     return ListView.separated(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
       itemCount: _stages.length,
-      separatorBuilder: (context, index) => const SizedBox(width: 16),
+      separatorBuilder: (context, index) => const SizedBox(width: 20),
       itemBuilder: (context, index) {
         final stage = _stages[index];
         final stageDeals = deals.where((d) => d.stage == stage).toList();
@@ -177,73 +261,66 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
         final bool isColumnHovered = candidateData.isNotEmpty;
 
         return Container(
-          width: 300,
+          width: 310,
           decoration: BoxDecoration(
-            color: isColumnHovered ? stageColor.withOpacity(0.05) : const Color(0xFFF3F4F6).withOpacity(0.5),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isColumnHovered ? stageColor.withOpacity(0.2) : Colors.transparent, width: 2),
+            color: isColumnHovered ? stageColor.withOpacity(0.06) : Colors.white.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isColumnHovered ? stageColor.withOpacity(0.3) : const Color(0xFFF1F5F9), 
+              width: 2,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Column Header
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(color: stageColor.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2))
-                            ],
+                            color: stageColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(width: 8, height: 8, decoration: BoxDecoration(color: stageColor, shape: BoxShape.circle)),
-                              const SizedBox(width: 6),
-                              Text(
-                                _stageLabels[stage]!,
-                                style: const TextStyle(color: Color(0xFF1F2937), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
-                              ),
-                            ],
+                          child: Text(
+                            _stageLabels[stage]!,
+                            style: TextStyle(color: stageColor, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1),
                           ),
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
                           child: Text(
                             deals.length.toString(),
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: stageColor),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     Text(
                       'Rp ${NumberFormat('#,###', 'id_ID').format(totalAmount)}',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _darkEmerald),
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary, letterSpacing: -0.5),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      'TOTAL VALUE',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.grey.shade400, letterSpacing: 1.0),
+                      'STAGED VOLUME',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.textPlaceholder, letterSpacing: 0.5),
                     ),
                   ],
                 ),
               ),
-              const Divider(height: 1),
               
               // Deal Cards
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   itemCount: deals.length,
                   itemBuilder: (context, index) {
                     final deal = deals[index];
@@ -274,8 +351,8 @@ class _DealKanbanPageState extends State<DealKanbanPage> {
           color: Colors.transparent,
           child: _CardContent(deal: deal, isDragging: true, isLocked: isLocked),
         ),
-        childWhenDragging: Opacity(opacity: 0.3, child: _CardContent(deal: deal, isLocked: isLocked)),
-        child: InkWell(
+        childWhenDragging: Opacity(opacity: 0.4, child: _CardContent(deal: deal, isLocked: isLocked)),
+        child: GestureDetector(
           onTap: () => context.push('/deals/${deal.id}'),
           child: _CardContent(deal: deal, isLocked: isLocked),
         ),
@@ -294,74 +371,82 @@ class _CardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: isDragging ? 280 : double.infinity,
+      width: isDragging ? 290 : double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF3F4F6)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Text(
                   deal.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827)),
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.textPrimary, letterSpacing: -0.3),
                 ),
               ),
               if (isLocked)
-                const Icon(LucideIcons.lock, size: 14, color: Colors.grey)
+                const Icon(LucideIcons.lock, size: 14, color: AppColors.textPlaceholder)
               else
-                const Icon(LucideIcons.moreHorizontal, size: 14, color: Colors.grey),
+                const Icon(LucideIcons.moreHorizontal, size: 16, color: AppColors.textPlaceholder),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
-              const Icon(LucideIcons.user, size: 12, color: Color(0xFF6B7280)),
-              const SizedBox(width: 4),
+              Icon(LucideIcons.user, size: 12, color: AppColors.textPlaceholder),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  deal.customer?.name ?? 'Unknown Customer',
-                  style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                  deal.customer?.name ?? 'Anonymous Client',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Rp ${NumberFormat('#,###', 'id_ID').format(deal.amount ?? 0)}',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: _primaryEmerald),
+                'Rp${NumberFormat('#,###', 'id_ID').format(deal.amount ?? 0)}',
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.primary),
               ),
               if (deal.probability != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: _lightEmerald, borderRadius: BorderRadius.circular(6)),
-                  child: Text('${deal.probability}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _primaryEmerald)),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1), 
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('${deal.probability}%', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppColors.primary)),
                 ),
             ],
           ),
           if (deal.salesmanName != null && !isDragging) ...[
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+            const SizedBox(height: 10),
             Row(
               children: [
-                CircleAvatar(radius: 8, backgroundColor: Colors.grey[200], child: const Icon(LucideIcons.user, size: 8, color: Colors.grey)),
-                const SizedBox(width: 6),
-                Text(deal.salesmanName!, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(color: const Color(0xFFF1F5F9), shape: BoxShape.circle),
+                  child: const Icon(LucideIcons.user, size: 10, color: AppColors.textPlaceholder),
+                ),
+                const SizedBox(width: 8),
+                Text(deal.salesmanName!, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w700)),
               ],
             ),
           ],

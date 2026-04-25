@@ -4,10 +4,12 @@ import '../../domain/entities/kpi_summary.dart';
 import '../../domain/entities/kpi_dashboard.dart';
 import '../../../deals/domain/entities/deal.dart';
 import '../../../visits/domain/entities/visit_activity.dart';
+import '../../../customers/domain/entities/invoice.dart';
 
 abstract class DashboardRemoteDataSource {
   Future<KpiDashboard> getKpiSummary();
   Future<List<Map<String, dynamic>>> getVisitRecommendations();
+  Future<List<Invoice>> getPendingDeliveries();
 }
 
 class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
@@ -20,7 +22,6 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
     final response = await _dio.get(ApiEndpoints.kpiSummary);
     final dynamic dataRaw = response.data['data'];
     if (dataRaw == null || dataRaw is! Map) {
-      // Return a default set if data is missing or malformed
       return KpiDashboard(
         summary: const KpiSummary(
           totalSales: 0,
@@ -65,5 +66,12 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
     } catch (_) {
       return [];
     }
+  }
+
+  @override
+  Future<List<Invoice>> getPendingDeliveries() async {
+    final response = await _dio.get('${ApiEndpoints.baseUrl}/invoices', queryParameters: {'status': 'unpaid'});
+    final List data = response.data['data'] ?? [];
+    return data.map((e) => Invoice.fromJson(e)).toList();
   }
 }

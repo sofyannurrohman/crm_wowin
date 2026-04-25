@@ -26,6 +26,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
     final kpiResult = await getKpiSummary();
     final routeResult = await repository.getRouteTasks(salesId: event.salesId);
+    final deliveryResult = await repository.getPendingDeliveries();
 
     kpiResult.fold(
       (failure) => emit(DashboardError(failure.message)),
@@ -33,10 +34,16 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         routeResult.fold(
           (failure) => emit(DashboardError(failure.message)),
           (tasks) {
-            emit(DashboardLoaded(
-              dashboard,
-              routeTasks: tasks,
-            ));
+            deliveryResult.fold(
+              (failure) => emit(DashboardError(failure.message)),
+              (deliveries) {
+                emit(DashboardLoaded(
+                  dashboard,
+                  routeTasks: tasks,
+                  pendingInvoices: deliveries,
+                ));
+              },
+            );
           },
         );
       },

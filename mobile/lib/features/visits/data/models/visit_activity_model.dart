@@ -24,6 +24,8 @@ class VisitActivityModel extends VisitActivity {
     super.dealAmount,
     super.taskCompleted = false,
     super.taskDestinationId,
+    super.status,
+    super.notaPhotoPath,
     required super.createdAt,
   });
 
@@ -51,6 +53,8 @@ class VisitActivityModel extends VisitActivity {
       dealAmount: (json['deal_amount'] != null) ? (json['deal_amount'] as num).toDouble() : null,
       taskCompleted: json['task_completed'] ?? false,
       taskDestinationId: json['task_destination_id'],
+      status: json['status'],
+      notaPhotoPath: json['nota_photo_path'],
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']).toLocal() 
           : DateTime.now(),

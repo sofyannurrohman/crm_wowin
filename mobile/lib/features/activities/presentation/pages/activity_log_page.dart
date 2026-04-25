@@ -3,12 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
 import '../../../visits/domain/entities/visit_activity.dart';
-import '../../../visits/presentation/widgets/check_out_sheet.dart';
 import '../../../../core/api/api_endpoints.dart';
-import '../../../../l10n/app_localizations.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../visits/presentation/bloc/visit_bloc.dart';
 import '../../../visits/presentation/bloc/visit_event.dart';
 import '../../../visits/presentation/bloc/visit_state.dart';
@@ -21,14 +22,8 @@ class ActivityLogPage extends StatefulWidget {
 }
 
 class _ActivityLogPageState extends State<ActivityLogPage> {
-  // changed orange -> new green #0D8549
-  static const Color _orange = Color(0xFF0D8549);
-  static const Color _bg = Color(0xFFF9FAFB);
-  static const Color _textPrimary = Color(0xFF111827);
-  static const Color _textSecondary = Color(0xFF6B7280);
-
   int _selectedTab = 0;
-  final List<String> _tabs = ['Semua', 'Check-in', 'Check-out'];
+  final List<String> _tabs = ['All', 'Check-in', 'Check-out'];
 
   @override
   void initState() {
@@ -43,26 +38,117 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
-      appBar: _buildAppBar(context),
+      backgroundColor: AppColors.background,
       drawer: const AppSidebar(),
       body: BlocBuilder<VisitBloc, VisitState>(
         builder: (context, state) {
-          if (state is VisitLoading) {
-            return const Center(child: CircularProgressIndicator(color: _orange));
-          } else if (state is ActivitiesLoaded) {
-            final activities = state.activities;
-            if (activities.isEmpty) {
-              return _buildEmptyState();
-            }
-            return _buildActivityList(activities);
-          } else if (state is VisitError) {
-            return Center(child: Text(state.message));
-          }
-          return const Center(child: Text('Tarik untuk memuat aktivitas'));
+          return Column(
+            children: [
+              _buildPremiumHeader(),
+              Expanded(
+                child: _buildContent(state),
+              ),
+            ],
+          );
         },
       ),
     );
+  }
+
+  Widget _buildPremiumHeader() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppColors.premiumGradient,
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Builder(
+                    builder: (context) => IconButton(
+                      icon: const Icon(LucideIcons.menu, color: Colors.white),
+                      onPressed: () => Scaffold.of(context).openDrawer(),
+                    ),
+                  ),
+                  const Text('Activity Log', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
+                  IconButton(
+                    icon: const Icon(LucideIcons.refreshCw, color: Colors.white, size: 20),
+                    onPressed: _fetchActivities,
+                  ),
+                ],
+              ),
+            ),
+            const Text('Visit Records', textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5)),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              height: 48,
+              child: Row(
+                children: List.generate(_tabs.length, (index) {
+                  final isSelected = _selectedTab == index;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedTab = index),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _tabs[index],
+                            style: TextStyle(color: isSelected ? Colors.white : Colors.white60, fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600, fontSize: 13, letterSpacing: 0.5),
+                          ),
+                          const SizedBox(height: 8),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            height: 4, width: isSelected ? 40 : 0,
+                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(VisitState state) {
+    if (state is VisitLoading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    if (state is VisitError) return _buildErrorState(state.message);
+    if (state is ActivitiesLoaded) {
+      if (state.activities.isEmpty) return _buildEmptyState();
+      
+      final filtered = state.activities.where((a) {
+        final normalizedType = a.type.toLowerCase().replaceAll('-', '').replaceAll('_', ''); 
+        if (_selectedTab == 1) return normalizedType == 'checkin' || normalizedType == 'clockin';
+        if (_selectedTab == 2) return normalizedType == 'checkout' || normalizedType == 'clockout';
+        return true;
+      }).toList();
+
+      if (filtered.isEmpty) return _buildEmptyState();
+
+      return RefreshIndicator(
+        color: AppColors.primary,
+        onRefresh: () async => _fetchActivities(),
+        child: ListView.builder(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
+          itemCount: filtered.length,
+          itemBuilder: (context, index) => _buildActivityNode(filtered[index], isLast: index == filtered.length - 1).animate().fadeIn(delay: Duration(milliseconds: 50 * index)).slideX(),
+        ),
+      );
+    }
+    return const Center(child: Text('Tarik untuk memuat aktivitas'));
   }
 
   Widget _buildEmptyState() {
@@ -70,91 +156,13 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(LucideIcons.history, size: 64, color: _textSecondary.withOpacity(0.3)),
-          const SizedBox(height: 16),
-          const Text('Belum ada riwayat aktivitas', style: TextStyle(color: _textSecondary)),
+          Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(color: const Color(0xFFF1F5F9), shape: BoxShape.circle), child: Icon(LucideIcons.history, size: 48, color: AppColors.textPlaceholder)),
+          const SizedBox(height: 24),
+          const Text('No records found', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 8),
+          const Text('Your activity history will appear here.', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
         ],
       ),
-    );
-  }
-
-  AppBar _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: const Icon(LucideIcons.menu, color: Color(0xFF4B5563)),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
-      ),
-      centerTitle: true,
-      title: const Text(
-        'Log Aktivitas',
-        style: TextStyle(
-          color: _textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(48),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-          ),
-          child: Row(
-            children: List.generate(_tabs.length, (index) {
-              final isSelected = _selectedTab == index;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _selectedTab = index),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: isSelected ? _orange : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _tabs[index],
-                      style: TextStyle(
-                        color: isSelected ? _orange : _textSecondary,
-                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActivityList(List<VisitActivity> activities) {
-    // Filter by tab
-    final filtered = activities.where((a) {
-      final normalizedType = a.type.toLowerCase().replaceAll('-', '').replaceAll('_', ''); 
-      if (_selectedTab == 1) return normalizedType == 'checkin' || normalizedType == 'clockin';
-      if (_selectedTab == 2) return normalizedType == 'checkout' || normalizedType == 'clockout';
-      return true;
-    }).toList();
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      itemCount: filtered.length,
-      itemBuilder: (context, index) {
-        return _buildActivityNode(filtered[index], isLast: index == filtered.length - 1);
-      },
     );
   }
 
@@ -166,46 +174,37 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
     final type = item.type.toLowerCase().replaceAll('-', '').replaceAll('_', '');
     if (type == 'checkin' || type == 'clockin') {
       icon = type == 'clockin' ? LucideIcons.logIn : LucideIcons.mapPin;
-      iconColor = type == 'clockin' ? Colors.blue : _orange;
-      iconBgColor = type == 'clockin' ? const Color(0xFFEFF6FF) : const Color(0xFFEFFBF5);
+      iconColor = const Color(0xFF3B82F6);
+      iconBgColor = const Color(0xFFEFF6FF);
     } else if (type == 'checkout' || type == 'clockout') {
       icon = type == 'clockout' ? LucideIcons.logOut : LucideIcons.checkCircle;
-      iconColor = type == 'clockout' ? Colors.red : const Color(0xFF10B981);
-      iconBgColor = type == 'clockout' ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4);
+      iconColor = const Color(0xFF10B981);
+      iconBgColor = const Color(0xFFF0FDF4);
     } else {
       icon = LucideIcons.activity;
-      iconColor = Colors.blue;
-      iconBgColor = const Color(0xFFEFF6FF);
+      iconColor = const Color(0xFF64748B);
+      iconBgColor = const Color(0xFFF8FAFC);
     }
 
     return IntrinsicHeight(
       child: InkWell(
         onTap: () => _showActivityDetails(item),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Column(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: iconBgColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: iconColor, size: 18),
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(color: iconBgColor, shape: BoxShape.circle, border: Border.all(color: iconColor.withOpacity(0.1), width: 2)),
+                  child: Icon(icon, color: iconColor, size: 20),
                 ),
                 if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 1.5,
-                      color: Colors.grey.shade200,
-                    ),
-                  ),
+                  Expanded(child: Container(width: 2, color: const Color(0xFFF1F5F9))),
               ],
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 20),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 32.0),
@@ -217,69 +216,33 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
                       children: [
                         Expanded(
                           child: Text(
-                            item.type.toLowerCase().contains('check-in') || item.type.toLowerCase() == 'checkin'
-                                ? 'Check-in di Lokasi' 
-                                : item.type.toLowerCase().contains('check-out') || item.type.toLowerCase() == 'checkout'
-                                    ? 'Check-out & Hasil Kunjungan'
-                                    : item.type.toLowerCase().contains('clock_in') || item.type.toLowerCase() == 'clockin'
-                                        ? 'Absen Masuk (Attendance)'
-                                        : item.type.toLowerCase().contains('clock_out') || item.type.toLowerCase() == 'clockout'
-                                            ? 'Absen Pulang (Attendance)'
-                                            : 'Aktivitas: ${item.type}',
-                            style: const TextStyle(
-                              color: _textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            _getPrettyTypeLabel(item.type),
+                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w900),
                           ),
                         ),
-                        Text(
-                          DateFormat('HH:mm').format(item.createdAt),
-                          style: TextStyle(
-                            color: _textSecondary.withOpacity(0.7),
-                            fontSize: 12,
-                          ),
-                        ),
+                        Text(DateFormat('HH:mm').format(item.createdAt), style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 12, fontWeight: FontWeight.w700)),
                       ],
                     ),
                     const SizedBox(height: 6),
                     if (item.notes != null && item.notes!.isNotEmpty)
-                      Text(
-                        item.notes!,
-                        style: const TextStyle(color: _textSecondary, fontSize: 14),
-                      ),
-                    const SizedBox(height: 4),
+                      Text(item.notes!, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w500, height: 1.4)),
+                    const SizedBox(height: 12),
                     if (item.dealTitle != null || item.dealId != null) ...[
-                      const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.indigo.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.indigo.withOpacity(0.2)),
-                        ),
+                        decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE0E7FF))),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(LucideIcons.briefcase, size: 14, color: Colors.indigo),
+                            const Icon(LucideIcons.briefcase, size: 12, color: Color(0xFF4F46E5)),
                             const SizedBox(width: 8),
-                            Text(
-                              item.dealTitle ?? 'Linked Deal',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.indigo,
-                              ),
-                            ),
+                            Text(item.dealTitle ?? 'Linked Deal', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF4F46E5), letterSpacing: 0.5)),
                           ],
                         ),
                       ),
                       const SizedBox(height: 8),
                     ],
-                    Text(
-                      DateFormat('MMM d, yyyy').format(item.createdAt),
-                      style: TextStyle(color: _textSecondary.withOpacity(0.5), fontSize: 11),
-                    ),
+                    Text(DateFormat('MMM d, yyyy').format(item.createdAt), style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 10, fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -288,6 +251,15 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
         ),
       ),
     );
+  }
+
+  String _getPrettyTypeLabel(String type) {
+    final t = type.toLowerCase();
+    if (t.contains('checkin') || t.contains('check-in')) return 'Visit Check-in';
+    if (t.contains('checkout') || t.contains('check-out')) return 'Visit Checkout';
+    if (t.contains('clockin') || t.contains('clock_in')) return 'Clock-in';
+    if (t.contains('clockout') || t.contains('clock_out')) return 'Clock-out';
+    return type;
   }
 
   void _showActivityDetails(VisitActivity activity) {
@@ -298,6 +270,24 @@ class _ActivityLogPageState extends State<ActivityLogPage> {
       builder: (context) => _ActivityDetailSheet(activity: activity),
     );
   }
+
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(LucideIcons.alertCircle, size: 64, color: Color(0xFFEF4444)),
+            const SizedBox(height: 24),
+            const Text('Data load failed', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ActivityDetailSheet extends StatelessWidget {
@@ -305,214 +295,115 @@ class _ActivityDetailSheet extends StatelessWidget {
 
   const _ActivityDetailSheet({required this.activity});
 
-  // Re-define these or make them public in ActivityLogPage if needed. 
-  // For now local constants for clarity.
-  static const Color _textPrimary = Color(0xFF111827);
-  static const Color _textSecondary = Color(0xFF6B7280);
-
   @override
   Widget build(BuildContext context) {
-    final type = activity.type.toLowerCase().replaceAll('-', '').replaceAll('_', '');
-    
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle bar
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-
-            Text(
-              activity.type.toUpperCase(),
-              style: TextStyle(
-                color: Colors.blue.shade700,
-                fontWeight: FontWeight.w900,
-                fontSize: 12,
-                letterSpacing: 1.2,
-              ),
-            ),
+      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 24), decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2)))),
+          Text(activity.type.toUpperCase(), style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1.5)),
+          const SizedBox(height: 8),
+          Text(_getPrettyTitle(activity), style: const TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+          const SizedBox(height: 4),
+          Text(DateFormat('EEEE, d MMMM yyyy - HH:mm').format(activity.createdAt), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Divider(color: Color(0xFFF1F5F9))),
+          
+          if (activity.notes != null && activity.notes!.isNotEmpty) ...[
+            const Text('ACTIVITY NOTES', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppColors.textPlaceholder, letterSpacing: 1)),
             const SizedBox(height: 8),
-            Text(
-              _getDisplayTitle(activity),
-              style: const TextStyle(
-                color: _textPrimary,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              DateFormat('EEEE, d MMMM yyyy - HH:mm').format(activity.createdAt),
-              style: const TextStyle(color: _textSecondary, fontSize: 13),
-            ),
-            
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 20),
-              child: Divider(),
-            ),
-
-            if (activity.notes != null && activity.notes!.isNotEmpty) ...[
-              const Text(
-                'Catatan / Hasil Kunjungan',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _textPrimary),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                activity.notes!,
-                style: const TextStyle(color: _textSecondary, fontSize: 15, height: 1.5),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            if (activity.outcome != null && activity.outcome!.isNotEmpty) ...[
-              const Text(
-                'Hasil Terstruktur',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _textPrimary),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade100),
-                ),
-                child: Text(
-                  activity.outcome!,
-                  style: TextStyle(color: Colors.green.shade800, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Location Info
-            const Text(
-              'Detail Lokasi',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _textPrimary),
-            ),
-            const SizedBox(height: 12),
-            _buildInfoRow(LucideIcons.mapPin, 'Koordinat', '${activity.latitude}, ${activity.longitude}'),
-            if (activity.distance != null)
-              _buildInfoRow(LucideIcons.navigation, 'Jarak dari Target', '${activity.distance!.toStringAsFixed(1)} meter'),
-            
+            Text(activity.notes!, style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, height: 1.5, fontWeight: FontWeight.w500)),
             const SizedBox(height: 24),
+          ],
 
-            // Photos
-            if (activity.selfiePhotoPath != null || activity.placePhotoPath != null) ...[
-              const Text(
-                'Foto Validasi',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _textPrimary),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 180,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    if (activity.selfiePhotoPath != null)
-                      _buildPhotoCard('Foto Selfie', activity.selfiePhotoPath!),
-                    if (activity.placePhotoPath != null)
-                      _buildPhotoCard('Foto Lokasi', activity.placePhotoPath!),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
-            
-            SizedBox(
+          if (activity.outcome != null && activity.outcome!.isNotEmpty) ...[
+            const Text('STRUCTURED OUTCOME', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppColors.textPlaceholder, letterSpacing: 1)),
+            const SizedBox(height: 12),
+            Container(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE8622A),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Tutup', style: TextStyle(fontWeight: FontWeight.bold)),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFBBF7D0))),
+              child: Text(activity.outcome!, style: const TextStyle(color: Color(0xFF166534), fontWeight: FontWeight.w800, fontSize: 14)),
+            ),
+            const SizedBox(height: 24),
+          ],
+
+          const Text('LOCATION DETAILS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppColors.textPlaceholder, letterSpacing: 1)),
+          const SizedBox(height: 12),
+          _buildInfoRow(LucideIcons.mapPin, 'Coordinates', '${activity.latitude}, ${activity.longitude}'),
+          if (activity.distance != null)
+            _buildInfoRow(LucideIcons.navigation, 'Accuracy', '${activity.distance!.toStringAsFixed(1)}m from target'),
+          const SizedBox(height: 24),
+
+          if (activity.selfiePhotoPath != null || activity.placePhotoPath != null) ...[
+            const Text('VALIDATION PHOTOS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppColors.textPlaceholder, letterSpacing: 1)),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 140,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  if (activity.selfiePhotoPath != null) _buildPhotoCard('Selfie', activity.selfiePhotoPath!),
+                  if (activity.placePhotoPath != null) ...[
+                    const SizedBox(width: 16),
+                    _buildPhotoCard('Location', activity.placePhotoPath!),
+                  ],
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 32),
           ],
-        ),
+          
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, minimumSize: const Size(double.infinity, 60), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), elevation: 0),
+            child: const Text('DISMISS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+          ),
+        ],
       ),
     );
   }
 
-  String _getDisplayTitle(VisitActivity item) {
-    final type = item.type.toLowerCase();
-    if (type.contains('check-in') || type == 'checkin') return 'Check-in di Lokasi';
-    if (type.contains('check-out') || type == 'checkout') return 'Check-out & Hasil Kunjungan';
-    if (type.contains('clock_in') || type == 'clockin') return 'Absen Masuk';
-    if (type.contains('clock_out') || type == 'clockout') return 'Absen Pulang';
-    return 'Aktivitas: ${item.type}';
+  String _getPrettyTitle(VisitActivity item) {
+    final t = item.type.toLowerCase();
+    if (t.contains('checkin')) return 'Location Check-in';
+    if (t.contains('checkout')) return 'Visit Summary';
+    if (t.contains('clockin')) return 'Shift Started';
+    if (t.contains('clockout')) return 'Shift Ended';
+    return item.type;
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: _textSecondary),
-          const SizedBox(width: 8),
-          Text('$label: ', style: const TextStyle(color: _textSecondary, fontSize: 13)),
-          Expanded(child: Text(value, style: const TextStyle(color: _textPrimary, fontSize: 13, fontWeight: FontWeight.bold))),
+          Icon(icon, size: 14, color: AppColors.textPlaceholder),
+          const SizedBox(width: 12),
+          Text('$label: ', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+          Expanded(child: Text(value, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w900))),
         ],
       ),
     );
   }
 
   Widget _buildPhotoCard(String label, String path) {
-    // Determine full URL using api endpoints correctly to prevent duplicate /uploads
     final displayPath = path.startsWith('/') ? path : '/$path';
     final fullUrl = path.startsWith('http') ? path : '${ApiEndpoints.uploadsBaseUrl}$displayPath';
 
     return Container(
-      width: 140,
+      width: 120,
       margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFF1F5F9)), color: Colors.white),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Image.network(
-              fullUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: Colors.grey.shade100,
-                child: const Icon(LucideIcons.imageOff, color: Colors.grey),
-              ),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            color: Colors.grey.shade50,
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _textSecondary),
-            ),
-          ),
+          Expanded(child: Image.network(fullUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: const Color(0xFFF1F5F9), child: const Icon(LucideIcons.imageOff, color: AppColors.textPlaceholder, size: 24)))),
+          Container(padding: const EdgeInsets.symmetric(vertical: 6), color: const Color(0xFFF8FAFC), child: Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppColors.textPlaceholder))),
         ],
       ),
     );

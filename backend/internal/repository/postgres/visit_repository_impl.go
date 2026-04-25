@@ -165,12 +165,16 @@ func (r *visitRepoImpl) LogActivity(ctx context.Context, a *models.VisitActivity
 		return err
 	} else {
 		// Check-out logic
+		// Parameters: $1=Longitude, $2=Latitude, $3=Notes, $4=ScheduleID,
+		//             $5=TaskDestinationID, $6=CustomerID, $7=LeadID, $8=SalesID,
+		//             $9=PlacePhotoPath, $10=NotaPhotoPath
 		query := `UPDATE visits SET 
 					checkout_at = NOW(),
 					checkout_location = ST_SetSRID(ST_MakePoint($1, $2), 4326),
-					status = 'completed',
+					status = CASE WHEN $10::text IS NOT NULL AND $10 != '' THEN 'DRAFT_PHOTO' ELSE 'completed' END,
 					result_notes = CASE WHEN $3::text IS NOT NULL THEN COALESCE(result_notes || E'\n' || $3, $3) ELSE result_notes END,
-					place_photo_path = COALESCE($9, place_photo_path)
+					place_photo_path = COALESCE($9, place_photo_path),
+					nota_photo_path = CASE WHEN $10::text IS NOT NULL AND $10 != '' THEN $10 ELSE nota_photo_path END
 				  WHERE (
 					($4::uuid IS NOT NULL AND schedule_id = $4) OR 
 					($5::uuid IS NOT NULL AND task_destination_id = $5) OR 
@@ -179,8 +183,10 @@ func (r *visitRepoImpl) LogActivity(ctx context.Context, a *models.VisitActivity
 				  ) 
 				  AND checkout_at IS NULL
 				  RETURNING id, created_at`
-		err := r.db.QueryRow(ctx, query, a.Longitude, a.Latitude, a.Notes, a.ScheduleID, a.TaskDestinationID, a.CustomerID, a.LeadID, a.SalesID, a.PlacePhotoPath).
-			Scan(&a.ID, &a.CreatedAt)
+		err := r.db.QueryRow(ctx, query,
+			a.Longitude, a.Latitude, a.Notes, a.ScheduleID, a.TaskDestinationID,
+			a.CustomerID, a.LeadID, a.SalesID, a.PlacePhotoPath, a.NotaPhotoPath,
+		).Scan(&a.ID, &a.CreatedAt)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("no active check-in found for this target: %w", dberrors.ErrNotFound)
 		}
@@ -190,12 +196,16 @@ func (r *visitRepoImpl) LogActivity(ctx context.Context, a *models.VisitActivity
 
 func (r *visitRepoImpl) GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error) {
 	query := `
-		SELECT 	id, schedule_id, task_destination_id, sales_id, lead_id, customer_id, deal_id, 
-				ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
-				checkin_distance as distance, result_notes as notes, created_at,
-				CASE WHEN checkout_at IS NULL THEN 'check-in' ELSE 'check-out' END as type,
-				selfie_photo_path, place_photo_path, status
-		FROM visits WHERE schedule_id=$1 ORDER BY created_at ASC
+		SELECT v.id, v.schedule_id, v.task_destination_id, v.sales_id, v.lead_id, v.customer_id, v.deal_id,
+			ST_Y(v.checkin_location::geometry) as lat, ST_X(v.checkin_location::geometry) as lon,
+			v.checkin_distance as distance, v.result_notes as notes, v.created_at,
+			CASE WHEN v.checkout_at IS NULL THEN 'check-in' ELSE 'check-out' END as type,
+			v.selfie_photo_path, v.place_photo_path, COALESCE(v.status, 'completed') as status,
+			v.nota_photo_path, c.name as customer_name, l.name as lead_name
+		FROM visits v
+		LEFT JOIN customers c ON v.customer_id = c.id
+		LEFT JOIN leads l ON v.lead_id = l.id
+		WHERE v.schedule_id=$1 ORDER BY v.created_at ASC
 	`
 	rows, err := r.db.Query(ctx, query, scheduleID)
 	if err != nil {
@@ -207,12 +217,16 @@ func (r *visitRepoImpl) GetActivitiesBySchedule(ctx context.Context, scheduleID 
 
 func (r *visitRepoImpl) GetActivitiesByCustomer(ctx context.Context, customerID uuid.UUID) ([]*models.VisitActivity, error) {
 	query := `
-		SELECT 	id, schedule_id, task_destination_id, sales_id, lead_id, customer_id, deal_id, 
-				ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
-				checkin_distance as distance, result_notes as notes, created_at,
-				CASE WHEN checkout_at IS NULL THEN 'check-in' ELSE 'check-out' END as type,
-				selfie_photo_path, place_photo_path, status
-		FROM visits WHERE customer_id=$1 ORDER BY created_at DESC
+		SELECT v.id, v.schedule_id, v.task_destination_id, v.sales_id, v.lead_id, v.customer_id, v.deal_id,
+			ST_Y(v.checkin_location::geometry) as lat, ST_X(v.checkin_location::geometry) as lon,
+			v.checkin_distance as distance, v.result_notes as notes, v.created_at,
+			CASE WHEN v.checkout_at IS NULL THEN 'check-in' ELSE 'check-out' END as type,
+			v.selfie_photo_path, v.place_photo_path, COALESCE(v.status, 'completed') as status,
+			v.nota_photo_path, c.name as customer_name, l.name as lead_name
+		FROM visits v
+		LEFT JOIN customers c ON v.customer_id = c.id
+		LEFT JOIN leads l ON v.lead_id = l.id
+		WHERE v.customer_id=$1 ORDER BY v.created_at DESC
 	`
 	rows, err := r.db.Query(ctx, query, customerID)
 	if err != nil {
@@ -224,12 +238,16 @@ func (r *visitRepoImpl) GetActivitiesByCustomer(ctx context.Context, customerID 
 
 func (r *visitRepoImpl) GetActivitiesByLead(ctx context.Context, leadID uuid.UUID) ([]*models.VisitActivity, error) {
 	query := `
-		SELECT 	id, schedule_id, task_destination_id, sales_id, lead_id, customer_id, deal_id, 
-				ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
-				checkin_distance as distance, result_notes as notes, created_at,
-				CASE WHEN checkout_at IS NULL THEN 'check-in' ELSE 'check-out' END as type,
-				selfie_photo_path, place_photo_path, status
-		FROM visits WHERE lead_id=$1 ORDER BY created_at DESC
+		SELECT v.id, v.schedule_id, v.task_destination_id, v.sales_id, v.lead_id, v.customer_id, v.deal_id,
+			ST_Y(v.checkin_location::geometry) as lat, ST_X(v.checkin_location::geometry) as lon,
+			v.checkin_distance as distance, v.result_notes as notes, v.created_at,
+			CASE WHEN v.checkout_at IS NULL THEN 'check-in' ELSE 'check-out' END as type,
+			v.selfie_photo_path, v.place_photo_path, COALESCE(v.status, 'completed') as status,
+			v.nota_photo_path, c.name as customer_name, l.name as lead_name
+		FROM visits v
+		LEFT JOIN customers c ON v.customer_id = c.id
+		LEFT JOIN leads l ON v.lead_id = l.id
+		WHERE v.lead_id=$1 ORDER BY v.created_at DESC
 	`
 	rows, err := r.db.Query(ctx, query, leadID)
 	if err != nil {
@@ -243,72 +261,78 @@ func scanActivities(rows pgx.Rows) ([]*models.VisitActivity, error) {
 	results := []*models.VisitActivity{}
 	for rows.Next() {
 		var a models.VisitActivity
-		var selfie, place *string
+		var selfie, place, notaPhoto, customerName, leadName *string
 		err := rows.Scan(
 			&a.ID, &a.ScheduleID, &a.TaskDestinationID, &a.SalesID, &a.LeadID, &a.CustomerID, &a.DealID,
-			&a.Latitude, &a.Longitude, 
+			&a.Latitude, &a.Longitude,
 			&a.Distance, &a.Notes, &a.CreatedAt, &a.Type,
-			&selfie, &place, &a.Status,
+			&selfie, &place, &a.Status, &notaPhoto,
+			&customerName, &leadName,
 		)
 		if err != nil {
 			return nil, err
 		}
 		if selfie != nil { a.SelfiePhotoPath = *selfie }
 		if place != nil { a.PlacePhotoPath = *place }
+		if notaPhoto != nil { a.NotaPhotoPath = *notaPhoto }
+		if customerName != nil { a.CustomerName = *customerName }
+		if leadName != nil { a.LeadName = *leadName }
 		results = append(results, &a)
 	}
 	return results, nil
 }
 
 func (r *visitRepoImpl) ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error) {
-	// Unified query for both Visits and Attendances
 	baseQuery := `
-		SELECT 	id, schedule_id, task_destination_id, sales_id, lead_id, customer_id, deal_id, 
-				lat, lon, distance, notes, created_at, type, selfie_photo_path, place_photo_path
-		FROM (
-			-- Visit Activities
-			SELECT 	id, schedule_id, task_destination_id, sales_id, lead_id, customer_id, deal_id, 
-					ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
-					checkin_distance as distance, result_notes as notes, created_at, 
-					CASE 
-						WHEN checkout_at IS NULL THEN 'check-in' 
-						ELSE 'check-out' 
-					END as type,
-					selfie_photo_path, place_photo_path
-			FROM visits
-			WHERE 1=1
+		SELECT
+			v.id, v.schedule_id, v.task_destination_id, v.sales_id, v.lead_id, v.customer_id, v.deal_id,
+			ST_Y(v.checkin_location::geometry) as lat,
+			ST_X(v.checkin_location::geometry) as lon,
+			v.checkin_distance as distance,
+			v.result_notes as notes,
+			v.created_at,
+			CASE WHEN v.checkout_at IS NULL THEN 'check-in' ELSE 'check-out' END as type,
+			v.selfie_photo_path,
+			v.place_photo_path,
+			COALESCE(v.status, 'completed') as status,
+			v.nota_photo_path,
+			c.name as customer_name,
+			l.name as lead_name
+		FROM visits v
+		LEFT JOIN customers c ON v.customer_id = c.id
+		LEFT JOIN leads l ON v.lead_id = l.id
+		WHERE 1=1
 	`
 	args := []interface{}{}
 	argCount := 1
 
 	if filter.SalesID != nil {
-		baseQuery += fmt.Sprintf(" AND sales_id = $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND v.sales_id = $%d", argCount)
 		args = append(args, *filter.SalesID)
 		argCount++
 	}
 	if filter.LeadID != nil {
-		baseQuery += fmt.Sprintf(" AND lead_id = $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND v.lead_id = $%d", argCount)
 		args = append(args, *filter.LeadID)
 		argCount++
 	}
 	if filter.CustomerID != nil {
-		baseQuery += fmt.Sprintf(" AND customer_id = $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND v.customer_id = $%d", argCount)
 		args = append(args, *filter.CustomerID)
 		argCount++
 	}
 	if filter.StartDate != nil {
-		baseQuery += fmt.Sprintf(" AND created_at >= $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND v.created_at >= $%d", argCount)
 		args = append(args, *filter.StartDate)
 		argCount++
 	}
 	if filter.EndDate != nil {
-		baseQuery += fmt.Sprintf(" AND created_at <= $%d", argCount)
+		baseQuery += fmt.Sprintf(" AND v.created_at <= $%d", argCount)
 		args = append(args, *filter.EndDate)
 		argCount++
 	}
 
-
-	baseQuery += ") AS unified_activities ORDER BY created_at DESC"
+	baseQuery += " ORDER BY v.created_at DESC"
 
 	rows, err := r.db.Query(ctx, baseQuery, args...)
 	if err != nil {

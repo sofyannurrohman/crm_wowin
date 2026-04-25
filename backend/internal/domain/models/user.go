@@ -14,6 +14,7 @@ const (
 	RoleManager    UserRole = "manager"
 	RoleSupervisor UserRole = "supervisor"
 	RoleSales      UserRole = "sales"
+	RoleDelivery   UserRole = "delivery"
 )
 
 // UserStatus controls user access state

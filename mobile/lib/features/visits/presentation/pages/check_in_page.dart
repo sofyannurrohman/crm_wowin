@@ -16,6 +16,7 @@ import '../../../../core/router/route_constants.dart';
 import '../../../../core/utils/image_utils.dart';
 import '../../../../core/services/watermark_service.dart';
 import '../../../../core/services/geocoding_service.dart';
+import '../../../../core/theme/app_colors.dart';
 
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_event.dart';
@@ -76,7 +77,6 @@ class _CheckInPageState extends State<CheckInPage> {
   final PageController _pageController = PageController();
   final MapController _mapController = MapController();
 
-  // Wizard State — now 5 steps: Select, Proximity, Photo (store), Photo (selfie), Summary
   int _currentStep = 0;
   Customer? _selectedCustomer;
   Position? _currentPosition;
@@ -87,31 +87,24 @@ class _CheckInPageState extends State<CheckInPage> {
   Uint8List? _selfieBytes;
   DateTime? _checkInTime;
 
-  // Camera State
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
   List<CameraDescription> _cameras = [];
   bool _isCapturing = false;
   bool _isWatermarking = false;
 
-  // GPS Override
   String? _overrideReason;
   int _gpsSecondsElapsed = 0;
   bool _showOverrideButton = false;
   Timer? _gpsTimer;
 
-  // Live GPS tracking
   StreamSubscription<Position>? _positionStreamSubscription;
-
-  // OSRM Route
   List<ll.LatLng> _routePoints = [];
 
   final FaceDetectorService _faceDetectorService = FaceDetectorService();
   FaceValidationStatus _faceStatus = FaceValidationStatus.none;
   bool _isProcessingFrame = false;
 
-  static const Color _orange = Color(0xFFEA580C);
-  static const Color _bg = Color(0xFFF9FAFB);
   static const int _totalSteps = 4; // 0=Select, 1=Proximity, 2=Selfie, 3=Summary
 
   @override
@@ -130,13 +123,12 @@ class _CheckInPageState extends State<CheckInPage> {
   void _startLiveTracking() {
     const locationSettings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 10, // update every 10 meters moved
+      distanceFilter: 10,
     );
     _positionStreamSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
       (Position position) {
         if (!mounted) return;
         setState(() => _currentPosition = position);
-        // Re-fetch route when user moves significantly
         if (_selectedCustomer?.latitude != null) _fetchRoute();
       },
       onError: (e) => debugPrint('Live tracking error: $e'),
@@ -174,7 +166,6 @@ class _CheckInPageState extends State<CheckInPage> {
   }
 
   Future<void> _initializeCamera({bool useFront = false}) async {
-    // kIsWeb no longer returns early — we want the camera to work in Chrome!
     if (!mounted) return;
 
     try {
@@ -190,10 +181,8 @@ class _CheckInPageState extends State<CheckInPage> {
         _isCameraInitialized = false;
       });
 
-      // On Web, a small delay helps the browser release the hardware from the previous session
       if (kIsWeb) await Future.delayed(const Duration(milliseconds: 300));
 
-      // Prioritize cameras based on useFront
       List<CameraDescription> candidates = [];
       if (useFront) {
         candidates.addAll(_cameras.where((c) => c.lensDirection == CameraLensDirection.front));
@@ -211,11 +200,11 @@ class _CheckInPageState extends State<CheckInPage> {
             camera, 
             ResolutionPreset.medium, 
             enableAudio: false,
-            imageFormatGroup: ImageFormatGroup.jpeg, // jpeg is safer for web capture
+            imageFormatGroup: ImageFormatGroup.jpeg,
           );
           
           await _cameraController!.initialize();
-          lastEx = null; // Success
+          lastEx = null;
           break;
         } on CameraException catch (e) {
           debugPrint('Failed to init camera ${camera.name}: ${e.code}');
@@ -223,7 +212,7 @@ class _CheckInPageState extends State<CheckInPage> {
           if (e.code == 'cameraNotReadable' || e.code == 'CameraAccessDenied') {
             await _cameraController?.dispose();
             _cameraController = null;
-            continue; // Try next camera
+            continue;
           }
           rethrow;
         }
@@ -233,30 +222,28 @@ class _CheckInPageState extends State<CheckInPage> {
 
       if (mounted && _cameraController != null) { 
         setState(() => _isCameraInitialized = true);
-        // Image stream (Face detection) currently only supported on native
         if (useFront && !kIsWeb) _startImageStream();
       }
     } catch (e) {
       debugPrint('Camera init error: $e');
       if (mounted) {
-        String msg = 'Gagal membuka kamera.';
+        String msg = 'Failed to open camera.';
         if (e is CameraException) {
-          if (e.code == 'cameraNotReadable') msg = 'Kamera sedang digunakan aplikasi lain atau tidak terbaca.';
-          if (e.code == 'CameraAccessDenied') msg = 'Izin kamera ditolak. Silakan cek pengaturan browser.';
+          if (e.code == 'cameraNotReadable') msg = 'Camera is in use or not readable.';
+          if (e.code == 'CameraAccessDenied') msg = 'Camera permission denied.';
         }
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating));
       }
     }
   }
 
   void _startImageStream() {
     if (_cameraController == null || !_cameraController!.value.isInitialized || kIsWeb) return;
-    
     _cameraController!.startImageStream(_processCameraImage);
   }
 
   void _processCameraImage(CameraImage image) async {
-    if (kIsWeb || _isProcessingFrame || _currentStep != 3) return;
+    if (kIsWeb || _isProcessingFrame || _currentStep != 2) return;
     _isProcessingFrame = true;
     try {
       final inputImage = _faceDetectorService.inputImageFromCameraImage(
@@ -285,10 +272,8 @@ class _CheckInPageState extends State<CheckInPage> {
       newStatus = FaceValidationStatus.multipleFaces;
     } else {
       final face = faces.first;
-      
       final bool isLookingStraight = (face.headEulerAngleY! < 20 && face.headEulerAngleY! > -20) &&
                                      (face.headEulerAngleZ! < 15 && face.headEulerAngleZ! > -15);
-      
       final bool eyesOpen = (face.leftEyeOpenProbability ?? 1.0) > 0.4 &&
                             (face.rightEyeOpenProbability ?? 1.0) > 0.4;
 
@@ -309,9 +294,7 @@ class _CheckInPageState extends State<CheckInPage> {
     }
 
     if (_faceStatus != newStatus) {
-      setState(() {
-        _faceStatus = newStatus;
-      });
+      setState(() => _faceStatus = newStatus);
     }
   }
 
@@ -352,9 +335,7 @@ class _CheckInPageState extends State<CheckInPage> {
           });
         }
       }
-    } catch (_) {
-      // Route fetch failed silently — map still shows without route
-    }
+    } catch (_) {}
   }
 
   @override
@@ -374,28 +355,29 @@ class _CheckInPageState extends State<CheckInPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text('Manual GPS Override', style: TextStyle(fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text('Manual GPS Override', style: TextStyle(fontWeight: FontWeight.w900)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('GPS sulit ditemukan. Masukkan alasan untuk melanjutkan kunjungan secara manual.'),
+            const Text('GPS Signal is weak. Provide a reason to continue manually.'),
             const SizedBox(height: 16),
             TextField(
               controller: controller,
               autofocus: true,
               decoration: InputDecoration(
-                hintText: 'Contoh: Sinyal buruk di dalam gedung',
+                hintText: 'e.g. Inside building, no signal',
                 filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
               ),
               maxLines: 3,
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('BATAL')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
           ElevatedButton(
             onPressed: () {
               if (controller.text.isNotEmpty) {
@@ -405,8 +387,8 @@ class _CheckInPageState extends State<CheckInPage> {
                 _nextStep();
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: _orange),
-            child: const Text('VERIFIKASI MANUAL', style: TextStyle(color: Colors.white)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            child: const Text('VERIFY MANUALLY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -417,7 +399,6 @@ class _CheckInPageState extends State<CheckInPage> {
     if (_currentStep < _totalSteps - 1) {
       setState(() => _currentStep++);
       _pageController.animateToPage(_currentStep, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-      // Switch to front camera for selfie step
       if (_currentStep == 2) _initializeCamera(useFront: true);
     }
   }
@@ -437,7 +418,7 @@ class _CheckInPageState extends State<CheckInPage> {
 
     if (!isStorefront && _selfieBytes == null && !kIsWeb && _faceStatus != FaceValidationStatus.valid) {
        ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Wajah tidak jelas. Cari posisi atau cahaya lebih baik di depan toko.')),
+        const SnackBar(content: Text('Face not clearly detected. Please find better lighting.'), behavior: SnackBarBehavior.floating),
       );
       return;
     }
@@ -450,7 +431,6 @@ class _CheckInPageState extends State<CheckInPage> {
       final photo = await _cameraController!.takePicture();
       final bytes = await photo.readAsBytes();
       
-      // 1. Watermark first (needs position)
       setState(() => _isWatermarking = true);
       final watermarkedBytes = await WatermarkService.addAddressWatermark(
         bytes, 
@@ -458,7 +438,6 @@ class _CheckInPageState extends State<CheckInPage> {
         address: '${_selectedCustomer?.name ?? ""}\n${_selectedCustomer?.address ?? _currentAddress ?? ""}',
       );
       
-      // 2. Compress after watermark
       final compressedBytes = await ImageUtils.compressImage(watermarkedBytes);
       
       setState(() {
@@ -504,12 +483,12 @@ class _CheckInPageState extends State<CheckInPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
-      appBar: _buildAppBar(),
+      backgroundColor: AppColors.background,
       body: Stack(
         children: [
           Column(
             children: [
+              _buildPremiumHeader(),
               _buildProgressIndicator(),
               Expanded(
                 child: PageView(
@@ -528,16 +507,16 @@ class _CheckInPageState extends State<CheckInPage> {
           if (_isWatermarking)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.5),
-                child: const Center(
+                color: Colors.black.withOpacity(0.6),
+                child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(color: Colors.white),
-                      SizedBox(height: 20),
+                      const CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                      const SizedBox(height: 24),
                       Text(
-                        'Menambahkan Watermark Alamat...',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        'Adding Location Watermark...',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
                       ),
                     ],
                   ),
@@ -549,29 +528,56 @@ class _CheckInPageState extends State<CheckInPage> {
     );
   }
 
-  AppBar _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      leading: IconButton(
-        icon: const Icon(LucideIcons.x, color: Color(0xFF374151)),
-        onPressed: _prevStep,
+  Widget _buildPremiumHeader() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppColors.premiumGradient,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
+        ),
       ),
-      centerTitle: true,
-      title: Column(
-        children: [
-          const Text('Verifikasi Kedatangan', style: TextStyle(color: Color(0xFF111827), fontSize: 16, fontWeight: FontWeight.w800)),
-          Text(_getStepTitle(), style: const TextStyle(color: _orange, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1)),
-        ],
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: _prevStep,
+                    icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
+                  ),
+                  Column(
+                    children: [
+                      const Text(
+                        'Check-In Verification',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
+                      ),
+                      Text(
+                        _getStepTitle(),
+                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   String _getStepTitle() {
     switch (_currentStep) {
-      case 0: return 'PILIH PELANGGAN';
-      case 1: return 'VERIFIKASI LOKASI';
-      case 2: return 'SELFIE DI DEPAN TOKO';
+      case 0: return 'SELECT CUSTOMER';
+      case 1: return 'LOCATION VERIFICATION';
+      case 2: return 'SELFIE EVIDENCE';
       case 3: return 'REVIEW & SUBMIT';
       default: return '';
     }
@@ -579,21 +585,21 @@ class _CheckInPageState extends State<CheckInPage> {
 
   Widget _buildProgressIndicator() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Stack(
-        children: [
-          Container(height: 4, width: double.infinity, color: const Color(0xFFF3F4F6)),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            height: 4,
-            width: MediaQuery.of(context).size.width * ((_currentStep + 1) / _totalSteps),
-            decoration: const BoxDecoration(
-              color: _orange,
-              borderRadius: BorderRadius.horizontal(right: Radius.circular(2)),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Row(
+        children: List.generate(_totalSteps, (index) {
+          final isActive = _currentStep >= index;
+          return Expanded(
+            child: Container(
+              height: 4,
+              margin: EdgeInsets.only(right: index == _totalSteps - 1 ? 0 : 8),
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.primary : const Color(0xFFE2E8F0),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-        ],
+          );
+        }),
       ),
     );
   }
@@ -603,55 +609,53 @@ class _CheckInPageState extends State<CheckInPage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(16),
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Cari pelanggan...',
-              prefixIcon: const Icon(LucideIcons.search, size: 20),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
             ),
-            onChanged: (val) => context.read<CustomerBloc>().add(FetchCustomers(query: val)),
+            child: TextField(
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search target customer...',
+                hintStyle: const TextStyle(color: AppColors.textPlaceholder, fontSize: 14),
+                prefixIcon: const Icon(LucideIcons.search, color: AppColors.primary, size: 18),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.all(18),
+              ),
+              onChanged: (val) => context.read<CustomerBloc>().add(FetchCustomers(query: val)),
+            ),
           ),
         ),
         Expanded(
           child: BlocBuilder<CustomerBloc, CustomerState>(
             builder: (context, state) {
-              if (state is CustomerLoading) return const Center(child: CircularProgressIndicator(color: _orange));
+              if (state is CustomerLoading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
               if (state is CustomersLoaded) {
                 if (state.customers.isEmpty) {
-                  return const Center(child: Text('Tidak ada pelanggan ditemukan'));
+                  return const Center(child: Text('No customers found', style: TextStyle(color: AppColors.textPlaceholder, fontWeight: FontWeight.w600)));
                 }
-                return ListView.builder(
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
                   itemCount: state.customers.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final c = state.customers[index];
                     final isSelected = _selectedCustomer?.id == c.id;
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: isSelected ? _orange : const Color(0xFFF3F4F6),
-                        child: Icon(LucideIcons.building, color: isSelected ? Colors.white : _orange),
-                      ),
-                      title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text(c.address ?? 'No address'),
-                      trailing: isSelected ? const Icon(LucideIcons.checkCircle2, color: _orange) : null,
+                    return GestureDetector(
                       onTap: () {
-                        // Ownership check
                         final authState = context.read<auth.AuthBloc>().state;
                         final currentUser = (authState is auth.Authenticated) ? authState.user : null;
                         final bool isOwner = currentUser != null && (c.salesId?.toLowerCase().trim() == currentUser.id.toLowerCase().trim());
                         final bool isAdmin = currentUser?.role == 'admin';
-                        // Relax check if coming from an assigned task/schedule
                         final bool isAssigned = widget.scheduleId != 'adhoc';
                         final bool isLocked = !isOwner && !isAdmin && !isAssigned;
 
                         if (isLocked) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Pelanggan ini dimiliki oleh ${c.salesmanName ?? "salesman lain"}. Anda tidak dapat mengunjungi pelanggan ini.'),
-                              backgroundColor: Colors.red,
-                            ),
+                            const SnackBar(content: Text('Access denied: Owned by another salesperson.'), backgroundColor: Color(0xFFEF4444), behavior: SnackBarBehavior.floating),
                           );
                           return;
                         }
@@ -660,11 +664,39 @@ class _CheckInPageState extends State<CheckInPage> {
                         _fetchRoute();
                         _nextStep();
                       },
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: isSelected ? AppColors.primary : const Color(0xFFF1F5F9), width: 2),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+                              child: const Icon(LucideIcons.building, color: AppColors.primary, size: 20),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(c.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.textPrimary)),
+                                  Text(c.address ?? 'No address', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                                ],
+                              ),
+                            ),
+                            if (isSelected) const Icon(LucideIcons.checkCircle2, color: AppColors.primary, size: 20),
+                          ],
+                        ),
+                      ),
                     );
                   },
                 );
               }
-              return const Center(child: Text('No customers found'));
+              return const Center(child: Text('Search to find customers'));
             },
           ),
         ),
@@ -672,7 +704,7 @@ class _CheckInPageState extends State<CheckInPage> {
     );
   }
 
-  // ── STEP 1: Proximity + OSRM Route ────────────────────
+  // ── STEP 1: Proximity ────────────────────
   Widget _buildStepProximity() {
     final dist = (_currentPosition != null && _selectedCustomer?.latitude != null)
         ? Geolocator.distanceBetween(
@@ -685,242 +717,148 @@ class _CheckInPageState extends State<CheckInPage> {
 
     final isWithinRadius = dist != null && dist <= widget.targetRadiusMeters;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          // ── Map with route polyline ──────────────────────
-          Container(
-            height: 260,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: FlutterMap(
-                mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: _selectedCustomer?.latitude != null
-                      ? ll.LatLng(_selectedCustomer!.latitude!, _selectedCustomer!.longitude!)
-                      : const ll.LatLng(0, 0),
-                  initialZoom: 14.0,
-                ),
-                children: [
-                  TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.wowin.crm',
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Column(
+              children: [
+                Container(
+                  height: 300,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 8))],
                   ),
-                  // OSRM Route Polyline
-                  if (_routePoints.isNotEmpty)
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: _routePoints,
-                          strokeWidth: 4.0,
-                          color: const Color(0xFF3B82F6),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: _selectedCustomer?.latitude != null
+                            ? ll.LatLng(_selectedCustomer!.latitude!, _selectedCustomer!.longitude!)
+                            : const ll.LatLng(0, 0),
+                        initialZoom: 15.0,
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.wowin.crm',
+                        ),
+                        if (_routePoints.isNotEmpty)
+                          PolylineLayer(
+                            polylines: [
+                              Polyline(points: _routePoints, strokeWidth: 4.0, color: const Color(0xFF3B82F6)),
+                            ],
+                          ),
+                        if (_selectedCustomer?.latitude != null)
+                          CircleLayer(
+                            circles: [
+                              CircleMarker(
+                                point: ll.LatLng(_selectedCustomer!.latitude!, _selectedCustomer!.longitude!),
+                                radius: widget.targetRadiusMeters,
+                                useRadiusInMeter: true,
+                                color: AppColors.primary.withOpacity(0.12),
+                                borderColor: AppColors.primary.withOpacity(0.5),
+                                borderStrokeWidth: 2,
+                              ),
+                            ],
+                          ),
+                        MarkerLayer(
+                          markers: [
+                            if (_selectedCustomer?.latitude != null)
+                              Marker(
+                                point: ll.LatLng(_selectedCustomer!.latitude!, _selectedCustomer!.longitude!),
+                                width: 40,
+                                height: 40,
+                                child: const Icon(LucideIcons.mapPin, color: AppColors.primary, size: 30),
+                              ),
+                            if (_currentPosition != null)
+                              Marker(
+                                point: ll.LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+                                width: 32,
+                                height: 32,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.blue, width: 2),
+                                  ),
+                                  child: const Center(child: CircleAvatar(radius: 5, backgroundColor: Colors.blue)),
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ),
-                  // Proximity radius circle
-                  if (_selectedCustomer?.latitude != null)
-                    CircleLayer(
-                      circles: [
-                        CircleMarker(
-                          point: ll.LatLng(_selectedCustomer!.latitude!, _selectedCustomer!.longitude!),
-                          radius: widget.targetRadiusMeters,
-                          useRadiusInMeter: true,
-                          color: _orange.withOpacity(0.12),
-                          borderColor: _orange.withOpacity(0.5),
-                          borderStrokeWidth: 2,
-                        ),
-                      ],
-                    ),
-                  // Markers
-                  MarkerLayer(
-                    markers: [
-                      if (_selectedCustomer?.latitude != null)
-                        Marker(
-                          point: ll.LatLng(_selectedCustomer!.latitude!, _selectedCustomer!.longitude!),
-                          width: 40,
-                          height: 40,
-                          child: const Icon(LucideIcons.mapPin, color: _orange, size: 30),
-                        ),
-                      if (_currentPosition != null)
-                        Marker(
-                          point: ll.LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-                          width: 32,
-                          height: 32,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.blue, width: 2),
-                            ),
-                            child: const Center(child: CircleAvatar(radius: 5, backgroundColor: Colors.blue)),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+                  child: Column(
+                    children: [
+                      Text(_selectedCustomer?.name ?? 'Unknown Target', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(LucideIcons.navigation, size: 16, color: isWithinRadius ? AppColors.primary : const Color(0xFFF59E0B)),
+                          const SizedBox(width: 8),
+                          Text(
+                            dist != null ? '${dist.toStringAsFixed(1)}m from destination' : 'Locating...',
+                            style: TextStyle(color: isWithinRadius ? AppColors.primary : const Color(0xFFF59E0B), fontWeight: FontWeight.w900, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                      if (!isWithinRadius && dist != null) ...[
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFFED7AA))),
+                          child: const Row(
+                            children: [
+                              Icon(LucideIcons.alertTriangle, color: Color(0xFFF59E0B), size: 16),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text('OUTSIDE RADIUS: Visit will be marked for manager review.', style: TextStyle(color: Color(0xFF92400E), fontSize: 11, fontWeight: FontWeight.w700)),
+                              ),
+                            ],
                           ),
                         ),
+                      ],
                     ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 24),
+              ],
             ),
           ),
-
-          const SizedBox(height: 20),
-
-          // ── Route badge ─────────────────────────────────
-          if (_routePoints.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF3B82F6).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(LucideIcons.navigation, size: 12, color: Color(0xFF3B82F6)),
-                  SizedBox(width: 6),
-                  Text('Rute optimal ditampilkan', style: TextStyle(fontSize: 11, color: Color(0xFF1D4ED8), fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-
-          const SizedBox(height: 16),
-
-          if (widget.dealId != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(LucideIcons.briefcase, size: 14, color: Colors.blue),
-                  SizedBox(width: 8),
-                  Text('KUNJUNGAN UNTUK DEAL', style: TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-          
-          Text(_selectedCustomer?.name ?? 'Unknown', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(LucideIcons.mapPin, size: 16, color: isWithinRadius ? Colors.green : Colors.amber),
-              const SizedBox(width: 4),
-              Text(
-                dist != null ? '${dist.toStringAsFixed(1)}m dari target' : 'Menghitung jarak...',
-                style: TextStyle(color: isWithinRadius ? Colors.green : Colors.amber, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-
-          if (!isWithinRadius && dist != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber.withOpacity(0.3)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(LucideIcons.alertTriangle, color: Colors.amber, size: 18),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'DI LUAR RADIUS: Kunjungan akan ditandai untuk peninjauan.',
-                      style: TextStyle(color: Color(0xFF92400E), fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          if (isWithinRadius)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [BoxShadow(color: Colors.green.withOpacity(0.2), blurRadius: 20, spreadRadius: 10)],
-              ),
-              child: const Icon(LucideIcons.checkCircle, color: Colors.green, size: 72)
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1000.ms)
-                  .shimmer(delay: 500.ms, duration: 2000.ms, color: Colors.white.withOpacity(0.4)),
-            ),
-
-          const SizedBox(height: 24),
-
-          ElevatedButton(
-            onPressed: () {
-              // Ownership check in proximity step as well (extra safety)
-              final authState = context.read<auth.AuthBloc>().state;
-              final currentUser = (authState is auth.Authenticated) ? authState.user : null;
-              final bool isOwner = currentUser != null && (_selectedCustomer?.salesId?.toLowerCase().trim() == currentUser.id.toLowerCase().trim());
-              final bool isAdmin = currentUser?.role == 'admin';
-              // Relax check if coming from an assigned task/schedule
-              final bool isAssigned = widget.scheduleId != 'adhoc';
-              final bool isLocked = !isOwner && !isAdmin && !isAssigned && _selectedCustomer?.id != 'external';
-
-              if (isLocked) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Akses ditolak: Dimiliki oleh ${_selectedCustomer?.salesmanName ?? "salesman lain"}.'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
-
-              if (dist != null || _overrideReason != null) {
-                _nextStep();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isWithinRadius ? _orange : const Color(0xFF4B5563),
-              minimumSize: const Size(double.infinity, 54),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text(
-              _overrideReason != null ? 'LANJUT (OVERRIDE)' : (isWithinRadius ? 'LANJUT KE FOTO' : 'LANJUT DENGAN PERINGATAN'),
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        _buildBottomAction(
+          onPressed: () {
+             if (dist != null || _overrideReason != null) _nextStep();
+          },
+          label: _overrideReason != null ? 'CONTINUE (OVERRIDE)' : (isWithinRadius ? 'PROCEED TO SELFIE' : 'PROCEED ANYWAY'),
+          color: isWithinRadius ? AppColors.primary : const Color(0xFF475569),
+        ),
+        if (!isWithinRadius && _showOverrideButton && _overrideReason == null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: TextButton.icon(
+              onPressed: _showOverrideDialog,
+              icon: const Icon(LucideIcons.shieldAlert, size: 16, color: AppColors.primary),
+              label: const Text('Manual Override', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 13)),
             ),
           ),
-
-          if (!isWithinRadius && _showOverrideButton && _overrideReason == null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: TextButton.icon(
-                onPressed: _showOverrideDialog,
-                icon: const Icon(LucideIcons.shieldAlert, size: 16),
-                label: const Text('Manual Override', style: TextStyle(color: _orange, fontWeight: FontWeight.bold)),
-              ),
-            ),
-
-          if (!isWithinRadius && _overrideReason == null)
-            TextButton(
-              onPressed: _determinePosition,
-              child: const Text('Refresh GPS', style: TextStyle(color: Colors.grey)),
-            ),
-        ],
-      ),
+      ],
     );
   }
 
-  // ── STEP 2 & 3: Camera (Storefront / Selfie) ───────────
+  // ── STEP 2: Camera Selfie ───────────
   Widget _buildCameraStep({required bool isStorefront}) {
-    final capturedBytes = isStorefront ? _storefrontBytes : _selfieBytes;
-    final title = isStorefront ? 'Foto Depan Toko / Lokasi' : 'Selfie di Depan Toko';
-    final hint = isStorefront ? 'Ambil foto yang jelas dari depan toko' : 'Ambil selfie di depan toko sebagai bukti kunjungan';
-
     return Stack(
       children: [
         if (_isCameraInitialized && _cameraController != null)
@@ -929,191 +867,109 @@ class _CheckInPageState extends State<CheckInPage> {
               fit: StackFit.expand,
               children: [
                 CameraPreview(_cameraController!),
-                if (!isStorefront)
-                  Center(
-                    child: FaceValidationOverlay(status: _faceStatus),
-                  ),
+                FaceValidationOverlay(status: _faceStatus),
               ],
             ),
           )
         else
-          const Center(child: CircularProgressIndicator(color: _orange)),
+          const Center(child: CircularProgressIndicator(color: AppColors.primary)),
 
-        // Frame guide overlay
+        // Frame guide
         Center(
           child: Container(
-            width: isStorefront ? double.infinity : 260,
-            height: isStorefront ? double.infinity : 340,
-            margin: isStorefront ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 40),
+            width: 280,
+            height: 380,
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.white.withOpacity(0.7), width: 2),
-              borderRadius: BorderRadius.circular(isStorefront ? 0 : 20),
-            ),
-          ),
-        ),
-
-        // Dark gradient at bottom
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            height: 200,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [Colors.black.withOpacity(0.7), Colors.transparent],
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+              borderRadius: BorderRadius.circular(40),
             ),
           ),
         ),
 
         // Controls
         Positioned(
-          bottom: 40,
+          bottom: 0,
           left: 0,
           right: 0,
-          child: Column(
-            children: [
-              Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16, shadows: [Shadow(blurRadius: 8, color: Colors.black)])),
-              const SizedBox(height: 6),
-              Text(hint, textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 12, shadows: const [Shadow(blurRadius: 4, color: Colors.black)])),
-              const SizedBox(height: 24),
-              GestureDetector(
-                onTap: _isCapturing ? null : () => _takePhoto(isStorefront: isStorefront),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 100),
-                  height: 80,
-                  width: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 4),
-                    color: _isCapturing ? Colors.white.withOpacity(0.5) : Colors.transparent,
-                  ),
-                  child: Center(
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 100),
-                      height: _isCapturing ? 40 : 60,
-                      width: _isCapturing ? 40 : 60,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 40, 24, 60),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withOpacity(0.8), Colors.transparent]),
+            ),
+            child: Column(
+              children: [
+                const Text('Face Verification', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: -0.3)),
+                const SizedBox(height: 8),
+                Text('Align your face within the frame and look straight.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 40),
+                GestureDetector(
+                  onTap: _isCapturing ? null : () => _takePhoto(isStorefront: false),
+                  child: Container(
+                    height: 84,
+                    width: 84,
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 4)),
+                    child: Container(
                       decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                      child: _isCapturing ? const Center(child: CircularProgressIndicator(color: AppColors.primary)) : null,
                     ),
                   ),
                 ),
-              ),
-              if (capturedBytes != null) ...[
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  onPressed: () => setState(() {
-                    if (isStorefront) {
-                      _storefrontPhoto = null;
-                    } else {
-                      _selfiePhoto = null;
-                      _faceStatus = FaceValidationStatus.none; // Fix: use enum directly or helper
-                      _startImageStream();
-                    }
-                  }),
-                  icon: const Icon(LucideIcons.refreshCw, size: 14, color: Colors.white70),
-                  label: const Text('Ambil Ulang', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  // ── STEP 4: Summary & Submit (Sales Activity Style)
+  // ── STEP 3: Summary & Submit ───────────
   Widget _buildStepSummary() {
-    final dateFormat = DateFormat('EEEE, dd MMMM yyyy (HH:mm)', 'id_ID');
-    final checkInTimeStr = _checkInTime != null ? dateFormat.format(_checkInTime!) : '-';
-    
-    // Calculate distance for report
+    final checkInTimeStr = _checkInTime != null ? DateFormat('EEEE, MMM d, HH:mm').format(_checkInTime!) : '-';
     double? dist;
     if (_currentPosition != null && _selectedCustomer?.latitude != null) {
-      dist = Geolocator.distanceBetween(
-        _currentPosition!.latitude,
-        _currentPosition!.longitude,
-        _selectedCustomer!.latitude!,
-        _selectedCustomer!.longitude!,
-      );
+      dist = Geolocator.distanceBetween(_currentPosition!.latitude, _currentPosition!.longitude, _selectedCustomer!.latitude!, _selectedCustomer!.longitude!);
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Report Header
-          _buildReportHeader(),
-          const SizedBox(height: 24),
-
-          // Metadata Section
-          _buildActivitySection(
-            title: 'DATA KUNJUNGAN',
-            icon: LucideIcons.fileText,
-            color: Colors.blue,
-            children: [
-              _buildReportRow('Tipe', 'Check-In'),
-              _buildReportRow('Waktu', checkInTimeStr),
-              _buildReportRow('Target', _selectedCustomer?.name ?? '-', isBold: true),
-              _buildReportRow('Petugas', 'Sales User'),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Location Section
-          _buildActivitySection(
-            title: 'VERIFIKASI LOKASI',
-            icon: LucideIcons.mapPin,
-            color: Colors.redAccent,
-            children: [
-              Text(
-                _currentAddress ?? 'Alamat tidak ditemukan',
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _buildMiniMetric(
-                    'Jarak', 
-                    dist != null ? '${dist.toStringAsFixed(1)}m' : '-',
-                    dist != null && dist <= widget.targetRadiusMeters ? Colors.green : Colors.orange,
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)), child: const Icon(LucideIcons.fileCheck, color: AppColors.primary, size: 20)),
+                    const SizedBox(width: 12),
+                    const Text('VISIT REPORT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1, color: AppColors.textPlaceholder)),
+                  ],
+                ),
+                const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider()),
+                _buildReportRow('Customer', _selectedCustomer?.name ?? '-', isBold: true),
+                _buildReportRow('Arrival Time', checkInTimeStr),
+                _buildReportRow('Distance', dist != null ? '${dist.toStringAsFixed(1)}m' : '-'),
+                _buildReportRow('Status', _overrideReason != null ? 'OVERRIDE' : 'VERIFIED', color: _overrideReason != null ? const Color(0xFFF59E0B) : AppColors.primary),
+                const SizedBox(height: 24),
+                const Text('EVIDENCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1, color: AppColors.textPlaceholder)),
+                const SizedBox(height: 12),
+                if (_selfieBytes != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.memory(_selfieBytes!, height: 200, width: double.infinity, fit: BoxFit.cover),
                   ),
-                  _buildMiniMetric('Status', _overrideReason != null ? 'OVERRIDE' : 'VERIFIED', _overrideReason != null ? Colors.orange : Colors.green),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-
-          // Evidence Section
-          _buildActivitySection(
-            title: 'BUKTI VISUAL',
-            icon: LucideIcons.camera,
-            color: Colors.purple,
-            children: [
-              Row(
-                children: [
-                  if (_selfieBytes != null)
-                    _buildReportImage('SELFIE DI DEPAN TOKO', _selfieBytes!),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-
-
-          // Submit Button
+          const SizedBox(height: 40),
           BlocConsumer<VisitBloc, VisitState>(
             listener: (context, state) {
               if (state is VisitSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.green));
-                
-                // Navigate to Ongoing Visit Screen instead of pop
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: AppColors.primary, behavior: SnackBarBehavior.floating));
                 context.pushReplacementNamed(
                   kRouteOngoingVisit,
                   extra: {
@@ -1127,7 +983,7 @@ class _CheckInPageState extends State<CheckInPage> {
                   },
                 );
               } else if (state is VisitError) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: Colors.red));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message), backgroundColor: const Color(0xFFEF4444), behavior: SnackBarBehavior.floating));
               }
             },
             builder: (context, state) {
@@ -1135,106 +991,46 @@ class _CheckInPageState extends State<CheckInPage> {
               return ElevatedButton(
                 onPressed: isLoading ? null : _submitCheckIn,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _orange,
-                  minimumSize: const Size(double.infinity, 60),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 4,
+                  backgroundColor: AppColors.primary,
+                  minimumSize: const Size(double.infinity, 64),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  elevation: 0,
                 ),
                 child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('SUBMIT LAPORAN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1)),
+                    ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
+                    : const Text('SUBMIT VISIT RECORD', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: -0.3)),
               );
             },
           ),
-          const SizedBox(height: 48),
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _buildReportHeader() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(LucideIcons.fileCheck, color: _orange, size: 28),
-            const SizedBox(width: 12),
-            Text(
-              'LAPORAN AKTIVITAS'.toUpperCase(),
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A), letterSpacing: 1),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Container(height: 3, width: 80, decoration: BoxDecoration(color: _orange, borderRadius: BorderRadius.circular(2))),
-      ],
-    );
-  }
-
-  Widget _buildActivitySection({required String title, required IconData icon, required Color color, required List<Widget> children}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 8),
-              Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color, letterSpacing: 1)),
-            ],
-          ),
-          const Divider(height: 24, thickness: 1),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReportRow(String label, String value, {bool isBold = false}) {
+  Widget _buildReportRow(String label, String value, {bool isBold = false, Color? color}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
-          Text(value, style: TextStyle(fontSize: 13, color: Colors.black87, fontWeight: isBold ? FontWeight.w800 : FontWeight.w600)),
+          Text(label, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+          Text(value, style: TextStyle(fontSize: 14, color: color ?? AppColors.textPrimary, fontWeight: isBold ? FontWeight.w900 : FontWeight.w700)),
         ],
       ),
     );
   }
 
-  Widget _buildMiniMetric(String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: color)),
-      ],
-    );
-  }
-
-  Widget _buildReportImage(String label, Uint8List bytes) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.memory(bytes, height: 120, width: double.infinity, fit: BoxFit.cover),
-          ),
-        ],
+  Widget _buildBottomAction({required VoidCallback onPressed, required String label, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Color(0xFFF1F5F9)))),
+      child: SafeArea(
+        child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(backgroundColor: color, minimumSize: const Size(double.infinity, 60), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), elevation: 0),
+          child: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15, letterSpacing: -0.3)),
+        ),
       ),
     );
   }

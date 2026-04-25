@@ -101,7 +101,7 @@ class WowinCrmApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp.router(
-        title: 'Wowin CRM',
+        title: 'Sales Wowin',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         routerConfig: appRouter,

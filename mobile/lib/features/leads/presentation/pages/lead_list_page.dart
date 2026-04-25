@@ -13,6 +13,7 @@ import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
 import '../../../../core/utils/animation_extensions.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class LeadListPage extends StatefulWidget {
   const LeadListPage({super.key});
@@ -24,11 +25,6 @@ class LeadListPage extends StatefulWidget {
 class _LeadListPageState extends State<LeadListPage> {
   final TextEditingController _searchController = TextEditingController();
   
-  static const Color _primaryGreen = Color(0xFF0D8549);
-  static const Color _bg = Color(0xFFF9FAFB);
-  static const Color _textPrimary = Color(0xFF111827);
-  static const Color _textSecondary = Color(0xFF6B7280);
-
   int _selectedTabIndex = 0;
   final List<String> _tabs = ['Baru', 'Memenuhi Syarat'];
 
@@ -92,178 +88,205 @@ class _LeadListPageState extends State<LeadListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
-      appBar: _buildAppBar(),
+      backgroundColor: AppColors.background,
       drawer: const AppSidebar(),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: _primaryGreen,
+        backgroundColor: AppColors.primary,
         onPressed: () => context.pushNamed(kRouteAddLead),
-        icon: const Icon(LucideIcons.plus, color: Colors.white),
-        label: const Text('Buat Calon Pelanggan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        icon: const Icon(LucideIcons.userPlus, color: Colors.white, size: 20),
+        label: const Text(
+          'Add Lead',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+        ),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       body: BlocListener<LeadBloc, LeadState>(
         listener: (context, state) {
           if (state is LeadOperationSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+              SnackBar(content: Text(state.message), backgroundColor: AppColors.success),
             );
-            _fetchLeads(); // Refresh list on success
+            _fetchLeads(); 
           } else if (state is LeadError) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+              SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
             );
           }
         },
-        child: Column(
+        child: Stack(
           children: [
-            _buildSearchBar(),
-            _buildFilterTabs(),
-            Expanded(child: _buildLeadsList()),
+            // Premium Header Decoration
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 200,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: AppColors.premiumGradient,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(40),
+                    bottomRight: Radius.circular(40),
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  _buildSearchBar(),
+                  _buildFilterTabs(),
+                  Expanded(child: _buildLeadsList()),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  AppBar _buildAppBar() {
-    return AppBar(
-      backgroundColor: _bg,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      toolbarHeight: 80,
-      title: Row(
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFFBF5),
-              borderRadius: BorderRadius.circular(12),
+          Builder(
+            builder: (context) => GestureDetector(
+              onTap: () => Scaffold.of(context).openDrawer(),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                ),
+                child: const Icon(LucideIcons.menu, color: Colors.white, size: 22),
+              ),
             ),
-            child: const Icon(LucideIcons.users, color: _primaryGreen, size: 24),
           ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const Column(
             children: [
-              const Text(
-                'Prospek',
+              Text(
+                'Leads Pipeline',
                 style: TextStyle(
-                  color: _textPrimary,
                   fontSize: 22,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
                 ),
               ),
+              SizedBox(height: 2),
               Text(
-                'Kelola calon pelanggan Anda',
+                'Opportunity Management',
                 style: TextStyle(
-                  color: _textSecondary.withOpacity(0.8),
-                  fontSize: 13,
+                  fontSize: 12,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
+          const SizedBox(width: 44), 
         ],
-      ),
-      actions: [
-        // Plus action removed because we replaced it with FAB
-      ],
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1.0),
-        child: Container(color: Colors.grey.shade200, height: 1.0),
       ),
     );
   }
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: TextField(
           controller: _searchController,
-          decoration: const InputDecoration(
-            hintText: 'Cari prospek dari nama, email atau sumber...',
-            hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
-            prefixIcon: Icon(LucideIcons.search, color: Color(0xFF9CA3AF), size: 20),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+          decoration: InputDecoration(
+            hintText: 'Search by name, email or source...',
+            hintStyle: const TextStyle(color: AppColors.textPlaceholder, fontWeight: FontWeight.normal),
+            prefixIcon: const Icon(LucideIcons.search, color: AppColors.primary, size: 20),
             border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(vertical: 15),
+            suffixIcon: _searchController.text.isNotEmpty 
+              ? IconButton(
+                  icon: const Icon(LucideIcons.x, size: 18),
+                  onPressed: () {
+                    _searchController.clear();
+                    _fetchLeads();
+                  },
+                )
+              : null,
           ),
           onSubmitted: (_) => _fetchLeads(),
-          onChanged: (val) {
-            if (val.isEmpty) _fetchLeads();
-          },
         ),
       ),
     );
   }
 
   Widget _buildFilterTabs() {
-    return SizedBox(
-      height: 40,
+    return Container(
+      height: 60,
+      margin: const EdgeInsets.only(top: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         itemCount: _tabs.length,
         itemBuilder: (context, index) {
           final isSelected = _selectedTabIndex == index;
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedTabIndex = index;
-              });
-              _fetchLeads();
-            },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: isSelected ? _primaryGreen : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? _primaryGreen : Colors.grey.shade200,
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Row(
-                children: [
-                  Text(
-                    _tabs[index],
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : _textPrimary,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                      fontSize: 14,
-                    ),
-                  ),
-                  if (_tabs[index] == 'Baru') ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.white.withOpacity(0.2) : const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '12',
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : _textSecondary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedTabIndex = index;
+                });
+                _fetchLeads();
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.primary : Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: isSelected ? [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    )
+                  ] : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
                   ],
-                ],
+                  border: Border.all(
+                    color: isSelected ? Colors.transparent : Colors.grey.shade200,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _tabs[index],
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
               ),
             ),
           );
@@ -276,29 +299,35 @@ class _LeadListPageState extends State<LeadListPage> {
     return BlocBuilder<LeadBloc, LeadState>(
       builder: (context, state) {
         if (state is LeadLoading) {
-          return const Center(child: CircularProgressIndicator(color: _primaryGreen));
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
         } else if (state is LeadsLoaded) {
           if (state.leads.isEmpty) {
             return Center(
-              child: Text(
-                'Prospek tidak ditemukan',
-                style: TextStyle(color: Colors.grey.shade500),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(LucideIcons.userX, size: 48, color: AppColors.textPlaceholder.withOpacity(0.5)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No leads found in this stage',
+                    style: TextStyle(color: AppColors.textSecondary.withOpacity(0.7), fontWeight: FontWeight.w600),
+                  ),
+                ],
               ),
             );
           }
           
           return RefreshIndicator(
             onRefresh: () async => _fetchLeads(),
-            color: _primaryGreen,
-            child: ListView.separated(
-              padding: const EdgeInsets.all(20),
+            color: AppColors.primary,
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
               itemCount: state.leads.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final lead = state.leads[index];
                 return _buildLeadCard(lead).animateEntrance(
                   delay: Duration(milliseconds: index * 50),
-                  offset: const Offset(0, 10),
+                  offset: const Offset(0, 20),
                 );
               },
             ),
@@ -307,7 +336,7 @@ class _LeadListPageState extends State<LeadListPage> {
           return Center(
             child: Text(
               state.message,
-              style: const TextStyle(color: Colors.red),
+              style: const TextStyle(color: AppColors.error),
             ),
           );
         }
@@ -317,7 +346,6 @@ class _LeadListPageState extends State<LeadListPage> {
   }
 
   Widget _buildLeadCard(dynamic lead) {
-    // Determine Mock Image or Initials based on Name
     String initials = '';
     if (lead.name.isNotEmpty) {
       final parts = lead.name.split(' ');
@@ -328,36 +356,25 @@ class _LeadListPageState extends State<LeadListPage> {
       }
     }
 
-    // Colors mapping logic matching mock
-    Color badgeColor;
-    Color badgeBgColor;
-    Color badgeTextColor;
+    Color statusColor;
     String statusStr = (lead.status ?? 'new').toLowerCase();
 
     if (statusStr == 'new' || statusStr == 'baru') {
-      badgeColor = const Color(0xFF3B82F6);
-      badgeBgColor = const Color(0xFFDBEAFE);
-      badgeTextColor = const Color(0xFF1D4ED8);
-      statusStr = 'BARU';
+      statusColor = const Color(0xFF3B82F6);
+      statusStr = 'NEW LEAD';
     } else if (statusStr == 'contacted' || statusStr == 'dihubungi') {
-      badgeColor = const Color(0xFFF59E0B);
-      badgeBgColor = const Color(0xFFFEF3C7);
-      badgeTextColor = const Color(0xFFB45309);
-      statusStr = 'DIHUBUNGI';
+      statusColor = const Color(0xFFF59E0B);
+      statusStr = 'CONTACTED';
     } else if (statusStr == 'qualified' || statusStr == 'memenuhi syarat') {
-      badgeColor = const Color(0xFF10B981);
-      badgeBgColor = const Color(0xFFD1FAE5);
-      badgeTextColor = const Color(0xFF047857);
-      statusStr = 'MEMENUHI SYARAT';
+      statusColor = const Color(0xFF10B981);
+      statusStr = 'QUALIFIED';
     } else {
-      badgeColor = const Color(0xFF6B7280);
-      badgeBgColor = const Color(0xFFF3F4F6);
-      badgeTextColor = const Color(0xFF374151);
-      statusStr = 'DIARSIPKAN'; // Fallback
+      statusColor = AppColors.textPlaceholder;
+      statusStr = 'ARCHIVED';
     }
 
     IconData sourceIcon = LucideIcons.globe;
-    String sourceText = lead.source.isNotEmpty ? (lead.source[0].toUpperCase() + lead.source.substring(1)) : 'Tidak Diketahui';
+    String sourceText = lead.source.isNotEmpty ? (lead.source[0].toUpperCase() + lead.source.substring(1)) : 'Unknown';
     if (sourceText.toLowerCase().contains('referral')) {
       sourceIcon = LucideIcons.share2;
     } else if (sourceText.toLowerCase().contains('email')) {
@@ -366,251 +383,261 @@ class _LeadListPageState extends State<LeadListPage> {
       sourceIcon = LucideIcons.phone;
     }
 
-    return InkWell(
+    return GestureDetector(
       onTap: () => context.pushNamed(kRouteLeadDetail, pathParameters: {'id': lead.id}, extra: lead),
-      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade100),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.01),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Avatar Stack
-          Stack(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: _getInitialsColor(initials),
-                  shape: BoxShape.circle,
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  initials,
-                  style: TextStyle(
-                    color: _getInitialsTextColor(initials),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Premium Initial Avatar
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [statusColor.withOpacity(0.2), statusColor.withOpacity(0.05)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: statusColor.withOpacity(0.1), width: 1.5),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      initials.toUpperCase(),
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 20,
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                lead.title,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildStatusBadge(statusStr, statusColor),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(LucideIcons.user, size: 12, color: AppColors.textSecondary),
+                            const SizedBox(width: 4),
+                            Text(
+                              lead.name,
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(width: 12),
+                            Icon(sourceIcon, size: 12, color: AppColors.textPlaceholder),
+                            const SizedBox(width: 4),
+                            Text(
+                              sourceText,
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (lead.potentialProducts != null && lead.potentialProducts!.isNotEmpty) 
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                color: AppColors.primary.withOpacity(0.04),
+                child: Row(
+                  children: [
+                    const Icon(LucideIcons.package, size: 14, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${lead.potentialProducts!.length} INTERESTED PRODUCTS',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _buildActionBtn(LucideIcons.messageSquare, const Color(0xFF25D366), () => _launchWA(lead.phone)),
+                        const SizedBox(width: 10),
+                        _buildActionBtn(LucideIcons.map, const Color(0xFF4285F4), () => _launchMaps(lead.latitude, lead.longitude)),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 16),
+                  if (lead.status == 'new' || lead.status == 'contacted')
+                    Expanded(
+                      flex: 2,
+                      child: _buildQuickActionBtn(
+                        label: lead.status == 'new' ? 'REACH OUT' : 'QUALIFY LEAD',
+                        icon: lead.status == 'new' ? LucideIcons.phoneCall : LucideIcons.checkCircle,
+                        color: lead.status == 'new' ? const Color(0xFFF59E0B) : const Color(0xFF10B981),
+                        onTap: () => _updateStatus(lead.id, lead.status == 'new' ? 'contacted' : 'qualified'),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  _buildMoreButton(lead),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionBtn(IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.1)),
+        ),
+        child: Icon(icon, color: color, size: 16),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionBtn({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 14, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        lead.title,
-                        style: const TextStyle(
-                          color: _textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: badgeBgColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        statusStr,
-                        style: TextStyle(
-                          color: badgeTextColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Icon(LucideIcons.user, size: 12, color: _textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      lead.name,
-                      style: const TextStyle(
-                        color: _textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Icon(sourceIcon, size: 12, color: _textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      sourceText,
-                      style: const TextStyle(
-                        color: _textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-                if (lead.potentialProducts != null && lead.potentialProducts!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(LucideIcons.package, size: 12, color: Color(0xFF0D8549)),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${lead.potentialProducts!.length} Produk Potensial',
-                        style: const TextStyle(
-                          color: Color(0xFF0D8549),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        if (lead.phone != null && lead.phone.isNotEmpty)
-                          GestureDetector(
-                            onTap: () => _launchWA(lead.phone),
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(LucideIcons.messageCircle, color: Colors.green, size: 16),
-                            ),
-                          ),
-                        if (lead.latitude != null && lead.longitude != null)
-                          GestureDetector(
-                            onTap: () => _launchMaps(lead.latitude, lead.longitude),
-                            child: Container(
-                              padding: const EdgeInsets.all(6),
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(LucideIcons.mapPin, color: Colors.blue, size: 16),
-                            ),
-                          ),
-                        if (lead.phone == null && lead.latitude == null)
-                          Text(
-                            'DITAMBAHKAN BARU-BARU INI',
-                            style: TextStyle(
-                              color: _textSecondary.withOpacity(0.7),
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                      ],
-                    ),
-                    PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert, size: 20, color: Color(0xFF9CA3AF)),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          context.pushNamed(kRouteAddLead, extra: lead);
-                        } else if (value == 'delete') {
-                          _showDeleteConfirmation(context, lead);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              Icon(LucideIcons.edit2, size: 16, color: Color(0xFF1A1A1A)),
-                              SizedBox(width: 8),
-                              Text('Ubah Data'),
-                            ],
-                          ),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(LucideIcons.trash2, size: 16, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text('Hapus', style: TextStyle(color: Colors.red)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                if (lead.status == 'new' || lead.status == 'contacted') ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      if (lead.status == 'new')
-                        Expanded(
-                          child: _buildQuickActionBtn(
-                            label: 'Hubungi Sekarang',
-                            icon: LucideIcons.phoneCall,
-                            color: const Color(0xFFF59E0B),
-                            onTap: () => _updateStatus(lead.id, 'contacted'),
-                          ),
-                        ),
-                      if (lead.status == 'contacted')
-                        Expanded(
-                          child: _buildQuickActionBtn(
-                            label: 'Qualify Prospek',
-                            icon: LucideIcons.checkCircle,
-                            color: const Color(0xFF10B981),
-                            onTap: () => _updateStatus(lead.id, 'qualified'),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoreButton(dynamic lead) {
+    return PopupMenuButton<String>(
+      icon: const Icon(LucideIcons.moreVertical, size: 18, color: AppColors.textPlaceholder),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      onSelected: (value) {
+        if (value == 'edit') {
+          context.pushNamed(kRouteAddLead, extra: lead);
+        } else if (value == 'delete') {
+          _showDeleteConfirmation(context, lead);
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'edit',
+          child: Row(
+            children: [
+              Icon(LucideIcons.edit2, size: 16, color: AppColors.textPrimary),
+              SizedBox(width: 12),
+              Text('Edit Lead', style: TextStyle(fontWeight: FontWeight.w600)),
+            ],
           ),
-        ],
-      ),
-      ),
+        ),
+        const PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(LucideIcons.trash2, size: 16, color: Colors.red),
+              SizedBox(width: 12),
+              Text('Delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -618,20 +645,21 @@ class _LeadListPageState extends State<LeadListPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Hapus Prospek?', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('Apakah Anda yakin ingin menghapus "${lead.name}"?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Lead?', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: Text('Are you sure you want to remove "${lead.name}"? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey)),
+            child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               _handleDelete(context, lead.id);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-            child: const Text('Hapus'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+            child: const Text('Delete Now', style: TextStyle(fontWeight: FontWeight.w900)),
           ),
         ],
       ),
@@ -642,49 +670,8 @@ class _LeadListPageState extends State<LeadListPage> {
     context.read<LeadBloc>().add(DeleteLeadSubmitted(id));
   }
 
-  Color _getInitialsColor(String initials) {
-    if (initials == 'MK') return const Color(0xFFFFF7ED);
-    return const Color(0xFFF3F4F6); // For EP
-  }
-
-  Color _getInitialsTextColor(String initials) {
-    if (initials == 'MK') return _primaryGreen;
-    return const Color(0xFF4B5563); // For EP
-  }
-
-  Widget _buildQuickActionBtn({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.2)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _updateStatus(String id, String status) {
     context.read<LeadBloc>().add(UpdateLeadStatusSubmitted(id: id, status: status));
   }
-
 }
 

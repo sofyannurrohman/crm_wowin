@@ -14,6 +14,7 @@ import '../../../../core/widgets/app_sidebar.dart';
 import '../../domain/entities/customer.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/utils/animation_extensions.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class CustomerListPage extends StatefulWidget {
   const CustomerListPage({super.key});
@@ -26,11 +27,6 @@ class _CustomerListPageState extends State<CustomerListPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'All';
   final List<String> _filters = ['All', 'Prospects', 'Active', 'Inactive'];
-
-  static const Color _primaryGreen = Color(0xFF0D8549);
-  static const Color _navy = Color(0xFF1A237E);
-  static const Color _bg = Color(0xFFF9FAFB);
-  static const Color _chipBg = Color(0xFFE8EEF6);
 
   Future<void> _launchWA(String? phone) async {
     if (phone == null || phone.isEmpty) return;
@@ -91,85 +87,107 @@ class _CustomerListPageState extends State<CustomerListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppColors.background,
       drawer: const AppSidebar(),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: _primaryGreen,
+        backgroundColor: AppColors.primary,
         onPressed: () => context.pushNamed(kRouteAddCustomer),
-        icon: const Icon(LucideIcons.plus, color: Colors.white),
+        icon: const Icon(LucideIcons.plus, color: Colors.white, size: 20),
         label: const Text(
-          'Tambah Pelanggan Baru',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          'Add Customer',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 0.5),
         ),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildSearchBar(),
-            _buildFilters(),
-            Expanded(
-              child: BlocBuilder<CustomerBloc, CustomerState>(
-                builder: (context, state) {
-                  if (state is CustomerLoading) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: _primaryGreen),
-                    );
-                  } else if (state is CustomersLoaded) {
-                    if (state.customers.isEmpty) {
-                      return EmptyStateWidget(
-                        title: 'Pelanggan Tidak Ditemukan',
-                        message: 'Coba ubah kata kunci pencarian atau filter status Anda.',
-                        icon: LucideIcons.users,
-                        onRetry: () {
-                          _searchController.clear();
-                          setState(() {
-                            _selectedFilter = 'All';
-                          });
-                          _fetchCustomers();
-                        },
-                        retryLabel: 'Bersihkan Filter',
-                      );
-                    }
-                    return RefreshIndicator(
-                      color: _primaryGreen,
-                      onRefresh: () async => _fetchCustomers(),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: state.customers.length,
-                        itemBuilder: (context, index) {
-                          return _CustomerCard(
-                            customer: state.customers[index],
-                            onWA: () => _launchWA(state.customers[index].phone),
-                            onMaps: () => _launchMaps(state.customers[index].latitude, state.customers[index].longitude),
-                          ).animateEntrance(
-                            delay: Duration(milliseconds: index * 50),
-                            offset: const Offset(0, 10),
-                          );
-                        },
-                      ),
-                    );
-                  } else if (state is CustomerError) {
-                    return EmptyStateWidget(
-                      title: 'Gagal Memuat Pelanggan',
-                      message: state.message,
-                      icon: LucideIcons.alertCircle,
-                      onRetry: () => _fetchCustomers(),
-                    );
-                  }
-                  return const SizedBox();
-                },
+      body: Stack(
+        children: [
+          // Premium Background Element
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 180,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: AppColors.premiumGradient,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(32),
+                  bottomRight: Radius.circular(32),
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                _buildSearchBar(),
+                _buildFilters(),
+                Expanded(
+                  child: BlocBuilder<CustomerBloc, CustomerState>(
+                    builder: (context, state) {
+                      if (state is CustomerLoading) {
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        );
+                      } else if (state is CustomersLoaded) {
+                        if (state.customers.isEmpty) {
+                          return EmptyStateWidget(
+                            title: 'No Customers Found',
+                            message: 'Try adjusting your search or filters.',
+                            icon: LucideIcons.users,
+                            onRetry: () {
+                              _searchController.clear();
+                              setState(() {
+                                _selectedFilter = 'All';
+                              });
+                              _fetchCustomers();
+                            },
+                            retryLabel: 'Clear Filters',
+                          );
+                        }
+                        return RefreshIndicator(
+                          color: AppColors.primary,
+                          onRefresh: () async => _fetchCustomers(),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                            itemCount: state.customers.length,
+                            itemBuilder: (context, index) {
+                              return _CustomerCard(
+                                customer: state.customers[index],
+                                onWA: () => _launchWA(state.customers[index].phone),
+                                onMaps: () => _launchMaps(state.customers[index].latitude, state.customers[index].longitude),
+                              ).animateEntrance(
+                                delay: Duration(milliseconds: index * 50),
+                                offset: const Offset(0, 20),
+                              );
+                            },
+                          ),
+                        );
+                      } else if (state is CustomerError) {
+                        return EmptyStateWidget(
+                          title: 'Failed to Load Customers',
+                          message: state.message,
+                          icon: LucideIcons.alertCircle,
+                          onRetry: () => _fetchCustomers(),
+                        );
+                      }
+                      return const SizedBox();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -177,24 +195,39 @@ class _CustomerListPageState extends State<CustomerListPage> {
             builder: (context) => GestureDetector(
               onTap: () => Scaffold.of(context).openDrawer(),
               child: Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: _primaryGreen.withOpacity(0.1),
+                  color: Colors.white.withOpacity(0.15),
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withOpacity(0.1)),
                 ),
-                child: const Icon(LucideIcons.menu, color: _primaryGreen, size: 22),
+                child: const Icon(LucideIcons.menu, color: Colors.white, size: 22),
               ),
             ),
           ),
-          const Text(
-            'Customers',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF111827),
-            ),
+          const Column(
+            children: [
+              Text(
+                'Customers',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'Professional Network',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 40), // Spacing instead of button
+          const SizedBox(width: 44), 
         ],
       ),
     );
@@ -205,17 +238,34 @@ class _CustomerListPageState extends State<CustomerListPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFF2F4F8),
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: TextField(
           controller: _searchController,
-          decoration: const InputDecoration(
-            hintText: 'Search customers...',
-            hintStyle: TextStyle(color: Color(0xFF8E8E93)),
-            prefixIcon: Icon(LucideIcons.search, color: Color(0xFF8E8E93), size: 20),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+          decoration: InputDecoration(
+            hintText: 'Search by name or company...',
+            hintStyle: const TextStyle(color: AppColors.textPlaceholder, fontWeight: FontWeight.normal),
+            prefixIcon: const Icon(LucideIcons.search, color: AppColors.primary, size: 20),
             border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(vertical: 15),
+            suffixIcon: _searchController.text.isNotEmpty 
+              ? IconButton(
+                  icon: const Icon(LucideIcons.x, size: 18),
+                  onPressed: () {
+                    _searchController.clear();
+                    _fetchCustomers();
+                  },
+                )
+              : null,
           ),
           onSubmitted: (_) => _fetchCustomers(),
         ),
@@ -224,8 +274,9 @@ class _CustomerListPageState extends State<CustomerListPage> {
   }
 
   Widget _buildFilters() {
-    return SizedBox(
-      height: 50,
+    return Container(
+      height: 60,
+      margin: const EdgeInsets.only(top: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -234,7 +285,7 @@ class _CustomerListPageState extends State<CustomerListPage> {
           final filter = _filters[index];
           final isSelected = _selectedFilter == filter;
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
             child: GestureDetector(
               onTap: () {
                 setState(() {
@@ -242,18 +293,35 @@ class _CustomerListPageState extends State<CustomerListPage> {
                 });
                 _fetchCustomers();
               },
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 decoration: BoxDecoration(
-                  color: isSelected ? _primaryGreen : _chipBg,
-                  borderRadius: BorderRadius.circular(20),
+                  color: isSelected ? AppColors.primary : Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: isSelected ? [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    )
+                  ] : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ],
+                  border: Border.all(
+                    color: isSelected ? Colors.transparent : Colors.grey.shade200,
+                  ),
                 ),
                 alignment: Alignment.center,
                 child: Text(
                   filter,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : const Color(0xFF4B5563),
-                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                     fontSize: 14,
                   ),
                 ),
@@ -264,8 +332,6 @@ class _CustomerListPageState extends State<CustomerListPage> {
       ),
     );
   }
-
-
 }
 
 class _CustomerCard extends StatelessWidget {
@@ -273,9 +339,6 @@ class _CustomerCard extends StatelessWidget {
   final VoidCallback onWA;
   final VoidCallback onMaps;
   const _CustomerCard({required this.customer, required this.onWA, required this.onMaps});
-
-  static const Color _primaryGreen = Color(0xFF0D8549);
-  static const Color _navy = Color(0xFF1A237E);
 
   @override
   Widget build(BuildContext context) {
@@ -288,10 +351,10 @@ class _CustomerCard extends StatelessWidget {
         statusColor = const Color(0xFFF59E0B);
         break;
       case 'INACTIVE':
-        statusColor = const Color(0xFF6B7280);
+        statusColor = const Color(0xFFEF4444);
         break;
       default:
-        statusColor = _navy;
+        statusColor = AppColors.primary;
     }
 
     return GestureDetector(
@@ -300,44 +363,49 @@ class _CustomerCard extends StatelessWidget {
         pathParameters: {'id': customer.id},
       ),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade100),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
             ),
           ],
         ),
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  // Logo
+                  // Premium Initial Avatar
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: 56,
+                    height: 56,
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [statusColor.withOpacity(0.2), statusColor.withOpacity(0.05)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: statusColor.withOpacity(0.1), width: 1.5),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       customer.name.substring(0, 1).toUpperCase(),
                       style: TextStyle(
                         color: statusColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 24,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   // Info
                   Expanded(
                     child: Column(
@@ -346,36 +414,42 @@ class _CustomerCard extends StatelessWidget {
                         Text(
                           customer.name,
                           style: const TextStyle(
-                            fontSize: 16,
+                            fontSize: 17,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF111827),
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.2,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: statusColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 (customer.status ?? 'Prospect').toUpperCase(),
                                 style: TextStyle(
                                   color: statusColor,
                                   fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.8,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '• ${customer.industry ?? 'General Sector'}',
-                              style: const TextStyle(
-                                color: Color(0xFF6B7280),
-                                fontSize: 12,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                customer.industry ?? 'General Sector',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -383,31 +457,42 @@ class _CustomerCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Action Buttons
-                  Row(
-                    children: [
-                      _buildActionBtn(LucideIcons.messageCircle, Colors.green, onWA),
-                      const SizedBox(width: 8),
-                      _buildActionBtn(LucideIcons.map, Colors.blue, onMaps),
-                    ],
-                  ),
                 ],
               ),
             ),
-            const Divider(height: 1),
+            const Divider(height: 1, indent: 16, endIndent: 16),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Last interaction: Today', // Mocked as it's not in the entity yet
-                    style: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontSize: 12,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(LucideIcons.mapPin, color: AppColors.textPlaceholder, size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            customer.address ?? 'Location not specified',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Icon(LucideIcons.chevronRight, color: Colors.grey.shade400, size: 16),
+                  const SizedBox(width: 16),
+                  Row(
+                    children: [
+                      _buildActionBtn(LucideIcons.messageSquare, const Color(0xFF25D366), onWA),
+                      const SizedBox(width: 10),
+                      _buildActionBtn(LucideIcons.map, const Color(0xFF4285F4), onMaps),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -423,10 +508,11 @@ class _CustomerCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          shape: BoxShape.circle,
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.1)),
         ),
-        child: Icon(icon, color: color, size: 20),
+        child: Icon(icon, color: color, size: 18),
       ),
     );
   }

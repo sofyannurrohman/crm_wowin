@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
@@ -31,11 +33,6 @@ class NewTaskPage extends StatefulWidget {
 }
 
 class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStateMixin {
-  static const Color _orange = Color(0xFF0D8549);
-  static const Color _bg = Color(0xFFF9FAFB);
-  static const Color _textPrimary = Color(0xFF111827);
-  static const Color _textSecondary = Color(0xFF6B7280);
-
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   final _searchController = TextEditingController();
@@ -58,7 +55,6 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
     context.read<CustomerBloc>().add(const FetchCustomers());
     context.read<LeadBloc>().add(const FetchLeads());
 
-    // Pre-fill fields if in edit mode
     if (_isEditMode) {
       final t = widget.initialTask!;
       _titleController.text = t.title;
@@ -79,7 +75,7 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
   }
 
   void _addDestination(dynamic target) {
-    final String taskId = 'temp-id'; // Will be set on submit
+    final String taskId = 'temp-id'; 
     final bool alreadyAdded = _destinations.any((d) => 
       (target is Customer && d.customerId == target.id) || 
       (target is Lead && d.leadId == target.id)
@@ -87,7 +83,12 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
 
     if (alreadyAdded) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tujuan sudah ada dalam daftar')),
+        SnackBar(
+          content: const Text('Target already in the list'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       );
       return;
     }
@@ -117,7 +118,6 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
   void _removeDestination(int index) {
     setState(() {
       _destinations.removeAt(index);
-      // Re-index
       for (int i = 0; i < _destinations.length; i++) {
         _destinations[i] = _destinations[i].copyWith(sequenceOrder: i + 1);
       }
@@ -128,27 +128,26 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
     final title = _titleController.text.trim();
     if (title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Judul tugas tidak boleh kosong'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Trip title is required'), backgroundColor: Color(0xFFEF4444), behavior: SnackBarBehavior.floating),
       );
       return;
     }
 
     if (_selectedWarehouseId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Silakan pilih gudang asal'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Starting warehouse is required'), backgroundColor: Color(0xFFEF4444), behavior: SnackBarBehavior.floating),
       );
       return;
     }
 
     if (_destinations.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Daftar tujuan tidak boleh kosong'), backgroundColor: Colors.red),
+        const SnackBar(content: Text('Add at least one destination'), backgroundColor: Color(0xFFEF4444), behavior: SnackBarBehavior.floating),
       );
       return;
     }
 
     if (_isEditMode) {
-      // UPDATE mode
       final existing = widget.initialTask!;
       final updated = ent.Task(
         id: existing.id,
@@ -174,7 +173,6 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
       );
       context.read<TaskBloc>().add(UpdateTask(updated));
     } else {
-      // CREATE mode
       final taskId = const Uuid().v4();
       final newTask = ent.Task(
         id: taskId,
@@ -221,13 +219,13 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
             } else if (state is TaskOperationSuccess) {
                setState(() => _isSubmitting = false);
                ScaffoldMessenger.of(context).showSnackBar(
-                 SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+                 SnackBar(content: Text(state.message), backgroundColor: AppColors.primary, behavior: SnackBarBehavior.floating),
                );
                context.pop();
             } else if (state is TaskError) {
                setState(() => _isSubmitting = false);
                ScaffoldMessenger.of(context).showSnackBar(
-                 SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+                 SnackBar(content: Text(state.message), backgroundColor: const Color(0xFFEF4444), behavior: SnackBarBehavior.floating),
                );
             }
           },
@@ -248,70 +246,117 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
         ),
       ],
       child: Scaffold(
-        backgroundColor: _bg,
-        appBar: _buildAppBar(context),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildLabel('Task Title / Trip Name'),
-              _buildTextField(_titleController, 'Contoh: Kunjungan Rutin Senin', 1),
-              const SizedBox(height: 24),
-              
-              _buildLabel('Description / Objective'),
-              _buildTextField(_descController, 'Catatan tambahan...', 3),
-              const SizedBox(height: 24),
-              
-              const SizedBox(height: 24),
-              
-              _buildLabel('Trip Date'),
-              _buildDateField(),
-              const SizedBox(height: 24),
-
-              _buildLabel('Starting Warehouse'),
-              _buildWarehouseDropdown(),
-              const SizedBox(height: 24),
-              
-              _buildLabel('Destinations (${_destinations.length})'),
-              _buildDestinationList(),
-              const SizedBox(height: 12),
-              _buildAddDestinationAction(),
-            ],
-          ),
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            _buildPremiumHeader(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('TRIP TITLE'),
+                    _buildTextField(_titleController, 'e.g. Monday Routine Visit', 1),
+                    const SizedBox(height: 24),
+                    
+                    _buildLabel('OBJECTIVE / NOTES'),
+                    _buildTextField(_descController, 'Write trip details here...', 3),
+                    const SizedBox(height: 24),
+                    
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('TRIP DATE'),
+                              _buildDateField(),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('WAREHOUSE'),
+                              _buildWarehouseDropdown(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildLabel('DESTINATIONS (${_destinations.length})'),
+                        GestureDetector(
+                          onTap: _showAddDestinationSheet,
+                          child: const Text('ADD TARGET', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 0.5)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildDestinationList(),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
         bottomNavigationBar: _buildBottomAction(),
       ),
     );
   }
 
-  AppBar _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: _bg,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      leading: IconButton(
-        icon: const Icon(LucideIcons.arrowLeft, color: _orange),
-        onPressed: () => context.pop(),
+  Widget _buildPremiumHeader() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppColors.premiumGradient,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
+        ),
       ),
-      centerTitle: true,
-      title: Text(
-        _isEditMode ? 'Edit Jadwal Kunjungan' : 'New Visit Schedule',
-        style: const TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1.0),
-        child: Container(color: Colors.grey.shade200, height: 1.0),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                onPressed: () => context.pop(),
+                icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
+              ),
+              Text(
+                _isEditMode ? 'Edit Planning' : 'New Planning',
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(width: 48), // Spacer to balance leading
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.only(bottom: 8.0, left: 4),
       child: Text(
         text,
-        style: const TextStyle(color: Color(0xFF374151), fontSize: 14, fontWeight: FontWeight.w700),
+        style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1),
       ),
     );
   }
@@ -320,28 +365,28 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
     return TextField(
       controller: controller,
       maxLines: lines,
+      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 16),
+        hintStyle: const TextStyle(color: AppColors.textPlaceholder, fontSize: 15, fontWeight: FontWeight.w500),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.all(20),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFCFF1E0), width: 1),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: const BorderSide(color: Color(0xFFF1F5F9)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFCFF1E0), width: 1),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: const BorderSide(color: Color(0xFFF1F5F9)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _orange, width: 1.5),
+          borderRadius: BorderRadius.circular(20),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
       ),
     );
   }
-
 
   Widget _buildDateField() {
     return GestureDetector(
@@ -351,20 +396,34 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
           initialDate: DateTime.now(),
           firstDate: DateTime.now(),
           lastDate: DateTime(2030),
+          builder: (context, child) => Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(primary: AppColors.primary),
+            ),
+            child: child!,
+          ),
         );
         if (mounted && picked != null) setState(() => _selectedDate = picked);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFCFF1E0), width: 1)),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white, 
+          borderRadius: BorderRadius.circular(20), 
+          border: Border.all(color: const Color(0xFFF1F5F9))
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              _selectedDate != null ? '${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.year}' : 'mm/dd/yyyy',
-              style: TextStyle(color: _selectedDate == null ? _textSecondary : _textPrimary, fontSize: 16),
+              _selectedDate != null ? DateFormat('MM/dd/yyyy').format(_selectedDate!) : 'Select Date',
+              style: TextStyle(
+                color: _selectedDate == null ? AppColors.textPlaceholder : AppColors.textPrimary, 
+                fontSize: 14, 
+                fontWeight: FontWeight.w700
+              ),
             ),
-            const Icon(LucideIcons.calendar, size: 20, color: Color(0xFF9CA3AF)),
+            const Icon(LucideIcons.calendar, size: 18, color: AppColors.primary),
           ],
         ),
       ),
@@ -373,16 +432,20 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
 
   Widget _buildWarehouseDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFCFF1E0), width: 1)),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(20), 
+        border: Border.all(color: const Color(0xFFF1F5F9))
+      ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedWarehouseId,
           isExpanded: true,
-          icon: const Icon(LucideIcons.chevronDown, size: 20, color: _textSecondary),
-          hint: const Text('Pilih Gudang', style: TextStyle(color: Color(0xFF9CA3AF))),
+          icon: const Icon(LucideIcons.chevronDown, size: 18, color: AppColors.textPlaceholder),
+          hint: const Text('Origin', style: TextStyle(color: AppColors.textPlaceholder, fontSize: 14, fontWeight: FontWeight.w700)),
           items: _warehouses.map<DropdownMenuItem<String>>((w) {
-            return DropdownMenuItem<String>(value: w.id, child: Text(w.name, style: const TextStyle(color: _textPrimary, fontSize: 15)));
+            return DropdownMenuItem<String>(value: w.id, child: Text(w.name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w700)));
           }).toList(),
           onChanged: (val) => setState(() => _selectedWarehouseId = val),
         ),
@@ -394,13 +457,21 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
     if (_destinations.isEmpty) {
       return Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200, style: BorderStyle.none)),
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        decoration: BoxDecoration(
+          color: Colors.white, 
+          borderRadius: BorderRadius.circular(24), 
+          border: Border.all(color: const Color(0xFFF1F5F9), style: BorderStyle.solid)
+        ),
         child: Column(
           children: [
-            Icon(LucideIcons.mapPin, color: Colors.grey.shade300, size: 32),
-            const SizedBox(height: 8),
-            Text('Belum ada tujuan ditambahkan', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.05), shape: BoxShape.circle),
+              child: const Icon(LucideIcons.mapPin, color: AppColors.primary, size: 32),
+            ),
+            const SizedBox(height: 16),
+            const Text('No destinations added yet', style: TextStyle(color: AppColors.textPlaceholder, fontSize: 13, fontWeight: FontWeight.w600)),
           ],
         ),
       );
@@ -410,38 +481,62 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
       children: List.generate(_destinations.length, (index) {
         final dest = _destinations[index];
         return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFCFF1E0))),
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white, 
+            borderRadius: BorderRadius.circular(20), 
+            border: Border.all(color: const Color(0xFFF1F5F9)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))
+            ],
+          ),
           child: Row(
             children: [
-              CircleAvatar(backgroundColor: _orange.withOpacity(0.1), radius: 14, child: Text('${index + 1}', style: const TextStyle(color: _orange, fontSize: 12, fontWeight: FontWeight.bold))),
-              const SizedBox(width: 12),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+                alignment: Alignment.center,
+                child: Text('${index + 1}', style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w900)),
+              ),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(dest.targetName ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text(dest.targetAddress ?? '', style: TextStyle(color: _textSecondary, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(dest.targetName ?? 'Target', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppColors.textPrimary)),
+                    const SizedBox(height: 2),
+                    Text(dest.targetAddress ?? 'Address unknown', style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
                     if (dest.dealTitle != null) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(LucideIcons.briefcase, size: 12, color: Colors.blue),
-                          const SizedBox(width: 4),
-                          Text(dest.dealTitle!, style: const TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold)),
-                        ],
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(LucideIcons.briefcase, size: 10, color: Color(0xFF3B82F6)),
+                            const SizedBox(width: 6),
+                            Text(dest.dealTitle!, style: const TextStyle(color: Color(0xFF3B82F6), fontSize: 10, fontWeight: FontWeight.w900)),
+                          ],
+                        ),
                       ),
                     ],
                   ],
                 ),
               ),
-              if (dest.customerId != null)
-                IconButton(
-                  onPressed: () => _showDealSelectionSheet(index),
-                  icon: Icon(LucideIcons.link, color: dest.dealId != null ? Colors.blue : Colors.grey, size: 18),
-                ),
-              IconButton(onPressed: () => _removeDestination(index), icon: const Icon(LucideIcons.trash2, color: Colors.red, size: 18)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (dest.customerId != null)
+                    IconButton(
+                      onPressed: () => _showDealSelectionSheet(index),
+                      icon: Icon(LucideIcons.link, color: dest.dealId != null ? const Color(0xFF3B82F6) : AppColors.textPlaceholder, size: 18),
+                    ),
+                  IconButton(onPressed: () => _removeDestination(index), icon: const Icon(LucideIcons.trash2, color: Color(0xFFEF4444), size: 18)),
+                ],
+              ),
             ],
           ),
         );
@@ -449,43 +544,28 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildAddDestinationAction() {
-    return ElevatedButton.icon(
-      onPressed: _showAddDestinationSheet,
-      icon: const Icon(LucideIcons.plus, size: 16),
-      label: const Text('Tambah Tujuan (Lead/Customer)'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        foregroundColor: _orange,
-        side: const BorderSide(color: _orange),
-        minimumSize: const Size(double.infinity, 48),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-
   void _showAddDestinationSheet() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => DraggableScrollableSheet(
-          initialChildSize: 0.8,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (context, scrollController) => Column(
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+          child: Column(
             children: [
               const SizedBox(height: 12),
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
               const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Cari Lead/Customer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
+                child: Text('Select Destination', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: TextField(
                   controller: _searchController,
                   onChanged: (val) {
@@ -493,21 +573,24 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
                     context.read<LeadBloc>().add(FetchLeads(query: val));
                   },
                   decoration: InputDecoration(
-                    hintText: 'Nama atau alamat...',
-                    prefixIcon: const Icon(LucideIcons.search, size: 20),
+                    hintText: 'Search leads or customers...',
+                    prefixIcon: const Icon(LucideIcons.search, size: 18),
                     filled: true,
-                    fillColor: Colors.grey.shade100,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    fillColor: const Color(0xFFF8FAFC),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               TabBar(
                 controller: _tabController,
-                indicatorColor: _orange,
-                labelColor: _orange,
-                unselectedLabelColor: Colors.grey,
-                tabs: const [Tab(text: 'Customers'), Tab(text: 'Leads')],
+                indicatorColor: AppColors.primary,
+                indicatorWeight: 3,
+                labelColor: AppColors.primary,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                unselectedLabelColor: AppColors.textPlaceholder,
+                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                tabs: const [Tab(text: 'CUSTOMERS'), Tab(text: 'LEADS')],
               ),
               Expanded(
                 child: TabBarView(
@@ -525,18 +608,24 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
   Widget _buildCustomerTab(ScrollController scrollController) {
     return BlocBuilder<CustomerBloc, cust.CustomerState>(
       builder: (context, state) {
-        if (state is cust.CustomerLoading) return const Center(child: CircularProgressIndicator(color: _orange));
+        if (state is cust.CustomerLoading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
         if (state is cust.CustomersLoaded) {
-          if (state.customers.isEmpty) return const Center(child: Text('Tidak ada pelanggan ditemukan'));
+          if (state.customers.isEmpty) return const Center(child: Text('No customers found', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPlaceholder)));
           return ListView.builder(
             controller: scrollController,
             itemCount: state.customers.length,
+            padding: const EdgeInsets.symmetric(vertical: 16),
             itemBuilder: (context, index) {
               final c = state.customers[index];
               return ListTile(
-                leading: CircleAvatar(backgroundColor: const Color(0xFFF3FBF7), child: const Icon(LucideIcons.building, color: _orange, size: 20)),
-                title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(c.address ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(LucideIcons.building, color: AppColors.primary, size: 20),
+                ),
+                title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                subtitle: Text(c.address ?? 'No address', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                 onTap: () {
                   _addDestination(c);
                   context.pop();
@@ -545,7 +634,7 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
             },
           );
         }
-        return const Center(child: Text('Gagal memuat data'));
+        return const Center(child: Text('Failed to load data'));
       },
     );
   }
@@ -553,18 +642,24 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
   Widget _buildLeadTab(ScrollController scrollController) {
     return BlocBuilder<LeadBloc, lead.LeadState>(
       builder: (context, state) {
-        if (state is lead.LeadLoading) return const Center(child: CircularProgressIndicator(color: _orange));
+        if (state is lead.LeadLoading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
         if (state is lead.LeadsLoaded) {
-          if (state.leads.isEmpty) return const Center(child: Text('Tidak ada lead ditemukan'));
+          if (state.leads.isEmpty) return const Center(child: Text('No leads found', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPlaceholder)));
           return ListView.builder(
             controller: scrollController,
             itemCount: state.leads.length,
+            padding: const EdgeInsets.symmetric(vertical: 16),
             itemBuilder: (context, index) {
               final l = state.leads[index];
               return ListTile(
-                leading: CircleAvatar(backgroundColor: Colors.blue.shade50, child: const Icon(LucideIcons.user, color: Colors.blue, size: 20)),
-                title: Text(l.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('', maxLines: 1, overflow: TextOverflow.ellipsis),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(LucideIcons.user, color: Color(0xFF3B82F6), size: 20),
+                ),
+                title: Text(l.name, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                subtitle: const Text('Lead Target', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                 onTap: () {
                   _addDestination(l);
                   context.pop();
@@ -573,29 +668,33 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
             },
           );
         }
-        return const Center(child: Text('Gagal memuat data'));
+        return const Center(child: Text('Failed to load data'));
       },
     );
   }
 
   Widget _buildBottomAction() {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: _bg, border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1)))),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      decoration: const BoxDecoration(
+        color: Colors.white, 
+        border: Border(top: BorderSide(color: Color(0xFFF1F5F9)))
+      ),
       child: SafeArea(
         child: ElevatedButton(
           onPressed: _isSubmitting ? null : _submit,
           style: ElevatedButton.styleFrom(
-            backgroundColor: _orange,
-            disabledBackgroundColor: _orange.withValues(alpha: 0.5),
-            minimumSize: const Size(double.infinity, 54),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            backgroundColor: AppColors.primary,
+            disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
+            minimumSize: const Size(double.infinity, 60),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 0,
           ),
           child: _isSubmitting
-              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
               : Text(
-                  _isEditMode ? 'Simpan Perubahan' : 'Create Schedule Trip',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  _isEditMode ? 'Update Planning' : 'Create Schedule Trip',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.3),
                 ),
         ),
       ),
@@ -611,24 +710,32 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(30),
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Pilih Relasi Deal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            const Text('Link Activity to Deal', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+            const SizedBox(height: 24),
             if (deals.isEmpty)
-              const Center(child: Text('Tidak ada deal aktif untuk pelanggan ini'))
+              const Center(child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Text('No active deals for this customer.', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPlaceholder)),
+              ))
             else
               ...deals.map((deal) => ListTile(
-                    leading: const Icon(LucideIcons.calculator),
-                    title: Text(deal.title),
-                    subtitle: Text('Rp${deal.amount} • ${deal.stage}'),
-                    selected: dest.dealId == deal.id,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(LucideIcons.briefcase, size: 18, color: AppColors.primary),
+                    ),
+                    title: Text(deal.title, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                    subtitle: Text('Rp${deal.amount} • ${deal.stage.toUpperCase()}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                    trailing: dest.dealId == deal.id ? const Icon(LucideIcons.checkCircle2, color: AppColors.primary) : null,
                     onTap: () {
                       setState(() {
                         _destinations[destinationIndex] = dest.copyWith(
@@ -639,10 +746,11 @@ class _NewTaskPageState extends State<NewTaskPage> with SingleTickerProviderStat
                       context.pop();
                     },
                   )),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(LucideIcons.link2Off, color: Colors.red),
-              title: const Text('Hapus Relasi Deal', style: TextStyle(color: Colors.red)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+              leading: const Icon(LucideIcons.link2Off, color: Color(0xFFEF4444), size: 20),
+              title: const Text('Remove Deal Link', style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w800)),
               onTap: () {
                 setState(() {
                   _destinations[destinationIndex] = dest.copyWith(

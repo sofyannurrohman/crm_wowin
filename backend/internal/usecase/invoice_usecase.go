@@ -11,6 +11,7 @@ type InvoiceUseCase interface {
 	GetUnpaidInvoices(ctx context.Context, customerID uuid.UUID) ([]*models.Invoice, error)
 	GetInvoice(ctx context.Context, id uuid.UUID) (*models.Invoice, error)
     CreateInvoice(ctx context.Context, invoice *models.Invoice) (*models.Invoice, error)
+	ListInvoices(ctx context.Context, filter repository.InvoiceFilter) ([]*models.Invoice, error)
 }
 
 type invoiceUseCaseImpl struct {
@@ -38,4 +39,8 @@ func (u *invoiceUseCaseImpl) CreateInvoice(ctx context.Context, invoice *models.
         return nil, err
     }
     return invoice, nil
+}
+
+func (u *invoiceUseCaseImpl) ListInvoices(ctx context.Context, filter repository.InvoiceFilter) ([]*models.Invoice, error) {
+	return u.repo.List(ctx, filter)
 }

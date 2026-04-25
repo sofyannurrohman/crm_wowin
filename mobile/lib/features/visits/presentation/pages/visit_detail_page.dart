@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-
+import 'package:intl/intl.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../bloc/visit_bloc.dart';
 import '../bloc/visit_state.dart';
+import '../../../../core/api/api_endpoints.dart';
+import '../../domain/entities/visit_activity.dart';
 
 class VisitDetailPage extends StatefulWidget {
   final String visitId;
@@ -18,48 +21,60 @@ class VisitDetailPage extends StatefulWidget {
 }
 
 class _VisitDetailPageState extends State<VisitDetailPage> {
-  static const Color _orange = Color(0xFF0D8549);
-  static const Color _bg = Color(0xFFF9FAFB);
-  static const Color _textPrimary = Color(0xFF111827);
-  static const Color _textSecondary = Color(0xFF6B7280);
-  static const Color _lightOrangeBg = Color(0xFFEFFBF5);
-
-  @override
-  void initState() {
-    super.initState();
-    // context.read<VisitBloc>().add(FetchVisitDetail(widget.visitId));
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
-      appBar: _buildAppBar(context),
+      backgroundColor: AppColors.background,
       body: BlocBuilder<VisitBloc, VisitState>(
         builder: (context, state) {
-          // if (state is VisitLoading) return const Center(child: CircularProgressIndicator());
+          if (state is! ActivitiesLoaded) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final activity = state.activities.where((a) => a.id == widget.visitId).firstOrNull;
           
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 32),
-                _buildSectionTitle(LucideIcons.camera, 'Check-in Photo'),
-                _buildPhotoSection(),
-                const SizedBox(height: 24),
-                _buildSectionTitle(LucideIcons.fileText, 'Visit Summary'),
-                _buildSummarySection(),
-                const SizedBox(height: 24),
-                _buildSectionTitle(LucideIcons.checkSquare, 'Next Step'),
-                _buildNextStepSection(),
-                const SizedBox(height: 24),
-                _buildSectionTitle(LucideIcons.map, 'Check-in Location'),
-                _buildMapSection(),
-                const SizedBox(height: 120), // Bottom padding for button
-              ],
-            ),
+          if (activity == null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(LucideIcons.searchX, size: 64, color: AppColors.textPlaceholder),
+                  const SizedBox(height: 16),
+                  const Text('Activity record not found', style: TextStyle(fontWeight: FontWeight.w700)),
+                  TextButton(onPressed: () => context.pop(), child: const Text('Go Back')),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              _buildPremiumHeader(activity),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (activity.selfiePhotoPath != null || activity.placePhotoPath != null || activity.notaPhotoPath != null) ...[
+                        _buildSectionTitle(LucideIcons.camera, 'VERIFICATION PHOTOS'),
+                        const SizedBox(height: 12),
+                        _buildPhotoSection(activity),
+                        const SizedBox(height: 32),
+                      ],
+                      _buildSectionTitle(LucideIcons.fileText, 'ACTIVITY SUMMARY'),
+                      const SizedBox(height: 12),
+                      _buildSummarySection(activity),
+                      const SizedBox(height: 32),
+                      _buildSectionTitle(LucideIcons.map, 'CHECK-IN LOCATION'),
+                      const SizedBox(height: 12),
+                      _buildMapSection(activity),
+                      const SizedBox(height: 100), 
+                    ],
+                  ),
+                ),
+              ),
+            ],
           );
         },
       ),
@@ -67,175 +82,152 @@ class _VisitDetailPageState extends State<VisitDetailPage> {
     );
   }
 
-  AppBar _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: _bg,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      leading: IconButton(
-        icon: const Icon(LucideIcons.arrowLeft, color: _textPrimary),
-        onPressed: () => context.pop(),
-      ),
-      centerTitle: true,
-      title: const Text(
-        'Visit Detail',
-        style: TextStyle(
-          color: _textPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
+  Widget _buildPremiumHeader(VisitActivity activity) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: AppColors.premiumGradient,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(LucideIcons.share2, color: _textPrimary, size: 20),
-          onPressed: () {},
-        ),
-        const SizedBox(width: 8),
-      ],
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: _lightOrangeBg,
-            shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFFFFEDD5), width: 1.5),
-          ),
-          child: const Icon(LucideIcons.building2, color: _orange, size: 24),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Acme Corp - John Doe',
-                style: TextStyle(
-                  color: _textPrimary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                    onPressed: () => context.pop(),
+                    icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
+                  ),
+                  const Text(
+                    'Visit Detail',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.5),
+                  ),
+                  IconButton(
+                    onPressed: () {},
+                    icon: const Icon(LucideIcons.share2, color: Colors.white, size: 20),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Oct 24, 2023 • 10:30 AM - 11:45 AM',
-                style: TextStyle(
-                  color: _textSecondary.withOpacity(0.8),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                    ),
+                    child: const Icon(LucideIcons.building, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          activity.customerName ?? activity.leadName ?? 'Unknown Target',
+                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(LucideIcons.calendar, size: 12, color: Colors.white.withOpacity(0.6)),
+                            const SizedBox(width: 6),
+                            Text(
+                              DateFormat('MMMM d, yyyy • HH:mm').format(activity.createdAt),
+                              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildSectionTitle(IconData icon, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
-      child: Row(
-        children: [
-          Icon(icon, color: _orange, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            title,
-            style: const TextStyle(
-              color: _textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildPhotoSection() {
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.primary, size: 16),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(color: AppColors.textPlaceholder, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhotoSection(VisitActivity activity) {
+    final String? mainPhoto = activity.notaPhotoPath ?? activity.placePhotoPath ?? activity.selfiePhotoPath;
+    if (mainPhoto == null) return const SizedBox.shrink();
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             child: Image.network(
-              'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
-              height: 180,
+              '${ApiEndpoints.uploadsBaseUrl}$mainPhoto',
+              height: 220,
               width: double.infinity,
               fit: BoxFit.cover,
+              errorBuilder: (context, error, stack) => Container(
+                height: 220,
+                color: const Color(0xFFF1F5F9),
+                child: const Icon(LucideIcons.imageOff, color: AppColors.textPlaceholder, size: 48),
+              ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Verification Successful',
-                  style: TextStyle(
-                    color: _textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(LucideIcons.clock, size: 14, color: _textSecondary.withOpacity(0.7)),
-                    const SizedBox(width: 6),
                     Text(
-                      'Captured at 10:32 AM',
-                      style: TextStyle(color: _textSecondary.withOpacity(0.9), fontSize: 13),
+                      activity.notaPhotoPath != null ? 'Nota/Kuitansi Fisik' : 'Foto Lokasi/Kunjungan',
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: -0.3),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                      child: const Text('LOCATION VERIFIED', style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.w900)),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(LucideIcons.mapPin, size: 14, color: _textSecondary.withOpacity(0.7)),
-                    const SizedBox(width: 6),
-                    Text(
-                      'GPS: 34.0522° N, 118.2437° W',
-                      style: TextStyle(color: _textSecondary.withOpacity(0.9), fontSize: 13),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _lightOrangeBg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'VERIFIED LOCATION',
-                    style: TextStyle(
-                      color: _orange,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 16),
+                _buildInfoRow(LucideIcons.clock, 'Captured at ${DateFormat('HH:mm').format(activity.createdAt)}'),
+                if (activity.distance != null) ...[
+                  const SizedBox(height: 8),
+                  _buildInfoRow(LucideIcons.mapPin, 'Distance: ${activity.distance!.toStringAsFixed(1)}m from target'),
+                ],
               ],
             ),
           ),
@@ -244,86 +236,75 @@ class _VisitDetailPageState extends State<VisitDetailPage> {
     );
   }
 
-  Widget _buildSummarySection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: const Text(
-        'Met with John and the procurement team. We discussed the Q4 inventory requirements and the upcoming product launch. They expressed interest in the premium subscription tier. John requested a revised quote including the bulk discount for 50+ licenses.',
-        style: TextStyle(
-          color: _textSecondary,
-          fontSize: 14,
-          height: 1.6,
-        ),
-      ),
+  Widget _buildInfoRow(IconData icon, String label) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.textPlaceholder),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+      ],
     );
   }
 
-  Widget _buildNextStepSection() {
+  Widget _buildSummarySection(VisitActivity activity) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: _lightOrangeBg,
-        borderRadius: BorderRadius.circular(12),
-        border: const Border(
-          left: BorderSide(color: _orange, width: 4),
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Send Revised Quote',
-            style: TextStyle(
-              color: _orange,
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
+          if (activity.dealAmount != null && activity.dealAmount! > 0) ...[
+            const Text('TOTAL TRANSAKSI', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppColors.textPlaceholder, letterSpacing: 1)),
+            const SizedBox(height: 4),
+            Text('Rp ${NumberFormat('#,###', 'id_ID').format(activity.dealAmount)}', 
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 24, color: AppColors.emerald)),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+          ],
           Text(
-            'Due: Oct 26, 2023',
-            style: TextStyle(
-              color: _textSecondary.withOpacity(0.8),
-              fontSize: 13,
-            ),
+            activity.notes ?? 'No detailed notes recorded for this activity.',
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, height: 1.6, fontWeight: FontWeight.w500),
           ),
+          if (activity.outcome != null) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(LucideIcons.checkCircle, size: 16, color: AppColors.emerald),
+                const SizedBox(width: 8),
+                Text('Outcome: ${activity.outcome!.replaceAll("_", " ").toUpperCase()}', 
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppColors.emerald)),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildMapSection() {
-    const lat = 34.0522;
-    const lng = -118.2437;
+  Widget _buildMapSection(VisitActivity activity) {
+    final lat = activity.latitude;
+    final lng = activity.longitude;
 
     return Container(
-      height: 160,
+      height: 180,
       width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
         child: FlutterMap(
-          options: const MapOptions(
+          options: MapOptions(
             initialCenter: LatLng(lat, lng),
-            initialZoom: 12.0,
-            interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
+            initialZoom: 15.0,
+            interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
           ),
           children: [
             TileLayer(
@@ -333,8 +314,8 @@ class _VisitDetailPageState extends State<VisitDetailPage> {
             MarkerLayer(
               markers: [
                 Marker(
-                  point: const LatLng(lat, lng),
-                  child: const Icon(Icons.location_on, color: _orange, size: 30),
+                  point: LatLng(lat, lng),
+                  child: const Icon(LucideIcons.mapPin, color: AppColors.primary, size: 36),
                 ),
               ],
             ),
@@ -347,31 +328,19 @@ class _VisitDetailPageState extends State<VisitDetailPage> {
   Widget _buildBottomButton() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.only(left: 20, right: 20, top: 16, bottom: 32),
-      child: ElevatedButton(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+      child: ElevatedButton.icon(
         onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _orange,
-          minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 0,
+        icon: const Icon(LucideIcons.download, color: Colors.white, size: 18),
+        label: const Text(
+          'EXPORT PDF REPORT',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.2),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(LucideIcons.edit2, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text(
-              'Edit Visit Report',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          minimumSize: const Size(double.infinity, 60),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 0,
         ),
       ),
     );

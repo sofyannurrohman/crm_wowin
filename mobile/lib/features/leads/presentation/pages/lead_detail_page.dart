@@ -48,7 +48,7 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
         BlocProvider(create: (context) => sl<VisitBloc>()..add(FetchActivities(leadId: widget.lead.id))),
       ],
       child: Scaffold(
-        backgroundColor: const Color(0xFFF9FAFB),
+        backgroundColor: AppColors.background,
         body: BlocBuilder<auth.AuthBloc, auth.AuthState>(
           builder: (context, authState) {
             final currentUser = (authState is auth.Authenticated) ? authState.user : null;
@@ -59,34 +59,40 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
 
             return Column(
               children: [
-                _buildHeader(context, isLocked),
+                _buildPremiumHeader(context, isLocked),
+                
                 if (isLocked)
-                  Container(
-                    margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF7ED),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFFFEDD5)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(LucideIcons.lock, color: Color(0xFFF97316), size: 18),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            'Data ini dikunci karena dimiliki oleh salesman lain.',
-                            style: TextStyle(
-                              color: Color(0xFFC2410C),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFFEE2E2)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(LucideIcons.lock, color: Color(0xFFEF4444), size: 18),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'This record is locked because it is managed by another salesman.',
+                              style: TextStyle(
+                                color: Color(0xFF991B1B),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
+                
+                const SizedBox(height: 10),
                 _buildTabBar(),
+                
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
@@ -102,9 +108,7 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
         ),
         bottomNavigationBar: BlocBuilder<auth.AuthBloc, auth.AuthState>(
           builder: (context, authState) {
-             final currentUser = (authState is auth.Authenticated)
-                 ? authState.user
-                 : null;
+             final currentUser = (authState is auth.Authenticated) ? authState.user : null;
              final bool isOwner = currentUser != null && (widget.lead.salesId == currentUser.id);
              final bool isAdmin = currentUser?.role == 'admin';
              final bool isLocked = !isOwner && !isAdmin;
@@ -117,83 +121,112 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
     );
   }
 
-  Widget _buildHeader(BuildContext context, bool isLocked) {
+  Widget _buildPremiumHeader(BuildContext context, bool isLocked) {
     return Container(
-      padding: const EdgeInsets.only(top: 60, left: 20, right: 20, bottom: 24),
+      width: double.infinity,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        gradient: AppColors.premiumGradient,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
+          bottomLeft: Radius.circular(40),
+          bottomRight: Radius.circular(40),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 20,
-            offset: Offset(0, 10),
-          ),
-        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                onPressed: () => context.pop(),
-                icon: const Icon(LucideIcons.arrowLeft, color: AppColors.textPrimary),
-              ),
-              Row(
+      child: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
+                  IconButton(
+                    onPressed: () => context.pop(),
+                    icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
+                  ),
+                  const Text(
+                    'Lead Details',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
                   if (!isLocked)
                     IconButton(
                       onPressed: () => context.pushNamed(kRouteAddLead, extra: widget.lead),
-                      icon: const Icon(LucideIcons.edit2, color: AppColors.textPrimary, size: 20),
-                    ),
-                  const SizedBox(width: 8),
-                  _buildStatusBadge(widget.lead.status),
+                      icon: const Icon(LucideIcons.edit3, color: Colors.white, size: 22),
+                    )
+                  else
+                    const SizedBox(width: 48),
                 ],
               ),
-            ],
+            ),
+            const SizedBox(height: 10),
+            _buildProfileSection(isLocked),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileSection(bool isLocked) {
+    String initials = '';
+    if (widget.lead.name.isNotEmpty) {
+      final parts = widget.lead.name.split(' ');
+      initials = parts.length > 1 ? '${parts[0][0]}${parts[1][0]}' : parts[0][0];
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              initials.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 32,
+              ),
+            ),
           ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildStatusBadge(widget.lead.status),
+                const SizedBox(height: 8),
+                Text(
+                  isLocked ? _obscureText(widget.lead.name) : widget.lead.name,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: -0.5,
+                  ),
                 ),
-                child: const Icon(LucideIcons.user, color: AppColors.primary, size: 32),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isLocked ? _obscureText(widget.lead.name) : widget.lead.name,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.lead.company ?? 'No Company',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.textSecondary.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(
+                  widget.lead.company ?? 'Individual Lead',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.white.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -201,44 +234,40 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
   }
 
   Widget _buildStatusBadge(String status) {
-    Color bgColor;
-    Color textColor;
+    Color color;
     String label = status.toUpperCase();
 
     switch (status.toLowerCase()) {
       case 'new':
-        bgColor = Colors.blue.shade50;
-        textColor = Colors.blue.shade600;
+        color = const Color(0xFF3B82F6);
         break;
       case 'contacted':
-        bgColor = Colors.orange.shade50;
-        textColor = Colors.orange.shade600;
+        color = const Color(0xFFF59E0B);
         break;
       case 'qualified':
-        bgColor = Colors.green.shade50;
-        textColor = Colors.green.shade600;
+        color = const Color(0xFF10B981);
         break;
       case 'unqualified':
-        bgColor = Colors.red.shade50;
-        textColor = Colors.red.shade600;
+        color = const Color(0xFFEF4444);
         break;
       default:
-        bgColor = Colors.grey.shade100;
-        textColor = Colors.grey.shade600;
+        color = Colors.white;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(100),
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+          color: color == Colors.white ? Colors.white : color.withOpacity(0.9),
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0.8,
         ),
       ),
     );
@@ -246,26 +275,24 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
 
   Widget _buildTabBar() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: const BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1),
+        ),
       ),
       child: TabBar(
         controller: _tabController,
         dividerColor: Colors.transparent,
-        indicatorSize: TabBarIndicatorSize.tab,
-        labelColor: Colors.white,
+        labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textSecondary,
-        indicator: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(12),
-        ),
+        indicatorColor: AppColors.primary,
+        indicatorWeight: 4,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: -0.2),
         tabs: const [
-          Tab(text: 'Informasi'),
-          Tab(text: 'Aktivitas'),
+          Tab(text: 'General Info'),
+          Tab(text: 'Activities'),
         ],
       ),
     );
@@ -275,41 +302,42 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       children: [
+        const SizedBox(height: 10),
         _buildInfoCard(
-          title: 'Kontak Detail',
+          title: 'Contact Details',
           items: [
-            _buildInfoItem(LucideIcons.phone, 'Telepon', isLocked ? _obscureText(widget.lead.phone) : (widget.lead.phone ?? '-')),
-            _buildInfoItem(LucideIcons.mail, 'Email', isLocked ? _obscureText(widget.lead.email) : (widget.lead.email ?? '-')),
-            _buildInfoItem(LucideIcons.mapPin, 'Alamat', isLocked ? 'Alamat disembunyikan' : (widget.lead.address ?? '-')),
+            _buildInfoItem(LucideIcons.phone, 'Phone Number', isLocked ? _obscureText(widget.lead.phone) : (widget.lead.phone ?? '-'), valueColor: const Color(0xFF10B981)),
+            _buildInfoItem(LucideIcons.mail, 'Email Address', isLocked ? _obscureText(widget.lead.email) : (widget.lead.email ?? '-'), valueColor: const Color(0xFF3B82F6)),
+            _buildInfoItem(LucideIcons.mapPin, 'Location / Address', isLocked ? 'Protected' : (widget.lead.address ?? '-')),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         _buildInfoCard(
-          title: 'Potensi Bisnis',
+          title: 'Business Potential',
           items: [
-            _buildInfoItem(LucideIcons.dollarSign, 'Estimasi Nilai', 
+            _buildInfoItem(LucideIcons.trendingUp, 'Estimated Value', 
               (isLocked) ? '*******' : (widget.lead.estimatedValue != null 
                 ? NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0).format(widget.lead.estimatedValue)
-                : '-')),
-            _buildInfoItem(LucideIcons.package, 'Produk Potensial', 
+                : '-'), valueColor: AppColors.primary),
+            _buildInfoItem(LucideIcons.package, 'Interested Products', 
               isLocked ? '*******' : (widget.lead.potentialProducts?.join(', ') ?? '-')),
-            _buildInfoItem(LucideIcons.info, 'Sumber', isLocked ? '*******' : widget.lead.source),
+            _buildInfoItem(LucideIcons.info, 'Lead Source', isLocked ? '*******' : widget.lead.source.toUpperCase()),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         _buildInfoCard(
-          title: 'Catatan',
+          title: 'Internal Notes',
           items: [
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
-                isLocked ? 'Catatan disembunyikan' : (widget.lead.notes ?? 'Tidak ada catatan.'),
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+                isLocked ? 'Notes are hidden for non-owners' : (widget.lead.notes ?? 'No internal notes provided.'),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.6, fontWeight: FontWeight.w500),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 100),
+        const SizedBox(height: 120),
       ],
     );
   }
@@ -322,48 +350,63 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
 
   Widget _buildInfoCard({required String title, required List<Widget> items}) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary),
+            title.toUpperCase(),
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppColors.textPrimary, letterSpacing: 1),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           ...items,
         ],
       ),
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String label, String value) {
+  Widget _buildInfoItem(IconData icon, String label, String value, {Color? valueColor}) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 18),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.grey.shade50,
+              color: AppColors.primary.withOpacity(0.06),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 18, color: AppColors.textSecondary),
+            child: Icon(icon, size: 18, color: AppColors.primary),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textPlaceholder, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                Text(
+                  value, 
+                  style: TextStyle(
+                    fontSize: 14, 
+                    fontWeight: FontWeight.w800, 
+                    color: valueColor ?? AppColors.textPrimary,
+                    letterSpacing: -0.2,
+                  ),
+                ),
               ],
             ),
           ),
@@ -376,23 +419,23 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
     return BlocBuilder<VisitBloc, VisitState>(
       builder: (context, state) {
         if (state is VisitLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator(color: AppColors.primary));
         } else if (state is ActivitiesLoaded) {
           if (state.activities.isEmpty) {
             return _buildEmptyActivity();
           }
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             itemCount: state.activities.length,
             itemBuilder: (context, index) {
               final activity = state.activities[index];
-              return _buildActivityItem(activity);
+              return _buildActivityItem(activity, index == state.activities.length - 1);
             },
           );
         } else if (state is VisitError) {
           return Center(child: Text(state.message));
         }
-        return const Center(child: Text('Siap mengambil data...'));
+        return const SizedBox();
       },
     );
   }
@@ -401,57 +444,69 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(LucideIcons.calendarX, size: 64, color: Colors.grey.shade300),
+        Icon(LucideIcons.activity, size: 64, color: AppColors.textPlaceholder.withOpacity(0.3)),
         const SizedBox(height: 16),
         const Text(
-          'Belum ada aktivitas',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.textSecondary),
+          'No Activities Found',
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 8),
         const Text(
-          'Aktivitas kunjungan akan muncul di sini.',
+          'Interactions and visits will appear here.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: AppColors.textPlaceholder, fontWeight: FontWeight.w500),
         ),
       ],
     );
   }
 
-  Widget _buildActivityItem(dynamic activity) {
-    // Assuming activity has createdAt, type, and notes
+  Widget _buildActivityItem(dynamic activity, bool isLast) {
     final date = activity.createdAt;
-    final type = activity.type; // check-in / check-out
+    final type = activity.type.toLowerCase();
+    final isCheckIn = type.contains('check-in') || type == 'checkin';
     
     return IntrinsicHeight(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Column(
             children: [
               Container(
-                width: 12,
-                height: 12,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: type == 'check-in' ? AppColors.primary : Colors.orange,
+                  color: isCheckIn ? AppColors.primary.withOpacity(0.1) : const Color(0xFFF0FDF4),
                   shape: BoxShape.circle,
+                  border: Border.all(color: isCheckIn ? AppColors.primary.withOpacity(0.1) : const Color(0xFFDCFCE7)),
+                ),
+                child: Icon(
+                  isCheckIn ? LucideIcons.mapPin : LucideIcons.checkCircle,
+                  size: 18,
+                  color: isCheckIn ? AppColors.primary : const Color(0xFF10B981),
                 ),
               ),
-              Expanded(
-                child: Container(
-                  width: 2,
-                  color: Colors.grey.shade200,
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    color: const Color(0xFFE2E8F0),
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                  ),
                 ),
-              ),
             ],
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 18),
           Expanded(
             child: Container(
               margin: const EdgeInsets.only(bottom: 24),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade100),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,25 +515,25 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        type == 'check-in' ? 'Check-In Kunjungan' : 'Check-Out Kunjungan',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        isCheckIn ? 'Visit Check-In' : 'Visit Completed',
+                        style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.textPrimary, fontSize: 15),
                       ),
                       Text(
                         DateFormat('HH:mm').format(date),
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                        style: const TextStyle(fontSize: 11, color: AppColors.textPlaceholder, fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    DateFormat('dd MMM yyyy').format(date),
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    DateFormat('EEEE, dd MMM yyyy').format(date),
+                    style: const TextStyle(fontSize: 11, color: AppColors.textPlaceholder, fontWeight: FontWeight.w500),
                   ),
                   if (activity.notes != null && activity.notes!.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Text(
                       activity.notes!,
-                      style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5, fontWeight: FontWeight.w500),
                     ),
                   ],
                 ],
@@ -511,15 +566,17 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
         child: Row(
           children: [
             Expanded(
+              flex: 1,
               child: _buildActionButton(
                 icon: LucideIcons.phone,
-                label: 'Hubungi',
+                label: 'Call',
                 onPressed: () {},
-                color: Colors.blue.shade600,
+                color: const Color(0xFF3B82F6),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
+              flex: 1,
               child: _buildActionButton(
                 icon: LucideIcons.layout,
                 label: 'Survey',
@@ -527,11 +584,12 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
                   kRouteAddBanner,
                   extra: {'lead': widget.lead},
                 ),
-                color: Colors.orange.shade700,
+                color: const Color(0xFFF59E0B),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
             Expanded(
+              flex: 1,
               child: _buildActionButton(
                 icon: LucideIcons.checkCircle,
                 label: 'Qualify',
@@ -557,15 +615,15 @@ class _LeadDetailPageState extends State<LeadDetailPage> with SingleTickerProvid
         backgroundColor: color,
         foregroundColor: Colors.white,
         elevation: 0,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(vertical: 18),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 18),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          const SizedBox(height: 4),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
         ],
       ),
     );
