@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../l10n/app_localizations.dart';
+import '../theme/app_colors.dart';
 import '../router/route_constants.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/auth/presentation/bloc/auth_state.dart';
@@ -10,9 +11,8 @@ import '../../features/auth/presentation/bloc/auth_state.dart';
 class AppSidebar extends StatelessWidget {
   const AppSidebar({super.key});
 
-  // Emerald Green Theme
-  static const Color _primaryGreen = Color(0xFF059669);
-  static const Color _darkGreen = Color(0xFF064E3B);
+  static const Color _primaryGreen = AppColors.primary;
+  static const Color _darkGreen = AppColors.primaryDark;
 
   @override
   Widget build(BuildContext context) {
@@ -30,12 +30,6 @@ class AppSidebar extends StatelessWidget {
             LucideIcons.layoutDashboard, 
             l10n.home, 
             () => _navigate(context, kRouteDashboard),
-          ),
-          _buildDrawerItem(
-            context, 
-            Icons.fingerprint, 
-            l10n.attendance, 
-            () => _navigate(context, kRouteAttendanceHome),
           ),
           _buildDrawerItem(
             context, 

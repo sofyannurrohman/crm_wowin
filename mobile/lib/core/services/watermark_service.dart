@@ -33,7 +33,10 @@ class WatermarkService {
     // 2. Prepare lines with wrapping
     final List<String> lines = [];
     if (addressText.isNotEmpty) {
-      lines.addAll(_wrapText(addressText, maxCharsPerLine));
+      final rawLines = addressText.split('\n');
+      for (var rawLine in rawLines) {
+        lines.addAll(_wrapText(rawLine, maxCharsPerLine));
+      }
     }
     
     // Add a separator space if we have address

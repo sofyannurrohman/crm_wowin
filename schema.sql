@@ -32,7 +32,6 @@ CREATE TYPE task_status AS ENUM ('pending', 'in_progress', 'done', 'cancelled');
 CREATE TYPE task_priority AS ENUM ('low', 'medium', 'high', 'urgent');
 
 CREATE TYPE notification_type AS ENUM ('visit_reminder', 'follow_up', 'deal_update', 'approval', 'broadcast', 'system');
-CREATE TYPE attendance_type AS ENUM ('clock_in', 'clock_out');
 CREATE TYPE territory_status AS ENUM ('active', 'inactive');
 
 -- ============================================================
@@ -468,40 +467,6 @@ CREATE TABLE sales_live_positions (
 CREATE INDEX idx_live_positions_loc    ON sales_live_positions USING GIST(location);
 CREATE INDEX idx_live_positions_status ON sales_live_positions(status);
 
--- ============================================================
--- 9. ABSENSI
--- ============================================================
-
-CREATE TABLE attendances (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id         UUID NOT NULL REFERENCES users(id),
-    type            attendance_type NOT NULL,
-    location        GEOMETRY(POINT, 4326),
-    address         TEXT,
-    -- Foto absen disimpan lokal: /var/www/uploads/attendance/{YYYY}/{MM}/
-    photo_path      TEXT,                           -- path relatif di VPS
-    device_info     JSONB,
-    timestamp_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    notes           TEXT
-);
-
-CREATE INDEX idx_attendance_user ON attendances(user_id);
-CREATE INDEX idx_attendance_date ON attendances(timestamp_at);
-
-CREATE VIEW daily_attendance AS
-SELECT
-    user_id,
-    DATE(timestamp_at)                                              AS work_date,
-    MIN(timestamp_at) FILTER (WHERE type = 'clock_in')             AS clock_in,
-    MAX(timestamp_at) FILTER (WHERE type = 'clock_out')            AS clock_out,
-    ROUND(
-        EXTRACT(EPOCH FROM (
-            MAX(timestamp_at) FILTER (WHERE type = 'clock_out') -
-            MIN(timestamp_at) FILTER (WHERE type = 'clock_in')
-        )) / 3600, 2
-    )                                                               AS work_hours
-FROM attendances
-GROUP BY user_id, DATE(timestamp_at);
 
 -- ============================================================
 -- 10. WAREHOUSES (GUDANG ASAL)
@@ -632,7 +597,6 @@ INSERT INTO app_settings (key, value, description) VALUES
 -- Storage lokal VPS
 ('storage.upload_base_path',       '"/app/uploads"',           'Root folder penyimpanan file di VPS (diakses Gin)'),
 ('storage.visit_photos_path',      '"visits/{YYYY}/{MM}/{DD}/{visit_id}"', 'Pola subfolder foto kunjungan'),
-('storage.attendance_photos_path', '"attendance/{YYYY}/{MM}"', 'Subfolder foto absensi'),
 ('storage.base_url',               '"https://yourdomain.com/uploads"', 'Base URL static file server Gin (/uploads route)');
 
 -- ============================================================

@@ -36,6 +36,7 @@ class CheckOutPage extends StatefulWidget {
   final Duration? duration;
   final String? activityNotes;
   final String? customerName;
+  final String? notaPhotoPath;
 
   const CheckOutPage({
     super.key,
@@ -48,6 +49,7 @@ class CheckOutPage extends StatefulWidget {
     this.duration,
     this.activityNotes,
     this.customerName,
+    this.notaPhotoPath,
   });
 
   @override
@@ -106,6 +108,9 @@ class _CheckOutPageState extends State<CheckOutPage> {
     _determinePosition();
     if (widget.activityNotes != null) {
       _visitResultController.text = widget.activityNotes!;
+    }
+    if (widget.notaPhotoPath != null) {
+      _receiptPhoto = XFile(widget.notaPhotoPath!);
     }
     
     // Calculate total from dealItems and pre-fill price override if empty
@@ -350,7 +355,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
                             _buildDealSummaryCard(),
                           ],
                           const SizedBox(height: 24),
-                          _buildLabel('Visit Outcome'),
+                          _buildLabel('Hasil Kunjungan (Wajib)'),
                           _buildOutcomeDropdown(),
                           const SizedBox(height: 20),
                           
@@ -358,21 +363,33 @@ class _CheckOutPageState extends State<CheckOutPage> {
                           _buildSpecializedWorkflowWidgets(state),
                           
                           const SizedBox(height: 20),
-                          _buildLabel('Visit Notes / Remarks'),
+                          _buildLabel('Catatan Kunjungan (Opsional)'),
                           _buildSummaryField(),
                           const SizedBox(height: 20),
-                          if (widget.dealId != null || widget.taskDestinationId != null) ...[
-                            _buildLabel('Price Adjustment (Optional)'),
-                            _buildPriceOverrideFields(),
-                            const SizedBox(height: 20),
-                          ],
-                          _buildLabel('Next Step'),
-                          _buildNextStepDropdown(),
-                          const SizedBox(height: 20),
-                          _buildLabel('Follow-up Date'),
-                          _buildDatePickerField(),
-                          const SizedBox(height: 20),
                           _buildPhotoUploadField(),
+                          const SizedBox(height: 12),
+
+                          Theme(
+                            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                            child: ExpansionTile(
+                              title: const Text('Opsi Lanjutan (Opsional)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _orange)),
+                              tilePadding: EdgeInsets.zero,
+                              childrenPadding: const EdgeInsets.only(top: 10),
+                              children: [
+                                if (widget.dealId != null || widget.taskDestinationId != null) ...[
+                                  _buildLabel('Penyesuaian Harga Total'),
+                                  _buildPriceOverrideFields(),
+                                  const SizedBox(height: 20),
+                                ],
+                                _buildLabel('Langkah Selanjutnya'),
+                                _buildNextStepDropdown(),
+                                const SizedBox(height: 20),
+                                _buildLabel('Tanggal Follow-up'),
+                                _buildDatePickerField(),
+                                const SizedBox(height: 20),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -569,7 +586,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
       maxLines: 4,
       style: const TextStyle(fontSize: 14, color: _textPrimary),
       decoration: InputDecoration(
-        hintText: 'Describe the meeting outcomes, pain points identified, and general sentiment...',
+        hintText: 'Tuliskan hasil diskusi atau kendala...',
         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
         contentPadding: const EdgeInsets.all(16),
         border: OutlineInputBorder(
@@ -585,12 +602,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
           borderSide: const BorderSide(color: _orange),
         ),
       ),
-      validator: (value) {
-        if (value == null || value.trim().isEmpty) {
-          return 'Result is required';
-        }
-        return null;
-      },
+      validator: (value) => null,
     );
   }
 
@@ -627,12 +639,7 @@ class _CheckOutPageState extends State<CheckOutPage> {
           _selectedNextStep = newValue;
         });
       },
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Action is required';
-        }
-        return null;
-      },
+      validator: (value) => null,
     );
   }
 

@@ -149,7 +149,7 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 		return
 	}
 
-	var selfiePath, placePath, signaturePath string
+	var selfiePath, placePath, signaturePath, notaPhotoPath string
 
 	// Extract strictly structured File and Form attributes for check-in
 	if activityType == models.VisitTypeCheckIn {
@@ -207,13 +207,23 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 			}
 		}
 
-		// Capture Checkout Photo/Receipt if provided
+		// Capture Checkout Photo/Receipt (Nota Fisik) if provided
 		checkoutPhotoFile, checkoutPhotoHeader, errCheckout := c.Request.FormFile("checkout_photo")
 		if errCheckout == nil {
 			defer checkoutPhotoFile.Close()
 			checkoutPhotoSavePath := filepath.Join(h.upldir, "visits", uuid.New().String()+".jpg")
 			if err := utils.ProcessAndSaveImage(checkoutPhotoHeader, checkoutPhotoSavePath, 1080, 1080, 75); err == nil {
 				placePath = "/uploads/visits/" + filepath.Base(checkoutPhotoSavePath)
+			}
+		}
+		
+		// Specialized Nota Photo for Hybrid Workflow
+		notaFile, notaHeader, errNota := c.Request.FormFile("nota_photo")
+		if errNota == nil {
+			defer notaFile.Close()
+			notaSavePath := filepath.Join(h.upldir, "visits", "nota_"+uuid.New().String()+".jpg")
+			if err := utils.ProcessAndSaveImage(notaHeader, notaSavePath, 1200, 1600, 80); err == nil {
+				notaPhotoPath = "/uploads/visits/" + filepath.Base(notaSavePath)
 			}
 		}
 	}
@@ -292,8 +302,9 @@ func (h *VisitHandler) LogActivity(c *gin.Context) {
 	activity.Longitude = lon
 	activity.SelfiePhotoPath = selfiePath
 	activity.PlacePhotoPath = placePath
-	activity.PhotoPath = selfiePath // for legacy DB column support if needed
 	activity.SignaturePath = signaturePath
+	activity.NotaPhotoPath = notaPhotoPath
+	activity.PhotoPath = selfiePath // for legacy DB column support if needed
 
 	if tdID := c.Request.FormValue("task_destination_id"); tdID != "" {
 		if tuid, err := uuid.Parse(tdID); err == nil {
@@ -439,4 +450,32 @@ func (h *VisitHandler) GetActiveActivity(c *gin.Context) {
 	}
 
 	response.OK(c, act)
+}
+
+func (h *VisitHandler) FinalizeVisit(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Fail(c, http.StatusBadRequest, "invalid activity id")
+		return
+	}
+
+	var req struct {
+		Items         []models.DealItem `json:"items"`
+		Outcome       string            `json:"outcome"`
+		PriceOverride *float64          `json:"price_override"`
+		Notes         string            `json:"notes"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Fail(c, http.StatusBadRequest, "invalid payload")
+		return
+	}
+
+	err = h.uc.FinalizeVisit(c.Request.Context(), id, req.Items, req.Outcome, req.PriceOverride, req.Notes)
+	if err != nil {
+		response.Fail(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response.OK(c, nil, "visit finalized successfully")
 }

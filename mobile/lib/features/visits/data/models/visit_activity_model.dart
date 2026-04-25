@@ -23,6 +23,7 @@ class VisitActivityModel extends VisitActivity {
     super.leadName,
     super.dealAmount,
     super.taskCompleted = false,
+    super.taskDestinationId,
     required super.createdAt,
   });
 
@@ -49,6 +50,7 @@ class VisitActivityModel extends VisitActivity {
       leadName: json['lead_name'],
       dealAmount: (json['deal_amount'] != null) ? (json['deal_amount'] as num).toDouble() : null,
       taskCompleted: json['task_completed'] ?? false,
+      taskDestinationId: json['task_destination_id'],
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']).toLocal() 
           : DateTime.now(),

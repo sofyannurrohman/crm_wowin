@@ -10,6 +10,13 @@ abstract class VisitRemoteDataSource {
   Future<Map<String, dynamic>> checkOut(CheckOutRequest request);
   Future<List<VisitActivityModel>> getActivities({String? salesId, String? customerId, String? leadId});
   Future<VisitActivityModel?> getActiveVisit();
+  Future<void> finalizeVisit({
+    required String activityId,
+    required List<Map<String, dynamic>> items,
+    required String outcome,
+    double? priceOverride,
+    String? notes,
+  });
 }
 
 class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
@@ -134,10 +141,10 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
       }
 
       if (request.receiptPhotoFile != null) {
-        formMap['checkout_photo'] = MultipartFile.fromBytes(
+        formMap['nota_photo'] = MultipartFile.fromBytes(
           await request.receiptPhotoFile!.readAsBytes(),
           filename: request.receiptPhotoFile!.name.isEmpty 
-              ? 'receipt_${DateTime.now().millisecondsSinceEpoch}.jpg' 
+              ? 'nota_${DateTime.now().millisecondsSinceEpoch}.jpg' 
               : request.receiptPhotoFile!.name,
         );
       }
@@ -157,6 +164,33 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
       }
     } on DioException catch (e) {
       throw ServerException(e.message ?? 'Server error occurred');
+    }
+  }
+
+  @override
+  Future<void> finalizeVisit({
+    required String activityId,
+    required List<Map<String, dynamic>> items,
+    required String outcome,
+    double? priceOverride,
+    String? notes,
+  }) async {
+    try {
+      final response = await dio.post(
+        '/visits/activities/$activityId/finalize',
+        data: {
+          'items': items,
+          'outcome': outcome,
+          'price_override': priceOverride,
+          'notes': notes,
+        },
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw ServerException(response.data['message'] ?? 'Gagal melakukan finalisasi');
+      }
+    } on DioException catch (e) {
+      throw ServerException(e.response?.data['message'] ?? 'Gagal menghubungi server');
     }
   }
 }

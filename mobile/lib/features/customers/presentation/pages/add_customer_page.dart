@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../bloc/customer_bloc.dart';
 import '../bloc/customer_event.dart';
@@ -15,8 +19,6 @@ import '../bloc/customer_state.dart';
 import '../../domain/entities/customer.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
 import '../../../auth/presentation/bloc/auth_state.dart' as auth;
-import '../../../auth/presentation/bloc/auth_event.dart' as auth;
-import '../../../auth/domain/entities/user_entity.dart' as user_ent;
 
 class AddCustomerPage extends StatefulWidget {
   final Customer? initialCustomer;
@@ -27,35 +29,34 @@ class AddCustomerPage extends StatefulWidget {
 }
 
 class _AddCustomerPageState extends State<AddCustomerPage> {
+  final PageController _pageController = PageController();
+  int _currentStep = 0;
+
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _industryController = TextEditingController();
-  final _fullNameController = TextEditingController();
+  final _ownerController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _addressController = TextEditingController();
 
+  XFile? _storePhotoFile;
   LatLng? _selectedLocation;
   final MapController _mapController = MapController();
+  final LatLng _defaultLocation = const LatLng(-6.2000, 106.8166); // Jakarta default
+  String _address = '';
   bool _isGettingLocation = false;
-  
   String? _selectedSalesmanId;
-  List<user_ent.UserEntity> _salesmen = [];
 
-  static const Color _green = Color(0xFF0D8549);
-  static const Color _navy = Color(0xFF1A237E);
-  static const Color _bg = Color(0xFFF9FAFB);
+  static const Color _primary = Color(0xFF0066FF);
+  static const Color _green = Color(0xFF10B981);
+  static const Color _bg = Color(0xFFF8FAFC);
 
   @override
   void initState() {
     super.initState();
+    _loadPersistedState();
     if (widget.initialCustomer != null) {
       _nameController.text = widget.initialCustomer!.name;
-      _industryController.text = widget.initialCustomer!.industry ?? '';
-      _fullNameController.text = widget.initialCustomer!.name;
+      _ownerController.text = widget.initialCustomer!.companyName ?? '';
       _phoneController.text = widget.initialCustomer!.phone ?? '';
-      _emailController.text = widget.initialCustomer!.email ?? '';
-      _addressController.text = widget.initialCustomer!.address ?? '';
       if (widget.initialCustomer!.latitude != null &&
           widget.initialCustomer!.longitude != null) {
         _selectedLocation = LatLng(widget.initialCustomer!.latitude!,
@@ -64,46 +65,75 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
       _selectedSalesmanId = widget.initialCustomer!.salesId;
     }
 
-    // Fetch salesmen if admin
-    // Fetch salesmen if admin
     final authState = context.read<auth.AuthBloc>().state;
-    if (authState is auth.Authenticated && authState.user.role == 'admin') {
-      context.read<auth.AuthBloc>().add(auth.FetchSalesmen());
-    } else if (authState is auth.Authenticated) {
+    if (authState is auth.Authenticated) {
       _selectedSalesmanId ??= authState.user.id;
     }
   }
 
+  Future<void> _loadPersistedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedStep = prefs.getInt('add_customer_step');
+    if (savedStep != null && savedStep > 0 && widget.initialCustomer == null) {
+      setState(() {
+        _currentStep = savedStep;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _pageController.jumpToPage(savedStep);
+      });
+    }
+  }
+
+  Future<void> _savePersistedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('add_customer_step', _currentStep);
+  }
+
+  Future<void> _clearPersistedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('add_customer_step');
+  }
+
   @override
   void dispose() {
+    _pageController.dispose();
     _nameController.dispose();
-    _industryController.dispose();
-    _fullNameController.dispose();
+    _ownerController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
-    _addressController.dispose();
-    _mapController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _takePhotoAndLocation() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    if (pickedFile != null) {
+      setState(() {
+        _storePhotoFile = pickedFile;
+      });
+      _getCurrentLocation();
+    }
   }
 
   Future<void> _getCurrentLocation() async {
     setState(() => _isGettingLocation = true);
     try {
-      final position = await Geolocator.getCurrentPosition();
+      final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
       final latLng = LatLng(position.latitude, position.longitude);
       setState(() {
         _selectedLocation = latLng;
         _isGettingLocation = false;
       });
-      _mapController.move(latLng, 15.0);
+      _mapController.move(latLng, 16);
       _reverseGeocode(latLng);
     } catch (e) {
       setState(() => _isGettingLocation = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Error getting location: $e'),
-              backgroundColor: Colors.red),
+            content: Text('Gagal mendapatkan lokasi GPS: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -113,13 +143,14 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
     try {
       final url = Uri.parse(
           'https://nominatim.openstreetmap.org/reverse?format=json&lat=${latLng.latitude}&lon=${latLng.longitude}&zoom=18&addressdetails=1');
-      final response = await http.get(url, headers: {'User-Agent': 'WowinCRM/1.0'});
+      final response =
+          await http.get(url, headers: {'User-Agent': 'WowinCRM/1.0'});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (mounted) {
           setState(() {
-            _addressController.text = data['display_name'] ?? '';
+            _address = data['display_name'] ?? '';
           });
         }
       }
@@ -128,437 +159,409 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
     }
   }
 
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      // Map industry dropdown value to backend enum type
-      String typeValue = 'company'; // Default
-      final industryValue = _industryController.text;
-      
-      if (industryValue == 'Warung Makan') typeValue = 'warung';
-      else if (industryValue == 'Toko Kelontong') typeValue = 'toko';
-      else if (industryValue == 'Retail / Minimarket') typeValue = 'retail';
-      else if (industryValue == 'Agen / Distributor') typeValue = 'agen';
-      else if (industryValue == 'Restoran') typeValue = 'restoran';
-      else if (industryValue == 'Cafe') typeValue = 'cafe';
-      else if (industryValue == 'Lainnya') typeValue = 'lainnya';
-
-      final authState = context.read<auth.AuthBloc>().state;
-      if (authState is auth.Authenticated) {
-        debugPrint('Adding Customer - Current User ID: ${authState.user.id}');
-        debugPrint('Adding Customer - Selected Salesman ID: $_selectedSalesmanId');
-      }
-
-      final customer = Customer(
-        id: widget.initialCustomer?.id ?? const Uuid().v4(),
-        name: _nameController.text,
-        companyName: _nameController.text,
-        type: typeValue, // Added mapping
-        industry: _industryController.text,
-        email: _emailController.text,
-        phone: _phoneController.text,
-        status: widget.initialCustomer?.status ?? 'prospect',
-        address: _addressController.text,
-        latitude: _selectedLocation?.latitude,
-        longitude: _selectedLocation?.longitude,
-        salesId: _selectedSalesmanId,
-      );
-
-      if (widget.initialCustomer != null) {
-        context.read<CustomerBloc>().add(UpdateCustomerSubmitted(customer));
-      } else {
-        context.read<CustomerBloc>().add(CreateCustomerSubmitted(customer));
-      }
+  void _nextStep() {
+    if (_currentStep == 0 && widget.initialCustomer == null && _selectedLocation == null) {
+       // Only warn if location is missing, photo is now optional
+       _getCurrentLocation();
     }
+    if (_currentStep == 1 && !_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (_currentStep < 2) {
+      setState(() {
+        _currentStep++;
+      });
+      _pageController.nextPage(
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+      _savePersistedState();
+    }
+  }
+
+  void _previousStep() {
+    if (_currentStep > 0) {
+      setState(() {
+        _currentStep--;
+      });
+      _pageController.previousPage(
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+      _savePersistedState();
+    } else {
+      context.pop();
+    }
+  }
+
+  void _submitForm() {
+    final customer = Customer(
+      id: widget.initialCustomer?.id ?? const Uuid().v4(),
+      name: _nameController.text,
+      companyName: _ownerController.text, // Using companyName as Owner name here based on simplified wizard
+      phone: _phoneController.text,
+      address: _address,
+      latitude: _selectedLocation?.latitude,
+      longitude: _selectedLocation?.longitude,
+      salesId: _selectedSalesmanId,
+      status: widget.initialCustomer?.status ?? 'prospect',
+      type: 'toko',
+    );
+
+    if (widget.initialCustomer != null) {
+      context.read<CustomerBloc>().add(UpdateCustomerSubmitted(customer));
+    } else {
+      context.read<CustomerBloc>().add(CreateCustomerSubmitted(customer));
+    }
+    _clearPersistedState();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEdit = widget.initialCustomer != null;
-    return Scaffold(
-      backgroundColor: _bg,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Color(0xFF1A1A1A)),
-          onPressed: () => context.pop(),
+    return WillPopScope(
+      onWillPop: () async {
+        _previousStep();
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: _bg,
+        appBar: AppBar(
+          title: const Text('Tambah Toko Baru'),
+          leading: IconButton(
+            icon: const Icon(LucideIcons.arrowLeft),
+            onPressed: _previousStep,
+          ),
         ),
-        title: Text(
-          isEdit ? 'Edit Customer' : 'Add New Customer',
-          style: const TextStyle(
-              color: Color(0xFF1A1A1A),
-              fontSize: 18,
-              fontWeight: FontWeight.w800),
-        ),
-      ),
-      body: BlocListener<auth.AuthBloc, auth.AuthState>(
-        listener: (context, state) {
-          if (state is auth.SalesmenLoaded) {
-            setState(() {
-              _salesmen = state.salesmen;
-            });
-          }
-        },
-        child: BlocListener<CustomerBloc, CustomerState>(
+        body: BlocListener<CustomerBloc, CustomerState>(
           listener: (context, state) {
             if (state is CustomerOperationSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message), backgroundColor: const Color(0xFF10B981)),
+                const SnackBar(
+                    content: Text('Toko berhasil disimpan!'),
+                    backgroundColor: _green),
               );
               context.pop();
             } else if (state is CustomerError) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message), backgroundColor: const Color(0xFFEF4444)),
+                SnackBar(
+                    content: Text(state.message), backgroundColor: Colors.red),
               );
             }
           },
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Form(
-              key: _formKey,
+          child: Column(
+            children: [
+              _buildProgressIndicator(),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _buildStep1PhotoAndLocation(),
+                    _buildStep2InputData(),
+                    _buildStep3Confirmation(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        bottomNavigationBar: _buildBottomNav(),
+      ),
+    );
+  }
+
+  Widget _buildProgressIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+      color: Colors.white,
+      child: Row(
+        children: List.generate(3, (index) {
+          final isActive = index <= _currentStep;
+          return Expanded(
+            child: Container(
+              margin: EdgeInsets.only(right: index < 2 ? 8 : 0),
+              height: 8,
+              decoration: BoxDecoration(
+                color: isActive ? _primary : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildStep1PhotoAndLocation() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Langkah 1: Foto & Lokasi',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Ambil foto depan toko dan tentukan titik lokasi pada peta.',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          
+          // Photo Capture Area
+          const Text('Foto Toko', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 12),
+          GestureDetector(
+            onTap: _takePhotoAndLocation,
+            child: Container(
+              height: 180,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: _storePhotoFile != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: kIsWeb 
+                        ? Image.network(_storePhotoFile!.path, width: double.infinity, fit: BoxFit.cover)
+                        : Image.file(File(_storePhotoFile!.path), width: double.infinity, fit: BoxFit.cover),
+                    )
+                  : const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(LucideIcons.camera, size: 48, color: _primary),
+                        SizedBox(height: 8),
+                        Text('Ambil Foto Toko', style: TextStyle(fontWeight: FontWeight.bold, color: _primary)),
+                      ],
+                    ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Map Selection Area
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Titik Lokasi Peta', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              TextButton.icon(
+                onPressed: _getCurrentLocation,
+                icon: const Icon(LucideIcons.locateFixed, size: 18),
+                label: const Text('Lokasi Saat Ini'),
+                style: TextButton.styleFrom(foregroundColor: _primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            height: 250,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: _selectedLocation ?? _defaultLocation,
+                  initialZoom: 15,
+                  onTap: (tapPosition, point) {
+                    setState(() {
+                      _selectedLocation = point;
+                    });
+                    _reverseGeocode(point);
+                  },
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.wowin.crm',
+                  ),
+                  if (_selectedLocation != null)
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _selectedLocation!,
+                          width: 80,
+                          height: 80,
+                          child: const Icon(LucideIcons.mapPin, color: Colors.red, size: 40),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (_isGettingLocation)
+            const Center(child: CircularProgressIndicator())
+          else if (_selectedLocation != null)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.shade200),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  BlocBuilder<auth.AuthBloc, auth.AuthState>(
-                    builder: (context, authState) {
-                       if (authState is auth.Authenticated && authState.user.role == 'admin') {
-                         return Column(
-                           crossAxisAlignment: CrossAxisAlignment.start,
-                           children: [
-                             _buildSectionHeader(LucideIcons.userCheck, 'Assignment (Admin Only)'),
-                             const SizedBox(height: 16),
-                             _buildSalesmanDropdown(),
-                             const SizedBox(height: 32),
-                           ],
-                         );
-                       }
-                       return const SizedBox.shrink();
-                    },
-                  ),
-                  _buildSectionHeader(LucideIcons.building2, 'Company Information'),
-                const SizedBox(height: 16),
-                _buildTextField('Company Name', _nameController, 'e.g. Acme Corp'),
-                const SizedBox(height: 16),
-                _buildDropdownField('Tipe Bisnis / Kategori', _industryController, [
-                  'Warung Makan',
-                  'Toko Kelontong',
-                  'Retail / Minimarket',
-                  'Agen / Distributor',
-                  'Restoran',
-                  'Cafe',
-                  'Lainnya'
-                ]),
-
-                const SizedBox(height: 32),
-                _buildSectionHeader(LucideIcons.user, 'Contact Person'),
-                const SizedBox(height: 16),
-                _buildTextField('Full Name', _fullNameController, 'John Doe'),
-                const SizedBox(height: 16),
-                _buildIconTextField('Phone Number', _phoneController, '+1 (555) 000-0000', LucideIcons.phone),
-                const SizedBox(height: 16),
-                _buildIconTextField('Email Address', _emailController, 'john@company.com', LucideIcons.mail),
-                const SizedBox(height: 16),
-                _buildIconTextField('Full Address', _addressController, 'e.g. 123 Business St, Jakarta', LucideIcons.mapPin, maxLines: 2),
-
-                const SizedBox(height: 24),
-                _buildTipsCard(),
-
-                const SizedBox(height: 32),
-                _buildLocationHeader(),
-                const SizedBox(height: 16),
-                _buildMapPreview(),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(child: _buildLocationBtn(LucideIcons.mapPin, 'Use My Current Location', _getCurrentLocation)),
-                    const SizedBox(width: 12),
-                    Expanded(child: _buildLocationBtn(LucideIcons.search, 'Search Address', () {})),
-                  ],
-                ),
-
-                const SizedBox(height: 48),
-                Row(
-                  children: [
-                    TextButton(
-                      onPressed: () => context.pop(),
-                      child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280), fontWeight: FontWeight.w700, fontSize: 16)),
-                    ),
-                    const Spacer(),
-                    SizedBox(
-                      width: 220,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: _submitForm,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _green,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: Text(
-                            isEdit
-                                ? 'Update Customer Profile'
-                                : 'Create Customer Profile',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 16)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                const Center(
-                  child: Text(
-                    '© 2024 Wowin CR. All rights reserved.',
-                    style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
+                  const Text('Lokasi Terpilih:', style: TextStyle(fontWeight: FontWeight.bold, color: _green, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text(_address.isEmpty ? 'Mendapatkan alamat...' : _address, style: const TextStyle(fontSize: 13)),
+                ],
+              ),
             ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-  Widget _buildSectionHeader(IconData icon, String title) {
-    return Row(
-      children: [
-        Icon(icon, color: _green, size: 20),
-        const SizedBox(width: 10),
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))),
-      ],
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController controller, String hint) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF4B5563))),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: _green, width: 2)),
-          ),
-          validator: (v) => v!.isEmpty ? 'Field required' : null,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildIconTextField(String label, TextEditingController controller, String hint, IconData icon, {int maxLines = 1}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF4B5563))),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          maxLines: maxLines,
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 18),
-            hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropdownField(String label, TextEditingController controller, List<String> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF4B5563))),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: controller.text.isNotEmpty ? controller.text : null,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-          ),
-          hint: const Text('Pilih tipe bisnis'),
-          items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(),
-          onChanged: (v) => controller.text = v ?? '',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSalesmanDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Assigned Salesman', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF4B5563))),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _selectedSalesmanId,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-            prefixIcon: const Icon(LucideIcons.user, size: 18),
-          ),
-          hint: const Text('Assign to Salesman'),
-          items: _salesmen.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
-          onChanged: (v) {
-            setState(() {
-              _selectedSalesmanId = v;
-            });
-          },
-          validator: (v) => v == null ? 'Please assign a salesman' : null,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTipsCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF7ED),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFedd5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Registration Tips', style: TextStyle(color: _green, fontWeight: FontWeight.w800, fontSize: 15)),
-          const SizedBox(height: 12),
-          _buildTip(LucideIcons.info, 'Ensure company name matches legal documents.'),
-          const SizedBox(height: 8),
-          _buildTip(LucideIcons.info, 'Double check the contact email for billing.'),
-          const SizedBox(height: 8),
-          _buildTip(LucideIcons.mapPin, 'The map pin below will be used for delivery routes.'),
         ],
       ),
     );
   }
 
-  Widget _buildTip(IconData icon, String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 14, color: _green),
-        const SizedBox(width: 8),
-        Expanded(child: Text(text, style: const TextStyle(color: Color(0xFF9A3412), fontSize: 13, height: 1.4))),
-      ],
+  Widget _buildStep2InputData() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Langkah 2: Data Toko',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Masukkan nama toko dan nama pemilik/penanggung jawab.',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 32),
+            TextFormField(
+              controller: _nameController,
+              style: const TextStyle(fontSize: 18),
+              decoration: const InputDecoration(
+                labelText: 'Nama Toko / Warung',
+                prefixIcon: Icon(LucideIcons.store),
+              ),
+              validator: (v) => v!.isEmpty ? 'Nama toko wajib diisi' : null,
+            ),
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: _ownerController,
+              style: const TextStyle(fontSize: 18),
+              decoration: const InputDecoration(
+                labelText: 'Nama Pemilik',
+                prefixIcon: Icon(LucideIcons.user),
+              ),
+              validator: (v) => v!.isEmpty ? 'Nama pemilik wajib diisi' : null,
+            ),
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              style: const TextStyle(fontSize: 18),
+              decoration: const InputDecoration(
+                labelText: 'Nomor HP (Opsional)',
+                prefixIcon: Icon(LucideIcons.phone),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildLocationHeader() {
-    return Row(
-      children: [
-        const Icon(LucideIcons.map, color: _green, size: 20),
-        const SizedBox(width: 10),
-        const Text('Customer Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A))),
-        const Spacer(),
-        if (_selectedLocation != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: const Color(0xFFFFF7ED), borderRadius: BorderRadius.circular(20)),
-            child: Text(
-              'GPS: ${_selectedLocation!.latitude.toStringAsFixed(4)}° N, ${_selectedLocation!.longitude.toStringAsFixed(4)}° W',
-              style: const TextStyle(color: _green, fontSize: 10, fontWeight: FontWeight.w800),
+  Widget _buildStep3Confirmation() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Langkah 3: Konfirmasi',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Pastikan data di bawah ini sudah benar sebelum menyimpan.',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          const SizedBox(height: 32),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  if (_storePhotoFile != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: kIsWeb
+                        ? Image.network(_storePhotoFile!.path, height: 150, width: double.infinity, fit: BoxFit.cover)
+                        : Image.file(File(_storePhotoFile!.path), height: 150, width: double.infinity, fit: BoxFit.cover),
+                    ),
+                  const SizedBox(height: 16),
+                  _buildConfirmRow(LucideIcons.store, 'Nama Toko', _nameController.text),
+                  const Divider(),
+                  _buildConfirmRow(LucideIcons.user, 'Pemilik', _ownerController.text),
+                  if (_phoneController.text.isNotEmpty) ...[
+                    const Divider(),
+                    _buildConfirmRow(LucideIcons.phone, 'No HP', _phoneController.text),
+                  ],
+                  if (_address.isNotEmpty) ...[
+                    const Divider(),
+                    _buildConfirmRow(LucideIcons.mapPin, 'Alamat', _address),
+                  ],
+                ],
+              ),
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildMapPreview() {
-    return Container(
-      height: 200,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: const LatLng(-6.200000, 106.816666),
-                initialZoom: 10.0,
-                onTap: (tapPosition, latLng) {
-                  setState(() => _selectedLocation = latLng);
-                  _reverseGeocode(latLng);
-                },
-              ),
+  Widget _buildConfirmRow(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.grey, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.wowin.crm',
-                ),
-                if (_selectedLocation != null)
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: _selectedLocation!,
-                        child: const Icon(LucideIcons.mapPin, color: _green, size: 40),
-                      ),
-                    ],
-                  ),
+                Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                const SizedBox(height: 4),
+                Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               ],
             ),
-            if (_selectedLocation == null)
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(LucideIcons.mapPin, color: _green, size: 40),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(30)),
-                      child: const Text('Pin Location Here', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildLocationBtn(IconData icon, String label, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        height: 56,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+  Widget _buildBottomNav() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _currentStep == 2 ? _submitForm : _nextStep,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _currentStep == 2 ? _green : _primary,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 18, color: const Color(0xFF4B5563)),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
-              ),
-            ),
-          ],
+        child: Text(
+          _currentStep == 2 ? 'SIMPAN TOKO' : 'LANJUTKAN',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
     );

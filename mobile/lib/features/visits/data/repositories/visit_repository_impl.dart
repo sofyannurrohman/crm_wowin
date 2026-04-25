@@ -72,4 +72,28 @@ class VisitRepositoryImpl implements VisitRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> finalizeVisit({
+    required String activityId,
+    required List<Map<String, dynamic>> items,
+    required String outcome,
+    double? priceOverride,
+    String? notes,
+  }) async {
+    try {
+      await remoteDataSource.finalizeVisit(
+        activityId: activityId,
+        items: items,
+        outcome: outcome,
+        priceOverride: priceOverride,
+        notes: notes,
+      );
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

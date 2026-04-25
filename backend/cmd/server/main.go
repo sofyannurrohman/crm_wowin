@@ -154,7 +154,6 @@ func main() {
 	trackingRepo := postgres.NewTrackingRepository(dbpool)
 	territoryRepo := postgres.NewTerritoryRepository(dbpool)
 	reportRepo := postgres.NewReportRepository(dbpool)
-	attendanceRepo := postgres.NewAttendanceRepository(dbpool)
 	notificationRepo := postgres.NewNotificationRepository(dbpool)
 	targetRepo := postgres.NewTargetRepository(dbpool)
 	taskRepo := postgres.NewTaskRepository(dbpool)
@@ -187,7 +186,6 @@ func main() {
 	trackingUC := usecase.NewTrackingUseCase(trackingRepo)
 	territoryUC := usecase.NewTerritoryUseCase(territoryRepo)
 	reportUC := usecase.NewReportUseCase(reportRepo, targetRepo, salesTargetRepo, taskRepo)
-	attendanceUC := usecase.NewAttendanceUseCase(attendanceRepo, territoryRepo)
 	notificationUC := usecase.NewNotificationUseCase(notificationRepo)
 	targetUC := usecase.NewTargetUseCase(targetRepo, salesTargetRepo)
 	taskUC := usecase.NewTaskUseCase(taskRepo)
@@ -206,7 +204,6 @@ func main() {
 	trackingHandler := handlers.NewTrackingHandler(trackingUC)
 	territoryHandler := handlers.NewTerritoryHandler(territoryUC)
 	reportHandler := handlers.NewReportHandler(reportUC)
-	attendanceHandler := handlers.NewAttendanceHandler(attendanceUC, uploadDir)
 	notificationHandler := handlers.NewNotificationHandler(notificationUC)
 	targetHandler := handlers.NewTargetHandler(targetUC)
 	taskHandler := handlers.NewTaskHandler(taskUC)
@@ -218,7 +215,7 @@ func main() {
 	stockTransferHandler := handlers.NewStockTransferHandler(stockTransferUC)
 
 	// Setup Routes
-	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, attendanceHandler, notificationHandler, targetHandler, taskHandler, settingsHandler, salesActivityHandler, warehouseHandler, bannerHandler, invoiceHandler, stockTransferHandler)
+	routes.SetupRouter(router, authHandler, customerHandler, leadHandler, dealHandler, productHandler, visitHandler, trackingHandler, territoryHandler, reportHandler, notificationHandler, targetHandler, taskHandler, settingsHandler, salesActivityHandler, warehouseHandler, bannerHandler, invoiceHandler, stockTransferHandler)
 
 	// Additionally inject basic health check underneath v1
 	router.GET("/api/v1/health", func(c *gin.Context) {

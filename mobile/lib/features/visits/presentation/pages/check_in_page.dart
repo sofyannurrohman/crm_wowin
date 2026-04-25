@@ -49,6 +49,8 @@ class CheckInPage extends StatefulWidget {
   final String? dealId;
   final String? leadId;
   final String? taskDestinationId;
+  final String? salesId;
+  final String? salesmanName;
 
   const CheckInPage({
     super.key,
@@ -62,6 +64,8 @@ class CheckInPage extends StatefulWidget {
     this.targetRadiusMeters = 200.0,
     this.dealId,
     this.taskDestinationId,
+    this.salesId,
+    this.salesmanName,
   });
 
   @override
@@ -108,7 +112,7 @@ class _CheckInPageState extends State<CheckInPage> {
 
   static const Color _orange = Color(0xFFEA580C);
   static const Color _bg = Color(0xFFF9FAFB);
-  static const int _totalSteps = 5; // 0=Select, 1=Proximity, 2=Storefront, 3=Selfie, 4=Summary
+  static const int _totalSteps = 4; // 0=Select, 1=Proximity, 2=Selfie, 3=Summary
 
   @override
   void initState() {
@@ -158,6 +162,8 @@ class _CheckInPageState extends State<CheckInPage> {
         address: widget.customerAddress,
         latitude: widget.targetLat,
         longitude: widget.targetLng,
+        salesId: widget.salesId,
+        salesmanName: widget.salesmanName,
       );
       _currentStep = 1;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -412,8 +418,7 @@ class _CheckInPageState extends State<CheckInPage> {
       setState(() => _currentStep++);
       _pageController.animateToPage(_currentStep, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
       // Switch to front camera for selfie step
-      if (_currentStep == 3) _initializeCamera(useFront: true);
-      if (_currentStep == 2) _initializeCamera(useFront: false);
+      if (_currentStep == 2) _initializeCamera(useFront: true);
     }
   }
 
@@ -421,7 +426,7 @@ class _CheckInPageState extends State<CheckInPage> {
     if (_currentStep > 0) {
       setState(() => _currentStep--);
       _pageController.animateToPage(_currentStep, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-      if (_currentStep == 2) _initializeCamera(useFront: false);
+      if (_currentStep == 1) _initializeCamera(useFront: false);
     } else {
       context.pop();
     }
@@ -450,7 +455,7 @@ class _CheckInPageState extends State<CheckInPage> {
       final watermarkedBytes = await WatermarkService.addAddressWatermark(
         bytes, 
         _currentPosition,
-        address: _currentAddress,
+        address: '${_selectedCustomer?.name ?? ""}\n${_selectedCustomer?.address ?? _currentAddress ?? ""}',
       );
       
       // 2. Compress after watermark
@@ -476,14 +481,14 @@ class _CheckInPageState extends State<CheckInPage> {
   }
 
   void _submitCheckIn() {
-    if (_storefrontBytes == null || _selfieBytes == null || _currentPosition == null || _selectedCustomer == null) return;
+    if (_selfieBytes == null || _currentPosition == null || _selectedCustomer == null) return;
 
     context.read<VisitBloc>().add(
       CheckInSubmitted(
         scheduleId: widget.scheduleId,
         latitude: _currentPosition?.latitude ?? 0.0,
         longitude: _currentPosition?.longitude ?? 0.0,
-        photoFile: _storefrontPhoto!,
+        photoFile: _selfiePhoto!,
         selfiePhotoFile: _selfiePhoto!,
         notes: '',
         dealId: widget.dealId,
@@ -513,7 +518,6 @@ class _CheckInPageState extends State<CheckInPage> {
                   children: [
                     _buildStepSelection(),
                     _buildStepProximity(),
-                    _buildCameraStep(isStorefront: true),
                     _buildCameraStep(isStorefront: false),
                     _buildStepSummary(),
                   ],
@@ -567,9 +571,8 @@ class _CheckInPageState extends State<CheckInPage> {
     switch (_currentStep) {
       case 0: return 'PILIH PELANGGAN';
       case 1: return 'VERIFIKASI LOKASI';
-      case 2: return 'FOTO TOKO / LOKASI';
-      case 3: return 'SELFIE VERIFIKASI';
-      case 4: return 'REVIEW & SUBMIT';
+      case 2: return 'SELFIE DI DEPAN TOKO';
+      case 3: return 'REVIEW & SUBMIT';
       default: return '';
     }
   }
@@ -637,7 +640,7 @@ class _CheckInPageState extends State<CheckInPage> {
                         // Ownership check
                         final authState = context.read<auth.AuthBloc>().state;
                         final currentUser = (authState is auth.Authenticated) ? authState.user : null;
-                        final bool isOwner = currentUser != null && (c.salesId == currentUser.id);
+                        final bool isOwner = currentUser != null && (c.salesId?.toLowerCase().trim() == currentUser.id.toLowerCase().trim());
                         final bool isAdmin = currentUser?.role == 'admin';
                         // Relax check if coming from an assigned task/schedule
                         final bool isAssigned = widget.scheduleId != 'adhoc';
@@ -861,7 +864,7 @@ class _CheckInPageState extends State<CheckInPage> {
               // Ownership check in proximity step as well (extra safety)
               final authState = context.read<auth.AuthBloc>().state;
               final currentUser = (authState is auth.Authenticated) ? authState.user : null;
-              final bool isOwner = currentUser != null && (_selectedCustomer?.salesId == currentUser.id);
+              final bool isOwner = currentUser != null && (_selectedCustomer?.salesId?.toLowerCase().trim() == currentUser.id.toLowerCase().trim());
               final bool isAdmin = currentUser?.role == 'admin';
               // Relax check if coming from an assigned task/schedule
               final bool isAssigned = widget.scheduleId != 'adhoc';
@@ -915,8 +918,8 @@ class _CheckInPageState extends State<CheckInPage> {
   // ── STEP 2 & 3: Camera (Storefront / Selfie) ───────────
   Widget _buildCameraStep({required bool isStorefront}) {
     final capturedBytes = isStorefront ? _storefrontBytes : _selfieBytes;
-    final title = isStorefront ? 'Foto Depan Toko / Lokasi' : 'Selfie dengan Pelanggan';
-    final hint = isStorefront ? 'Ambil foto yang jelas dari depan toko' : 'Foto bersama pelanggan sebagai bukti pertemuan';
+    final title = isStorefront ? 'Foto Depan Toko / Lokasi' : 'Selfie di Depan Toko';
+    final hint = isStorefront ? 'Ambil foto yang jelas dari depan toko' : 'Ambil selfie di depan toko sebagai bukti kunjungan';
 
     return Stack(
       children: [
@@ -1094,11 +1097,8 @@ class _CheckInPageState extends State<CheckInPage> {
             children: [
               Row(
                 children: [
-                  if (_storefrontBytes != null)
-                    _buildReportImage('FOTO TOKO', _storefrontBytes!),
-                  if (_storefrontBytes != null && _selfieBytes != null) const SizedBox(width: 12),
                   if (_selfieBytes != null)
-                    _buildReportImage('SELFIE', _selfieBytes!),
+                    _buildReportImage('SELFIE DI DEPAN TOKO', _selfieBytes!),
                 ],
               ),
             ],

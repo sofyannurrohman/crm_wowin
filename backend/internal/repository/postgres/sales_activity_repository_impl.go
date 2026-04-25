@@ -26,21 +26,23 @@ func (r *salesActivityRepoImpl) Create(ctx context.Context, a *models.SalesActiv
 	query := `INSERT INTO sales_activities (
 				user_id, lead_id, customer_id, deal_id, task_destination_id,
 				type, title, notes, latitude, longitude,
-				check_in_time, check_out_time, selfie_photo_path, place_photo_path, address, outcome, activity_at, distance, is_offline
-			  ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+				check_in_time, check_out_time, selfie_photo_path, place_photo_path, address, outcome, activity_at, distance, is_offline, status, nota_photo_path
+			  ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
 			  RETURNING id, created_at, updated_at`
 
 	err := r.db.QueryRow(ctx, query,
 		a.UserID, a.LeadID, a.CustomerID, a.DealID, a.TaskDestinationID,
 		a.Type, a.Title, a.Notes, a.Latitude, a.Longitude,
 		a.CheckInTime, a.CheckOutTime, a.SelfiePhotoPath, a.PlacePhotoPath, a.Address, a.Outcome, a.ActivityAt, a.Distance, a.IsOffline,
+		a.Status, a.NotaPhotoPath,
 	).Scan(&a.ID, &a.CreatedAt, &a.UpdatedAt)
 	return err
 }
 
 func (r *salesActivityRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*models.SalesActivity, error) {
 	query := `SELECT id, user_id, lead_id, customer_id, deal_id, task_destination_id, type, title, notes, latitude, longitude, 
-				check_in_time, check_out_time, selfie_photo_path, place_photo_path, address, outcome, activity_at, created_at, updated_at, distance, is_offline
+				check_in_time, check_out_time, selfie_photo_path, place_photo_path, address, outcome, activity_at, created_at, updated_at, distance, is_offline,
+				status, nota_photo_path
 			  FROM sales_activities WHERE id = $1`
 
 	var a models.SalesActivity
@@ -49,6 +51,7 @@ func (r *salesActivityRepoImpl) GetByID(ctx context.Context, id uuid.UUID) (*mod
 		&a.Type, &a.Title, &a.Notes, &a.Latitude, &a.Longitude,
 		&a.CheckInTime, &a.CheckOutTime, &a.SelfiePhotoPath, &a.PlacePhotoPath, &a.Address, &a.Outcome,
 		&a.ActivityAt, &a.CreatedAt, &a.UpdatedAt, &a.Distance, &a.IsOffline,
+		&a.Status, &a.NotaPhotoPath,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, dberrors.ErrNotFound
@@ -87,13 +90,19 @@ func (r *salesActivityRepoImpl) List(ctx context.Context, filter repository.Sale
 		argPos++
 	}
 	if filter.EndDate != nil {
-		where = append(where, fmt.Sprintf("activity_at <= $%d", argPos))
+		where = append(where, fmt.Sprintf("sa.activity_at <= $%d", argPos))
 		args = append(args, *filter.EndDate)
+		argPos++
+	}
+	if filter.Status != nil {
+		where = append(where, fmt.Sprintf("sa.status = $%d", argPos))
+		args = append(args, *filter.Status)
 		argPos++
 	}
 
 	query := `SELECT sa.id, sa.user_id, sa.lead_id, sa.customer_id, sa.deal_id, sa.task_destination_id, sa.type, sa.title, sa.notes, sa.latitude, sa.longitude, 
 	            sa.check_in_time, sa.check_out_time, sa.selfie_photo_path, sa.place_photo_path, sa.address, sa.outcome, sa.activity_at, sa.created_at, sa.updated_at, sa.distance, sa.is_offline,
+				sa.status, sa.nota_photo_path,
 				d.title as deal_title, d.amount as deal_amount,
 				c.name as customer_name,
 				l.name as lead_name
@@ -125,6 +134,7 @@ func (r *salesActivityRepoImpl) List(ctx context.Context, filter repository.Sale
 			&a.Type, &a.Title, &a.Notes, &a.Latitude, &a.Longitude,
 			&a.CheckInTime, &a.CheckOutTime, &a.SelfiePhotoPath, &a.PlacePhotoPath, &a.Address, &a.Outcome,
 			&a.ActivityAt, &a.CreatedAt, &a.UpdatedAt, &a.Distance, &a.IsOffline,
+			&a.Status, &a.NotaPhotoPath,
 			&a.DealTitle, &a.DealAmount, &a.CustomerName, &a.LeadName,
 		)
 		if err != nil {
@@ -140,14 +150,14 @@ func (r *salesActivityRepoImpl) Update(ctx context.Context, a *models.SalesActiv
 				lead_id=$1, customer_id=$2, deal_id=$3, task_destination_id=$4, type=$5, 
 				title=$6, notes=$7, latitude=$8, longitude=$9, 
 				check_in_time=$10, check_out_time=$11, selfie_photo_path=$12, place_photo_path=$13, address=$14, outcome=$15,
-				activity_at=$16, updated_at=NOW(), distance=$17, is_offline=$18
-			  WHERE id=$19 RETURNING updated_at`
+				activity_at=$16, updated_at=NOW(), distance=$17, is_offline=$18, status=$19, nota_photo_path=$20
+			  WHERE id=$21 RETURNING updated_at`
 
 	err := r.db.QueryRow(ctx, query,
 		a.LeadID, a.CustomerID, a.DealID, a.TaskDestinationID, a.Type,
 		a.Title, a.Notes, a.Latitude, a.Longitude,
 		a.CheckInTime, a.CheckOutTime, a.SelfiePhotoPath, a.PlacePhotoPath, a.Address, a.Outcome,
-		a.ActivityAt, a.Distance, a.IsOffline, a.ID,
+		a.ActivityAt, a.Distance, a.IsOffline, a.Status, a.NotaPhotoPath, a.ID,
 	).Scan(&a.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return dberrors.ErrNotFound

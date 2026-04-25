@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
@@ -12,7 +13,12 @@ import '../../../auth/presentation/bloc/auth_state.dart';
 import '../bloc/dashboard_bloc.dart';
 import '../bloc/dashboard_event.dart';
 import '../bloc/dashboard_state.dart';
+import '../../../customers/presentation/bloc/customer_bloc.dart';
+import '../../../customers/presentation/bloc/customer_event.dart';
+import '../../../customers/presentation/bloc/customer_state.dart';
+import '../../../customers/domain/entities/customer.dart';
 import '../../../visits/presentation/bloc/visit_bloc.dart';
+import '../../../visits/presentation/bloc/visit_event.dart';
 import '../../../visits/presentation/bloc/visit_state.dart';
 import '../../domain/entities/visit_recommendation.dart';
 import '../../domain/entities/kpi_dashboard.dart';
@@ -40,11 +46,12 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _currentNavIndex = 0;
 
-  static const Color _primaryGreen = Color(0xFF059669);
-  static const Color _darkGreen = Color(0xFF064E3B);
-  static const Color _bg = Color(0xFFF9FAFB);
-  static const Color _accentGreen = Color(0xFF10B981);
-  static const Color _lightGreen = Color(0xFFECFDF5);
+  static const Color _emerald = AppColors.primary;
+  static const Color _emeraldDark = AppColors.primaryDark;
+  static const Color _emeraldLight = AppColors.primaryLight;
+  static const Color _slate900 = AppColors.textPrimary;
+  static const Color _slate500 = AppColors.textSecondary;
+  static const Color _bg = AppColors.background;
 
   @override
   void initState() {
@@ -59,6 +66,8 @@ class _DashboardPageState extends State<DashboardPage> {
       salesId = authState.user.id;
     }
     context.read<DashboardBloc>().add(FetchDashboardKpis(salesId: salesId));
+    context.read<CustomerBloc>().add(FetchCustomers(salesId: salesId));
+    context.read<VisitBloc>().add(FetchActivities(salesId: salesId));
   }
 
   @override
@@ -70,175 +79,80 @@ class _DashboardPageState extends State<DashboardPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // header uses emerald green gradient
             _buildHeader(context, l10n),
-            // Scrollable body
             Expanded(
               child: MultiBlocListener(
                 listeners: [
-                  BlocListener<TaskBloc, TaskState>(
-                    listener: (context, state) {
-                      if (state is TaskOperationSuccess) {
-                        _fetchDashboardData();
-                      }
-                    },
-                  ),
-                  BlocListener<VisitBloc, VisitState>(
-                    listener: (context, state) {
-                      if (state is VisitSuccess) {
-                        _fetchDashboardData();
-                      }
-                    },
-                  ),
-                  BlocListener<DealBloc, DealState>(
-                    listener: (context, state) {
-                      if (state is DealOperationSuccess) {
-                        _fetchDashboardData();
-                      }
-                    },
-                  ),
+                  BlocListener<TaskBloc, TaskState>(listener: (context, state) { if (state is TaskOperationSuccess) _fetchDashboardData(); }),
+                  BlocListener<VisitBloc, VisitState>(listener: (context, state) { if (state is VisitSuccess) _fetchDashboardData(); }),
+                  BlocListener<DealBloc, DealState>(listener: (context, state) { if (state is DealOperationSuccess) _fetchDashboardData(); }),
+                  BlocListener<CustomerBloc, CustomerState>(listener: (context, state) { if (state is CustomerOperationSuccess) _fetchDashboardData(); }),
                 ],
                 child: RefreshIndicator(
-                  color: _primaryGreen,
-                  onRefresh: () async {
-                    _fetchDashboardData();
-                  },
+                  color: _emerald,
+                  onRefresh: () async => _fetchDashboardData(),
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  child: BlocBuilder<DashboardBloc, DashboardState>(
-                    builder: (context, state) {
-                      if (state is DashboardLoading) {
-                        return const SizedBox(
-                          height: 300,
-                          child: Center(
-                            child: CircularProgressIndicator(color: _primaryGreen),
-                          ),
-                        );
-                      } else if (state is DashboardLoaded) {
-                        return _buildBody(state, l10n);
-                      } else if (state is DashboardError) {
-                        return _buildError(state.message, l10n);
-                      }
-                      return const SizedBox();
-                    },
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    child: BlocBuilder<DashboardBloc, DashboardState>(
+                      builder: (context, state) {
+                        if (state is DashboardLoading) {
+                          return const SizedBox(height: 300, child: Center(child: CircularProgressIndicator(color: _emerald)));
+                        } else if (state is DashboardLoaded) {
+                          return _buildBody(state, l10n);
+                        } else if (state is DashboardError) {
+                          return _buildError(state.message, l10n);
+                        }
+                        return const SizedBox();
+                      },
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
           ],
         ),
       ),
-      // Floating Check-in Button
-      floatingActionButton: _buildCheckInFab(l10n),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Orange header with avatar, name, notification bell
-  // ---------------------------------------------------------------------------
   Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
-        final userName = authState is Authenticated
-            ? authState.user.name
-            : 'Sales';
+        final userName = authState is Authenticated ? authState.user.name : 'Sales';
         return Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_primaryGreen, _darkGreen],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: Colors.white,
+            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32)),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           child: Row(
             children: [
-              // Hamburger Menu
-              IconButton(
-                icon: const Icon(LucideIcons.menu, color: Colors.white, size: 28),
-                onPressed: () => Scaffold.of(context).openDrawer(),
-              ),
-              const SizedBox(width: 8),
-              // Avatar
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: const ClipOval(
-                  child: Icon(
-                    LucideIcons.user,
-                    color: Colors.white,
-                    size: 28,
-                  ),
+              GestureDetector(
+                onTap: () => Scaffold.of(context).openDrawer(),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(LucideIcons.menu, color: _slate900, size: 22),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      l10n.welcomeBackGeneral.toUpperCase(),
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    Text(
-                      userName.isEmpty ? 'Sales' : userName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
+                    Text(l10n.welcomeBackGeneral.toUpperCase(), style: const TextStyle(color: _slate500, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                    Text(userName, style: const TextStyle(color: _slate900, fontSize: 18, fontWeight: FontWeight.w900)),
                   ],
                 ),
               ),
-              // Notification bell
-              Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(LucideIcons.bell,
-                          color: Colors.white, size: 22),
-                      onPressed: () =>
-                          context.pushNamed(kRouteNotifications),
-                    ),
-                  ),
-                  Positioned(
-                    right: 10,
-                    top: 10,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: _accentGreen,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _darkGreen, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
+              GestureDetector(
+                onTap: () => context.pushNamed(kRouteNotifications),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(LucideIcons.bell, color: _slate900, size: 22),
+                ),
               ),
             ],
           ),
@@ -247,173 +161,211 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Main body: KPI cards + target + schedule
-  // ---------------------------------------------------------------------------
   Widget _buildBody(DashboardLoaded state, AppLocalizations l10n) {
     final d = state.dashboard;
     final List<_RouteStep> optimizedSteps = _getOptimizedSteps(state.routeTasks);
     
-    // Find first unvisited destination in optimized sequence
-    _RouteStep? nextOptimizedStop;
-    try {
-      nextOptimizedStop = optimizedSteps.firstWhere(
-        (s) => !s.isWarehouse && s.status != TaskStatus.done
-      );
-    } catch (_) {
-      nextOptimizedStop = null;
-    }
+    _RouteStep? nextStop;
+    try { nextStop = optimizedSteps.firstWhere((s) => !s.isWarehouse && s.status != TaskStatus.done); } catch (_) { nextStop = null; }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // --- HERO SECTION (Daily Actions) ---
-        _buildHeroSection(d, l10n).animateEntrance(delay: const Duration(milliseconds: 100)),
-        const SizedBox(height: 16),
-        // Next Visit Card Integration
-        BlocBuilder<VisitBloc, VisitState>(
-          builder: (context, visitState) {
-            if (nextOptimizedStop != null) {
-              return NextVisitCard(
-                nextStop: VisitRecommendation(
-                  id: nextOptimizedStop!.id,
-                  name: nextOptimizedStop!.name,
-                  address: nextOptimizedStop!.address,
-                  latitude: nextOptimizedStop!.latitude ?? 0,
-                  longitude: nextOptimizedStop!.longitude ?? 0,
-                  reason: 'Optimized via Route Planner',
-                  customerId: nextOptimizedStop!.customerId,
-                  leadId: nextOptimizedStop!.leadId,
-                  taskDestinationId: nextOptimizedStop!.id,
-                  type: nextOptimizedStop!.customerId != null ? 'customer' : 'lead',
-                  status: 'scheduled',
-                  priority: 'medium',
-                  daysSinceLast: 0,
-                ),
-                parentTask: nextOptimizedStop!.parentTask,
-              ).animateEntrance(delay: const Duration(milliseconds: 100));
-            } else if (d.nextStop != null) {
-              return Builder(
-                builder: (context) {
-                  final parentTask = (state as DashboardLoaded).routeTasks.whereType<Task>().firstWhere(
-                    (t) => t.destinations.any((dest) => dest.id == d.nextStop!.taskDestinationId),
-                    orElse: () => null as dynamic,
-                  );
-                  return NextVisitCard(
-                    nextStop: d.nextStop!,
-                    parentTask: parentTask,
-                  ).animateEntrance(delay: const Duration(milliseconds: 100));
-                },
-              );
-            }
-            return const SizedBox();
-          },
-        ),
-
-        // KPI row: visits + leads
-        Row(
-          children: [
-            Expanded(
-              child: _buildKpiCard(
-                label: l10n.todaysVisits,
-                icon: LucideIcons.calendarCheck,
-                value: '${d.visitsToday}',
-                badge: '${d.visitsToday}/${d.visitsTarget} Kunjungan',
-                badgeColor: d.visitsToday >= d.visitsTarget ? const Color(0xFF10B981) : _primaryGreen,
-              ).animateEntrance(delay: const Duration(milliseconds: 200)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildKpiCard(
-                label: l10n.newLeads,
-                icon: LucideIcons.userPlus,
-                value: '${d.newLeads}',
-                badge: '+5 growth',
-                badgeColor: const Color(0xFF10B981),
-              ).animateEntrance(delay: const Duration(milliseconds: 300)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-
-        // Monthly target progress
-        _buildMonthlyTargetCard(
-          d.monthlyRevenue,
-          d.monthlyTarget,
-          d.targetMetPercentage,
-          d.daysLeft,
-          l10n,
-        ).animateEntrance(delay: const Duration(milliseconds: 400)),
-        const SizedBox(height: 24),
-        _buildHotDeals(d.hotDeals).animateEntrance(delay: const Duration(milliseconds: 500)),
-        const SizedBox(height: 24),
-        _buildRecentActivitySection(d.recentActivities).animateEntrance(delay: const Duration(milliseconds: 600)),
-        const SizedBox(height: 24),
-
-        // Combined Route Sequence section
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Urutan Rencana Kunjungan',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-            GestureDetector(
-              onTap: () => context.pushNamed(kRouteTasks),
-              child: const Text(
-                'Lihat Semua',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: _primaryGreen,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Ikuti urutan kunjungan hari ini untuk rute yang optimal.',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        const SizedBox(height: 20),
+        // 1. Target & Stats Row (Compact)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: _buildTargetMinimal(d, l10n),
+        ).animateEntrance(delay: const Duration(milliseconds: 50)),
         
-        _buildRouteSequence(optimizedSteps, l10n),
+        const SizedBox(height: 24),
+        
+        // 2. Main Action KPIs (Horizontal)
+        _buildStatRow(d, l10n).animateEntrance(delay: const Duration(milliseconds: 100)),
+        
+        const SizedBox(height: 32),
 
-        const SizedBox(height: 100), // padding for FAB
+        // 3. Highlight / Next Visit
+        if (nextStop != null) 
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: NextVisitCard(
+              nextStop: VisitRecommendation(
+                id: nextStop.id, name: nextStop.name, address: nextStop.address,
+                latitude: nextStop.latitude ?? 0, longitude: nextStop.longitude ?? 0,
+                reason: 'Prioritas Berikutnya', customerId: nextStop.customerId,
+                leadId: nextStop.leadId, taskDestinationId: nextStop.id,
+                type: nextStop.customerId != null ? 'customer' : 'lead',
+                status: 'scheduled', priority: 'high', daysSinceLast: 0,
+              ),
+              parentTask: nextStop.parentTask,
+            ),
+          ).animateEntrance(delay: const Duration(milliseconds: 150)),
+
+        const SizedBox(height: 32),
+
+        // 4. Quick Access - Daftar Toko (Horizontal)
+        _buildQuickStoreAccess(l10n).animateEntrance(delay: const Duration(milliseconds: 200)),
+
+        const SizedBox(height: 32),
+        
+        // --- HYBRID WORKFLOW: Evening Task Banner ---
+        _buildEveningTaskBanner().animateEntrance(delay: const Duration(milliseconds: 220)),
+        
+        const SizedBox(height: 32),
+
+        // 5. Kunjungan Hari Ini (Planned & Pending)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Kunjungan Hari Ini', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _slate900)),
+                  TextButton(onPressed: () => context.pushNamed(kRouteTasks), child: const Text('Lihat Semua', style: TextStyle(color: _emerald, fontWeight: FontWeight.bold))),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildPendingVisitsSection(),
+              const SizedBox(height: 16),
+              _buildRouteSequence(optimizedSteps, l10n),
+            ],
+          ),
+        ).animateEntrance(delay: const Duration(milliseconds: 250)),
+
+        const SizedBox(height: 40),
       ],
     );
   }
 
-  Widget _buildHeroSection(KpiDashboard d, AppLocalizations l10n) {
-    return Row(
+  Widget _buildTargetMinimal(KpiDashboard d, AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [_emeraldDark, _emerald], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: _emerald.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('OMZET BULAN INI', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                  const SizedBox(height: 4),
+                  Text(_formatCurrency(d.monthlyRevenue, l10n.currencySymbol), style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(100)),
+                child: Text('${d.targetMetPercentage.toStringAsFixed(0)}%', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: (d.targetMetPercentage / 100).clamp(0, 1),
+              backgroundColor: Colors.white.withOpacity(0.1),
+              color: Colors.white,
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(LucideIcons.calendar, color: Colors.white70, size: 14),
+              const SizedBox(width: 6),
+              Text('${d.daysLeft} hari lagi mencapai target ${l10n.currencySymbol}${NumberFormat.compact().format(d.monthlyTarget)}', style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(KpiDashboard d, AppLocalizations l10n) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          _buildStatCircle('Booking', d.todayBooking, LucideIcons.shoppingBag, Colors.indigo, l10n),
+          _buildStatCircle('Setoran', d.todayCollection, LucideIcons.wallet, Colors.amber.shade700, l10n),
+          _buildStatCircle('Visits', d.visitsToday.toDouble(), LucideIcons.mapPin, _emerald, l10n, isCount: true, target: d.visitsTarget.toDouble()),
+          _buildStatCircle('Leads', d.newLeads.toDouble(), LucideIcons.userPlus, Colors.pink, l10n, isCount: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCircle(String label, double value, IconData icon, Color color, AppLocalizations l10n, {bool isCount = false, double? target}) {
+    return Container(
+      margin: const EdgeInsets.only(right: 16),
+      padding: const EdgeInsets.all(16),
+      width: 140,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 12),
+          Text(label.toUpperCase(), style: const TextStyle(color: _slate500, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+          const SizedBox(height: 4),
+          Text(
+            isCount ? (target != null ? '${value.toInt()}/${target.toInt()}' : value.toInt().toString()) : _formatCurrency(value, l10n.currencySymbol),
+            style: TextStyle(color: _slate900, fontSize: isCount ? 18 : 15, fontWeight: FontWeight.w900),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickStoreAccess(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: _buildHeroCard(
-            label: 'BOOKING HARI INI',
-            value: d.todayBooking,
-            icon: LucideIcons.shoppingCart,
-            color: const Color(0xFF4F46E5), // Indigo
-            l10n: l10n,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Daftar Toko', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _slate900)),
+              GestureDetector(
+                onTap: () => context.pushNamed(kRouteAddCustomer),
+                child: const Row(
+                  children: [
+                    Icon(LucideIcons.plusCircle, color: _emerald, size: 18),
+                    SizedBox(width: 4),
+                    Text('Tambah', style: TextStyle(color: _emerald, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildHeroCard(
-            label: 'SETORAN HARI INI',
-            value: d.todayCollection,
-            icon: LucideIcons.wallet,
-            color: const Color(0xFFD97706), // Amber
-            l10n: l10n,
-          ),
-        ),
+        const SizedBox(height: 16),
+        _buildCustomerListSection(),
       ],
     );
   }
+
 
   Widget _buildHeroCard({
     required String label,
@@ -497,10 +449,10 @@ class _DashboardPageState extends State<DashboardPage> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: _lightGreen,
+              color: _emeraldLight,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 20, color: _primaryGreen),
+            child: Icon(icon, size: 20, color: _emerald),
           ),
           const SizedBox(height: 12),
           Text(
@@ -508,7 +460,7 @@ class _DashboardPageState extends State<DashboardPage> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w700,
-              color: _darkGreen.withOpacity(0.6),
+              color: _emeraldDark.withOpacity(0.6),
               letterSpacing: 0.8,
             ),
           ),
@@ -518,7 +470,7 @@ class _DashboardPageState extends State<DashboardPage> {
             style: const TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w900,
-              color: _darkGreen,
+              color: _emeraldDark,
               height: 1.1,
             ),
           ),
@@ -526,7 +478,7 @@ class _DashboardPageState extends State<DashboardPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: _accentGreen.withOpacity(0.1),
+              color: _emerald.withOpacity(0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -534,7 +486,7 @@ class _DashboardPageState extends State<DashboardPage> {
               style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
-                color: _accentGreen,
+                color: _emerald,
               ),
             ),
           ),
@@ -557,7 +509,7 @@ class _DashboardPageState extends State<DashboardPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _primaryGreen.withOpacity(0.1)),
+        border: Border.all(color: _emerald.withOpacity(0.1)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
@@ -586,7 +538,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
-                  color: _primaryGreen,
+                  color: _emerald,
                 ),
               ),
             ],
@@ -600,7 +552,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
-                  color: _darkGreen,
+                  color: _emeraldDark,
                 ),
               ),
               const SizedBox(width: 8),
@@ -630,7 +582,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   height: 8,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [_primaryGreen, _accentGreen],
+                      colors: [_emerald, _emerald],
                     ),
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -784,15 +736,6 @@ class _DashboardPageState extends State<DashboardPage> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Column(
-          children: [
-            Icon(LucideIcons.map, size: 40, color: Colors.grey.withOpacity(0.3)),
-            const SizedBox(height: 12),
-            const Text('Belum ada rute kunjungan', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            const Text('Rencana tugas hari ini akan muncul di sini.', style: TextStyle(fontSize: 12, color: Colors.grey)),
-          ],
-        ),
       );
     }
 
@@ -816,7 +759,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: step.status == TaskStatus.done ? _primaryGreen : Colors.white,
+                        color: step.status == TaskStatus.done ? _emerald : Colors.white,
                         shape: BoxShape.circle,
                         boxShadow: [
                           if (step.status != TaskStatus.done)
@@ -827,7 +770,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                         ],
                         border: Border.all(
-                          color: step.status == TaskStatus.done ? _primaryGreen : Colors.grey.withOpacity(0.3),
+                          color: step.status == TaskStatus.done ? _emerald : Colors.grey.withOpacity(0.3),
                           width: 2,
                         ),
                       ),
@@ -839,7 +782,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w900,
-                                  color: _darkGreen,
+                                  color: _emeraldDark,
                                 ),
                               ),
                       ),
@@ -889,12 +832,12 @@ class _DashboardPageState extends State<DashboardPage> {
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w900,
-                                      color: step.isWarehouse ? Colors.blue : _primaryGreen,
+                                      color: step.isWarehouse ? Colors.blue : _emerald,
                                       letterSpacing: 1.0,
                                     ),
                                   ),
                                   if (step.status == TaskStatus.done)
-                                    const Icon(LucideIcons.checkCircle2, color: _primaryGreen, size: 16),
+                                    Icon(LucideIcons.checkCircle2, color: _emerald, size: 16),
                               ],
                             ),
                             const SizedBox(height: 4),
@@ -935,7 +878,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildTaskItem(Task task, AppLocalizations l10n) {
-    const Color priorityColor = _primaryGreen;
+    final Color priorityColor = _emerald;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -971,18 +914,18 @@ class _DashboardPageState extends State<DashboardPage> {
                            Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: _primaryGreen.withOpacity(0.1),
+                              color: _emerald.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(LucideIcons.calendar, size: 12, color: priorityColor),
-                                SizedBox(width: 4),
-                                Text(
+                                const SizedBox(width: 4),
+                                const Text(
                                   'TUGAS HARI INI',
                                   style: TextStyle(
-                                    color: _primaryGreen,
+                                    color: _emerald,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: 0.5,
@@ -1055,7 +998,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 );
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: _primaryGreen,
+                                backgroundColor: _emerald,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
@@ -1077,7 +1020,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildRecommendationItem(VisitRecommendation item, AppLocalizations l10n) {
     final bool isHigh = item.priority == 'high';
-    final Color priorityColor = isHigh ? Colors.red : (item.priority == 'medium' ? _accentGreen : _darkGreen);
+    final Color priorityColor = isHigh ? Colors.red : (item.priority == 'medium' ? _emerald : _emeraldDark);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1179,6 +1122,10 @@ class _DashboardPageState extends State<DashboardPage> {
                             flex: 2,
                             child: ElevatedButton(
                               onPressed: () {
+                                final authState = context.read<AuthBloc>().state;
+                                final userId = (authState is Authenticated) ? authState.user.id : null;
+                                final userName = (authState is Authenticated) ? authState.user.name : null;
+                                
                                 context.pushNamed(
                                   kRouteCheckIn,
                                   extra: {
@@ -1188,6 +1135,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                     'targetLat': item.latitude,
                                     'targetLng': item.longitude,
                                     'targetRadiusMeters': 200.0,
+                                    'salesId': userId,
+                                    'salesmanName': userName,
                                   },
                                 );
                               },
@@ -1231,7 +1180,7 @@ class _DashboardPageState extends State<DashboardPage> {
         break;
       case 'scheduled':
         label = 'Terjadwal';
-        color = _darkGreen;
+        color = _emeraldDark;
         icon = LucideIcons.calendar;
         break;
     }
@@ -1275,9 +1224,9 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             GestureDetector(
               onTap: () => context.pushNamed(kRouteDeals),
-              child: const Text(
+              child: Text(
                 'Lihat Semua',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _primaryGreen),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: _emerald),
               ),
             ),
           ],
@@ -1304,12 +1253,12 @@ class _DashboardPageState extends State<DashboardPage> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [_darkGreen, _primaryGreen],
+            colors: [_emeraldDark, _emerald],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: _darkGreen.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
+          boxShadow: [BoxShadow(color: _emeraldDark.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1363,8 +1312,8 @@ class _DashboardPageState extends State<DashboardPage> {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: _lightGreen, shape: BoxShape.circle),
-        child: Icon(activity.type == 'check_in' ? LucideIcons.mapPin : LucideIcons.checkSquare, size: 16, color: _primaryGreen),
+        decoration: BoxDecoration(color: _emeraldLight, shape: BoxShape.circle),
+        child: Icon(activity.type == 'check_in' ? LucideIcons.mapPin : LucideIcons.checkSquare, size: 16, color: _emerald),
       ),
       title: Text(activity.type == 'check_in' ? 'Check-in di Lapangan' : 'Check-out Selesai', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
       subtitle: Text(activity.notes ?? '-', style: const TextStyle(fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -1374,24 +1323,115 @@ class _DashboardPageState extends State<DashboardPage> {
 
 
   Widget _buildCheckInFab(AppLocalizations l10n) {
-    return FloatingActionButton.extended(
-      onPressed: () {
-        context.pushNamed(kRouteCheckIn);
+    return const SizedBox(); // Removed FAB to focus on list-based workflow
+  }
+
+  Widget _buildCustomerListSection() {
+    return BlocBuilder<CustomerBloc, CustomerState>(
+      builder: (context, state) {
+        if (state is CustomerLoading) {
+          return const Center(child: CircularProgressIndicator(color: _emerald));
+        } else if (state is CustomersLoaded) {
+          if (state.customers.isEmpty) {
+            return const SizedBox();
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Daftar Toko Anda',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1A1A1A)),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.pushNamed(kRouteCustomers),
+                    child: Text(
+                      'Lihat Semua',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _emerald),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Pilih toko di bawah ini untuk langsung melakukan kunjungan.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 140,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: state.customers.length > 5 ? 5 : state.customers.length,
+                  separatorBuilder: (context, index) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final c = state.customers[index];
+                    return GestureDetector(
+                      onTap: () {
+                        context.pushNamed(
+                          kRouteCheckIn,
+                          extra: {
+                            'customerId': c.id,
+                            'customerName': c.name,
+                            'customerAddress': c.address,
+                            'targetLat': c.latitude,
+                            'targetLng': c.longitude,
+                            'targetRadiusMeters': 200.0,
+                            'salesId': c.salesId,
+                            'salesmanName': c.salesmanName,
+                          },
+                        );
+                      },
+                      child: Container(
+                        width: 160,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 4)),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(color: _emeraldLight, shape: BoxShape.circle),
+                              child: Icon(LucideIcons.store, color: _emerald),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              c.name,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const Spacer(),
+                            Row(
+                              children: [
+                                Icon(LucideIcons.arrowRight, size: 14, color: _emerald),
+                                const SizedBox(width: 4),
+                                Text('Mulai Visit', style: TextStyle(color: _emerald, fontSize: 12, fontWeight: FontWeight.bold)),
+                              ],
+                            )
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        }
+        return const SizedBox();
       },
-      backgroundColor: _accentGreen,
-      elevation: 6,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      icon: const Icon(LucideIcons.userCheck, color: Colors.white, size: 20),
-      label: Text(
-        l10n.checkInNow,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 15,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
     );
   }
 
@@ -1426,6 +1466,219 @@ class _DashboardPageState extends State<DashboardPage> {
     } catch (_) {
       return '--:--';
     }
+  }
+
+  Widget _buildPendingVisitsSection() {
+    return BlocBuilder<VisitBloc, VisitState>(
+      builder: (context, state) {
+        if (state is VisitLoading) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Center(child: CircularProgressIndicator(color: _emerald, strokeWidth: 2)),
+          );
+        }
+        if (state is VisitError) {
+          return Center(child: Text('Error: ${state.message}', style: const TextStyle(color: Colors.red, fontSize: 10)));
+        }
+        if (state is ActivitiesLoaded) {
+
+          final pendingVisits = state.activities.where((a) {
+            // Show all DRAFT_PHOTO status visits that need finalization
+            final status = a.status?.toUpperCase() ?? '';
+            return status == 'DRAFT_PHOTO';
+          }).toList();
+
+          if (pendingVisits.isEmpty) {
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.black.withOpacity(0.05)),
+              ),
+              child: Column(
+                children: [
+                  Icon(LucideIcons.checkCircle, color: Colors.grey.withOpacity(0.3), size: 32),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tidak ada kunjungan yang perlu diinput',
+                    style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 120,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: pendingVisits.length,
+                  itemBuilder: (context, index) {
+                    final visit = pendingVisits[index];
+                    return GestureDetector(
+                      onTap: () => context.pushNamed(
+                        kRouteFinalizeVisit,
+                        extra: visit,
+                      ),
+                      child: Container(
+                        width: 200,
+                        margin: const EdgeInsets.only(right: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.orange.withOpacity(0.2)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(LucideIcons.clipboardSignature, color: Colors.orange, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    visit.customerName ?? visit.leadName ?? 'Unknown',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Pukul ${DateFormat('HH:mm').format(visit.createdAt)}',
+                                    style: const TextStyle(fontSize: 12, color: _slate500),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Row(
+                                    children: [
+                                      Text(
+                                        'Input Nota',
+                                        style: TextStyle(
+                                          color: Colors.orange,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: 4),
+                                      Icon(LucideIcons.arrowRight, size: 10, color: Colors.orange),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildEveningTaskBanner() {
+    return BlocBuilder<VisitBloc, VisitState>(
+      builder: (context, state) {
+        if (state is ActivitiesLoaded) {
+          final draftCount = state.activities.where((a) => a.status == 'DRAFT_PHOTO').length;
+          if (draftCount == 0) return const SizedBox.shrink();
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1E293B), Color(0xFF334155)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(LucideIcons.packageCheck, color: Colors.orange, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$draftCount KUNJUNGAN BELUM INPUT',
+                          style: const TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Selesaikan input detail di gudang.',
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => context.pushNamed(kRouteEveningTasks),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF1E293B),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                    child: const Text('INPUT', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
   }
 }
 

@@ -194,7 +194,7 @@ func (r *visitRepoImpl) GetActivitiesBySchedule(ctx context.Context, scheduleID 
 				ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
 				checkin_distance as distance, result_notes as notes, created_at,
 				CASE WHEN checkout_at IS NULL THEN 'check-in' ELSE 'check-out' END as type,
-				selfie_photo_path, place_photo_path
+				selfie_photo_path, place_photo_path, status
 		FROM visits WHERE schedule_id=$1 ORDER BY created_at ASC
 	`
 	rows, err := r.db.Query(ctx, query, scheduleID)
@@ -211,7 +211,7 @@ func (r *visitRepoImpl) GetActivitiesByCustomer(ctx context.Context, customerID 
 				ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
 				checkin_distance as distance, result_notes as notes, created_at,
 				CASE WHEN checkout_at IS NULL THEN 'check-in' ELSE 'check-out' END as type,
-				selfie_photo_path, place_photo_path
+				selfie_photo_path, place_photo_path, status
 		FROM visits WHERE customer_id=$1 ORDER BY created_at DESC
 	`
 	rows, err := r.db.Query(ctx, query, customerID)
@@ -228,7 +228,7 @@ func (r *visitRepoImpl) GetActivitiesByLead(ctx context.Context, leadID uuid.UUI
 				ST_Y(checkin_location::geometry) as lat, ST_X(checkin_location::geometry) as lon, 
 				checkin_distance as distance, result_notes as notes, created_at,
 				CASE WHEN checkout_at IS NULL THEN 'check-in' ELSE 'check-out' END as type,
-				selfie_photo_path, place_photo_path
+				selfie_photo_path, place_photo_path, status
 		FROM visits WHERE lead_id=$1 ORDER BY created_at DESC
 	`
 	rows, err := r.db.Query(ctx, query, leadID)
@@ -248,7 +248,7 @@ func scanActivities(rows pgx.Rows) ([]*models.VisitActivity, error) {
 			&a.ID, &a.ScheduleID, &a.TaskDestinationID, &a.SalesID, &a.LeadID, &a.CustomerID, &a.DealID,
 			&a.Latitude, &a.Longitude, 
 			&a.Distance, &a.Notes, &a.CreatedAt, &a.Type,
-			&selfie, &place,
+			&selfie, &place, &a.Status,
 		)
 		if err != nil {
 			return nil, err
@@ -307,34 +307,6 @@ func (r *visitRepoImpl) ListActivities(ctx context.Context, filter repository.Ac
 		argCount++
 	}
 
-	// Add Attendance Union (only if CustomerID filter is not specified, as attendances aren't linked to customers)
-	if filter.CustomerID == nil {
-		baseQuery += `
-			UNION ALL
-			SELECT 	id, NULL as schedule_id, NULL as task_destination_id, user_id as sales_id, NULL as lead_id, '00000000-0000-0000-0000-000000000000'::uuid as customer_id, NULL as deal_id, 
-					ST_Y(location::geometry) as lat, ST_X(location::geometry) as lon, 
-					0.0 as distance, notes, timestamp_at as created_at, type,
-					NULL as selfie_photo_path, NULL as place_photo_path
-			FROM attendances
-			WHERE 1=1
-		`
-		// Append same filters for user/date to the second part of union
-		if filter.SalesID != nil {
-			baseQuery += fmt.Sprintf(" AND user_id = $%d", 1) // Re-use SalesID arg
-		}
-		if filter.StartDate != nil {
-			// Find arg index for StartDate
-			idx := 1
-			if filter.SalesID != nil { idx++ }
-			baseQuery += fmt.Sprintf(" AND timestamp_at >= $%d", idx)
-		}
-		if filter.EndDate != nil {
-			idx := 1
-			if filter.SalesID != nil { idx++ }
-			if filter.StartDate != nil { idx++ }
-			baseQuery += fmt.Sprintf(" AND timestamp_at <= $%d", idx)
-		}
-	}
 
 	baseQuery += ") AS unified_activities ORDER BY created_at DESC"
 

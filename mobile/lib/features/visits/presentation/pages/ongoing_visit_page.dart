@@ -1,12 +1,17 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../bloc/visit_bloc.dart';
+import '../bloc/visit_event.dart';
 import '../bloc/visit_state.dart';
 import '../../../products/presentation/bloc/product_bloc.dart';
 import '../../../products/presentation/bloc/product_event.dart';
@@ -49,6 +54,18 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
   final TextEditingController _notesController = TextEditingController();
   List<Map<String, dynamic>> _selectedDealItems = [];
   bool _isNegotiation = false;
+  String? _notaPhotoPath; // Local path to captured nota photo
+  String? _selectedOutcome;
+  bool _isSubmitting = false;
+  Position? _currentPosition;
+  
+  final Map<String, String> _outcomeOptions = {
+    'negotiation': 'Tahap Negosiasi',
+    'deal_won': 'Tawaran Berhasil',
+    'collection': 'Tagihan (Collection)',
+    'deal_lost': 'Tawaran Ditolak',
+    'follow_up': 'Perlu Follow Up',
+  };
 
   static const Color _orange = Color(0xFFEA580C);
   static const Color _bg = Color(0xFFF9FAFB);
@@ -56,6 +73,7 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
   @override
   void initState() {
     super.initState();
+    _determinePosition();
     _elapsed = DateTime.now().difference(widget.checkInTime);
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
@@ -64,8 +82,37 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
         });
       }
     });
+    // Restore active visit state if it was lost (e.g. background sync or refresh)
+    final visitState = context.read<VisitBloc>().state;
+    if (visitState is! VisitSuccess) {
+      context.read<VisitBloc>().add(const RestoreActiveVisit());
+    }
     // Pre-fetch products if we might need them
     context.read<ProductBloc>().add(const FetchProducts());
+  }
+
+  Future<void> _determinePosition() async {
+    try {
+      // 1. Try to get current position with a short timeout
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium, // Medium is faster than High
+        timeLimit: const Duration(seconds: 5),
+      );
+      if (mounted) {
+        setState(() => _currentPosition = position);
+      }
+    } catch (e) {
+      debugPrint('OngoingVisitPage: Current location fetch failed/timed out: $e');
+      // 2. Fallback to last known position if current fails
+      try {
+        final lastPosition = await Geolocator.getLastKnownPosition();
+        if (lastPosition != null && mounted) {
+          setState(() => _currentPosition = lastPosition);
+        }
+      } catch (lastError) {
+        debugPrint('OngoingVisitPage: Last known location also failed: $lastError');
+      }
+    }
   }
 
   @override
@@ -164,30 +211,71 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
     );
   }
 
-  void _submitActivity() async {
-    // Navigate to Checkout, passing all collected data
-    final result = await context.pushNamed(
-      kRouteCheckOut,
-      extra: {
-        'scheduleId': widget.scheduleId,
-        'customerId': widget.customerId,
-        'leadId': widget.leadId,
-        'customerName': widget.customerName,
-        'taskDestinationId': widget.taskDestinationId,
-        'dealId': widget.dealId,
-        'dealItems': _selectedDealItems,
-        'checkInTime': widget.checkInTime,
-        'activitySubmitTime': DateTime.now(),
-        'activityNotes': _notesController.text,
-      },
-    );
+  void _submitCheckOut() async {
+    if (_isSubmitting) return;
 
-    // If checkout was successful (returned true), we also pop this page
-    // to return to the Map optimized sequence (RoutePlannerPage)
-    if (result == true && mounted) {
-      context.pop();
+    if (_selectedOutcome == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Silakan pilih hasil kunjungan (Hasil Akhir)'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    if (_selectedOutcome == 'deal_won' && _notaPhotoPath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Wajib upload foto nota untuk hasil "Tawaran Berhasil"'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    if (_currentPosition == null) {
+      setState(() => _isSubmitting = true);
+      await _determinePosition();
+      setState(() => _isSubmitting = false);
+      if (_currentPosition == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal mendapatkan lokasi GPS. Pastikan GPS aktif.'), backgroundColor: Colors.red),
+        );
+        return;
+      }
+    }
+
+    setState(() => _isSubmitting = true);
+
+    context.read<VisitBloc>().add(
+          CheckOutSubmitted(
+            scheduleId: widget.scheduleId,
+            latitude: _currentPosition!.latitude,
+            longitude: _currentPosition!.longitude,
+            visitResult: _notesController.text,
+            nextAction: '',
+            nextVisitDate: '',
+            taskDestinationId: widget.taskDestinationId,
+            customerId: widget.customerId,
+            leadId: widget.leadId,
+            dealId: widget.dealId,
+            dealItems: _selectedDealItems,
+            outcome: _selectedOutcome,
+            receiptPhotoFile: _notaPhotoPath != null ? XFile(_notaPhotoPath!) : null,
+          ),
+        );
+  }
+
+  void _submitActivity() async {
+    // This is now replaced by _submitCheckOut logic directly on this page
+    _submitCheckOut();
+  }
+
+  Future<void> _pickNotaPhoto() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? photo = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    if (photo != null) {
+      setState(() {
+        _notaPhotoPath = photo.path;
+      });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -198,10 +286,65 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
                 color: Color(0xFF111827), fontWeight: FontWeight.w800)),
         automaticallyImplyLeading: false,
       ),
-      body: BlocBuilder<VisitBloc, VisitState>(
-        builder: (context, visitState) {
-          if (visitState is! VisitSuccess) return const Center(child: CircularProgressIndicator());
+      body: BlocListener<VisitBloc, VisitState>(
+        listener: (context, state) {
+          debugPrint('OngoingVisitPage: New state received: ${state.runtimeType}');
+          if (state is VisitSuccess) {
+            debugPrint('OngoingVisitPage: VisitSuccess message: ${state.message}');
+            if (state.message.toLowerCase().contains('simpan') || 
+                state.message.toLowerCase().contains('selesai')) {
+              setState(() => _isSubmitting = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+              );
+              if (mounted) Navigator.of(context).pop(true);
+            }
+          } else if (state is VisitError) {
+            debugPrint('OngoingVisitPage: VisitError: ${state.message}');
+            setState(() => _isSubmitting = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+            );
+          }
+        },
+        child: BlocBuilder<VisitBloc, VisitState>(
+          builder: (context, visitState) {
+            if (visitState is! VisitSuccess && visitState is! VisitLoading && visitState is! ActivitiesLoaded) {
+            if (visitState is VisitError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(LucideIcons.alertTriangle, color: Colors.red, size: 48),
+                      const SizedBox(height: 16),
+                      Text(visitState.message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () => context.read<VisitBloc>().add(const RestoreActiveVisit()),
+                        child: const Text('Coba Lagi'),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return const Center(child: CircularProgressIndicator());
+          }
           
+          final effectiveState = visitState is VisitSuccess 
+              ? visitState 
+              : VisitSuccess('Memuat data...', 
+                  scheduleId: widget.scheduleId,
+                  customerId: widget.customerId,
+                  leadId: widget.leadId,
+                  customerName: widget.customerName,
+                  checkInTime: widget.checkInTime,
+                  currentDealId: widget.dealId,
+                  taskDestinationId: widget.taskDestinationId,
+                );
+
           final authState = context.read<AuthBloc>().state;
           final salesType = authState is Authenticated ? authState.user.salesType : 'taskOrder';
 
@@ -216,8 +359,8 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
                 const SizedBox(height: 24),
                 
                 // --- Credit / AR Info (Task Order only) ---
-                if (salesType == 'taskOrder' && visitState.invoices.isNotEmpty)
-                  _buildCreditInfoCard(visitState.invoices),
+                if (salesType == 'taskOrder' && effectiveState.invoices.isNotEmpty)
+                  _buildCreditInfoCard(effectiveState.invoices),
                 
                 const SizedBox(height: 16),
 
@@ -228,13 +371,14 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
                 const SizedBox(height: 32),
 
                 // --- Activity Section ---
-                _buildActivitySection(salesType, visitState),
+                _buildActivitySection(salesType, effectiveState),
                 const SizedBox(height: 40),
               ],
             ),
           );
         },
       ),
+    ),
     );
   }
 
@@ -524,6 +668,15 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
         const Text('LAPORAN KEGIATAN', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF374151), fontSize: 12, letterSpacing: 1)),
         const SizedBox(height: 16),
         
+        // --- HYBRID WORKFLOW: FOTO NOTA ---
+        _buildNotaPhotoSection(),
+        const SizedBox(height: 24),
+        
+        const Divider(),
+        const SizedBox(height: 16),
+        const Text('Opsi: Input Detail Sekarang', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey)),
+        const SizedBox(height: 8),
+        
         // Deal Toggle
         SwitchListTile(
           value: _selectedDealItems.isNotEmpty,
@@ -580,9 +733,30 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
         ],
 
         const SizedBox(height: 24),
+        const Text('Hasil Kunjungan (HASIL AKHIR)', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF374151), fontSize: 12, letterSpacing: 1)),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          value: _selectedOutcome,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade200)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.primary)),
+          ),
+          hint: const Text('Pilih Hasil Kunjungan', style: TextStyle(fontSize: 14)),
+          items: _outcomeOptions.entries.map((entry) {
+            return DropdownMenuItem<String>(
+              value: entry.key,
+              child: Text(entry.value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            );
+          }).toList(),
+          onChanged: (value) => setState(() => _selectedOutcome = value),
+        ),
 
-        const Text('Catatan Negosiasi / Diskusi', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
+        const SizedBox(height: 24),
+        const Text('Catatan Negosiasi / Diskusi (OPSIONAL)', style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF374151), fontSize: 12, letterSpacing: 1)),
+        const SizedBox(height: 12),
         TextField(
           controller: _notesController,
           maxLines: 4,
@@ -598,57 +772,326 @@ class _OngoingVisitPageState extends State<OngoingVisitPage> {
         const SizedBox(height: 48),
 
         ElevatedButton(
-          onPressed: _submitActivity,
+          onPressed: _isSubmitting ? null : _submitCheckOut,
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
+            backgroundColor: _selectedOutcome == 'deal_won' ? Colors.green : AppColors.primary,
             minimumSize: const Size(double.infinity, 60),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             elevation: 4,
           ),
-          child: const Text('SELESAI & LANJUT CHECK-OUT', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
+          child: _isSubmitting 
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Text(
+                'SIMPAN & SELESAI KUNJUNGAN',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
+              ),
         ),
       ],
     );
   }
 
   Widget _buildQuantityControl(int key, Map<String, dynamic> it) {
-    return Container(
-      decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(20)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: const Icon(LucideIcons.minusCircle, size: 18, color: Colors.grey),
-            onPressed: () {
-              setState(() {
-                if (it['quantity'] > 1) {
-                  it['quantity'] -= 1;
-                  it['subtotal'] = it['quantity'] * it['unit_price'];
-                } else {
-                  _selectedDealItems.removeAt(key);
-                }
-              });
-            },
-            constraints: const BoxConstraints(),
-            padding: const EdgeInsets.all(4),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(it['quantity'].toStringAsFixed(0), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          ),
-          IconButton(
-            icon: const Icon(LucideIcons.plusCircle, size: 18, color: AppColors.primary),
-            onPressed: () {
-              setState(() {
-                it['quantity'] += 1;
-                it['subtotal'] = it['quantity'] * it['unit_price'];
-              });
-            },
-            constraints: const BoxConstraints(),
-            padding: const EdgeInsets.all(4),
-          ),
-        ],
+    return GestureDetector(
+      onTap: () => _showNumpad(key, it),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              it['quantity'].toStringAsFixed(0),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
+            ),
+            const SizedBox(width: 8),
+            const Icon(LucideIcons.edit2, size: 14, color: Colors.grey),
+          ],
+        ),
       ),
     );
+  }
+
+  void _showNumpad(int key, Map<String, dynamic> it) {
+    String qtyInput = it['quantity'].toStringAsFixed(0);
+    String priceInput = it['unit_price'].toStringAsFixed(0);
+    bool isEditingPrice = false;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            String currentVal = isEditingPrice ? priceInput : qtyInput;
+
+            void updateValue(String val) {
+              setModalState(() {
+                String newVal = currentVal;
+                if (val == 'C') {
+                  newVal = '0';
+                } else if (val == 'DEL') {
+                  if (newVal.length > 1) {
+                    newVal = newVal.substring(0, newVal.length - 1);
+                  } else {
+                    newVal = '0';
+                  }
+                } else {
+                  if (newVal == '0') {
+                    newVal = val;
+                  } else {
+                    newVal += val;
+                  }
+                  // Limit max length
+                  int maxLen = isEditingPrice ? 10 : 5;
+                  if (newVal.length > maxLen) {
+                    newVal = newVal.substring(0, maxLen);
+                  }
+                }
+                
+                if (isEditingPrice) {
+                  priceInput = newVal;
+                } else {
+                  qtyInput = newVal;
+                }
+              });
+            }
+
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              padding: EdgeInsets.only(
+                top: 20, left: 20, right: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                    Text(it['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    
+                    // Toggle Tabs
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => isEditingPrice = false),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: !isEditingPrice ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: !isEditingPrice ? AppColors.primary : Colors.grey.shade200),
+                              ),
+                              child: Column(
+                                children: [
+                                  const Text('JUMLAH', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                                  Text(qtyInput, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: !isEditingPrice ? AppColors.primary : Colors.black87)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setModalState(() => isEditingPrice = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isEditingPrice ? AppColors.primary.withOpacity(0.1) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: isEditingPrice ? AppColors.primary : Colors.grey.shade200),
+                              ),
+                              child: Column(
+                                children: [
+                                  const Text('HARGA (PROMO)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                                  Text('Rp ${NumberFormat('#,###', 'id_ID').format(double.tryParse(priceInput) ?? 0)}', 
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isEditingPrice ? AppColors.primary : Colors.black87)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 20),
+                    GridView.count(
+                      shrinkWrap: true,
+                      crossAxisCount: 3,
+                      childAspectRatio: 1.8,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        for (var i = 1; i <= 9; i++)
+                          _buildNumpadBtn(i.toString(), () => updateValue(i.toString())),
+                        _buildNumpadBtn('C', () => updateValue('C'), color: Colors.red.shade50),
+                        _buildNumpadBtn('0', () => updateValue('0')),
+                        _buildNumpadBtn('DEL', () => updateValue('DEL'), color: Colors.grey.shade100),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        final double qty = double.tryParse(qtyInput) ?? 0;
+                        final double price = double.tryParse(priceInput) ?? 0;
+                        setState(() {
+                          if (qty > 0) {
+                            it['quantity'] = qty;
+                            it['unit_price'] = price;
+                            it['subtotal'] = qty * price;
+                          } else {
+                            _selectedDealItems.removeAt(key);
+                          }
+                        });
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        minimumSize: const Size(double.infinity, 54),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('SIMPAN PERUBAHAN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildNumpadBtn(String text, VoidCallback onTap, {Color? color}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: color ?? Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: text == 'C' ? Colors.red : (text == 'DEL' ? Colors.grey.shade700 : Colors.black87),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotaPhotoSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_notaPhotoPath == null)
+          GestureDetector(
+            onTap: _takeNotaPhoto,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.blue.shade200, width: 2, style: BorderStyle.solid),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), shape: BoxShape.circle),
+                    child: const Icon(LucideIcons.camera, color: Colors.blue, size: 40),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text('AMBIL FOTO NOTA FISIK', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.blue)),
+                  const SizedBox(height: 4),
+                  Text('Bukti transaksi untuk diinput nanti', style: TextStyle(color: Colors.blue.shade700, fontSize: 13)),
+                ],
+              ),
+            ),
+          )
+        else
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: kIsWeb 
+                  ? Image.network(
+                      _notaPhotoPath!,
+                      width: double.infinity,
+                      height: 200,
+                      fit: BoxFit.cover,
+                    )
+                  : Image.file(
+                      File(_notaPhotoPath!),
+                      width: double.infinity,
+                      height: 200,
+                      fit: BoxFit.cover,
+                    ),
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: CircleAvatar(
+                  backgroundColor: Colors.black54,
+                  child: IconButton(
+                    icon: const Icon(LucideIcons.x, color: Colors.white),
+                    onPressed: () => setState(() => _notaPhotoPath = null),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 12,
+                left: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'Foto Nota Tersimpan',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  void _takeNotaPhoto() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 70,
+    );
+    
+    if (image != null) {
+      setState(() {
+        _notaPhotoPath = image.path;
+      });
+    }
   }
 }

@@ -17,15 +17,12 @@ import '../../features/visits/domain/usecases/check_in_usecase.dart';
 import '../../features/visits/domain/usecases/check_out_usecase.dart';
 import '../../features/visits/domain/usecases/get_activities.dart';
 import '../../features/visits/domain/usecases/get_active_visit.dart';
+import '../../features/visits/domain/usecases/finalize_visit.dart';
 import '../../features/visits/data/sync/offline_sync_manager.dart';
 import '../../features/visits/presentation/bloc/visit_bloc.dart';
 import '../database/local_db_helper.dart';
 import '../api/dio_client.dart';
 import '../auth/token_storage.dart';
-import '../../features/attendance/data/datasources/attendance_remote_data_source.dart';
-import '../../features/attendance/data/repositories/attendance_repository_impl.dart';
-import '../../features/attendance/domain/repositories/attendance_repository.dart';
-import '../../features/attendance/presentation/bloc/attendance_bloc.dart';
 import '../../features/notifications/data/datasources/notification_remote_data_source.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
 import '../../features/notifications/domain/repositories/notification_repository.dart';
@@ -124,7 +121,6 @@ Future<void> initDependencies() async {
     localDataSource: sl(),
     remoteDataSource: sl(),
   ));
-  sl.registerLazySingleton(() => AttendanceRemoteDataSource(sl()));
   sl.registerLazySingleton(() => NotificationRemoteDataSource(sl()));
   sl.registerLazySingleton<CustomerRemoteDataSource>(
     () => CustomerRemoteDataSourceImpl(sl()),
@@ -169,9 +165,6 @@ Future<void> initDependencies() async {
       remoteDataSource: sl(),
       localDataSource: sl(),
     ),
-  );
-  sl.registerLazySingleton<AttendanceRepository>(
-    () => AttendanceRepositoryImpl(remoteDataSource: sl()),
   );
   sl.registerLazySingleton<NotificationRepository>(
     () => NotificationRepositoryImpl(remoteDataSource: sl()),
@@ -219,6 +212,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => CheckOutUseCase(sl()));
   sl.registerLazySingleton(() => GetActivities(sl()));
   sl.registerLazySingleton(() => GetActiveVisitUseCase(sl()));
+  sl.registerLazySingleton(() => FinalizeVisit(sl()));
   sl.registerLazySingleton(() => GetCustomers(sl()));
   sl.registerLazySingleton(() => GetCustomerDetail(sl()));
   sl.registerLazySingleton(() => CreateCustomer(sl()));
@@ -257,9 +251,9 @@ Future<void> initDependencies() async {
         checkOutUseCase: sl(),
         getActivitiesUseCase: sl(),
         getActiveVisitUseCase: sl(),
+        finalizeVisitUseCase: sl(),
         invoiceRepository: sl(),
       ));
-  sl.registerFactory(() => AttendanceBloc(repository: sl()));
   sl.registerFactory(() => NotificationBloc(repository: sl()));
   sl.registerFactory(() => CustomerBloc(
         getCustomers: sl(),

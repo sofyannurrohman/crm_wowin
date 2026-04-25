@@ -9,10 +9,6 @@ class CheckOutUseCase {
   CheckOutUseCase(this.repository);
 
   Future<Either<Failure, Map<String, dynamic>>> call(CheckOutRequest request) async {
-    if (request.visitResult.isEmpty) {
-      return const Left(ValidationFailure('Hasil kunjungan harus diisi.'));
-    }
-
     return await repository.checkOut(request);
   }
 }

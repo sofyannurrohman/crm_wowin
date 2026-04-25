@@ -1,6 +1,25 @@
 version: '3.8'
 
 services:
+  # Migration Runner - Ensures DB is up to date before API starts
+  migration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wowin_crm_migration
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-wowin_crm}?sslmode=disable
+      - GOOSE_DBSTRING=postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-wowin_crm}?sslmode=disable
+      - GOOSE_DRIVER=postgres
+    entrypoint: ["goose", "-dir", "./db/migrations", "up"]
+    volumes:
+      - ./db/migrations:/app/db/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - wowin_network
+
   # Wowin CRM Backend API
   api:
     build: 
@@ -25,6 +44,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      migration:
+        condition: service_completed_successfully
     networks:
       - wowin_network
   

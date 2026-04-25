@@ -15,6 +15,13 @@ const (
 	ScheduleStatusMissed    ScheduleStatus = "missed"
 )
 
+type VisitStatus string
+
+const (
+	VisitStatusDraft     VisitStatus = "DRAFT_PHOTO"
+	VisitStatusCompleted VisitStatus = "COMPLETED"
+)
+
 // VisitSchedule represents a planned visit from Sales to Customer
 type VisitSchedule struct {
 	ID          uuid.UUID      `json:"id"`
@@ -42,7 +49,7 @@ const (
 	VisitTypeCheckOut VisitType = "check-out"
 )
 
-// VisitActivity holds the actual footprint/proof of attendance for Sales on the field
+// VisitActivity holds the actual footprint/proof of presence for Sales on the field
 type VisitActivity struct {
 	ID                uuid.UUID  `json:"id"`
 	ScheduleID        *uuid.UUID `json:"schedule_id,omitempty"` // Nullable if an ad-hoc visit
@@ -72,5 +79,7 @@ type VisitActivity struct {
 	LeadName          string     `json:"lead_name,omitempty"`
 	DealAmount        *float64   `json:"deal_amount,omitempty"`
 	InvoiceID         *uuid.UUID `json:"invoice_id,omitempty"`
+	NotaPhotoPath     string     `json:"nota_photo_path"`
+	Status            VisitStatus `json:"status"`
 	CreatedAt         utils.FlexTime  `json:"created_at"`
 }

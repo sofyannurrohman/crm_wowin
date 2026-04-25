@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:wowin_crm/l10n/app_localizations.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../core/router/route_constants.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -25,9 +26,6 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isPasswordVisible = false;
   bool _agreedToTerms = false;
   String? _selectedSalesType;
-
-  // changed orange -> new green #0D8549
-  static const Color _orange = Color(0xFF0D8549);
 
   @override
   void dispose() {
@@ -65,470 +63,296 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      backgroundColor: const Color(0xFFF2F2F7),
-      body: BlocListener<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is RegisterSuccess) {
-            // Auto-login after register: go to dashboard
-            context.goNamed(kRouteDashboard);
-          } else if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.message),
-                backgroundColor: Colors.red,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        },
-        child: SafeArea(
-          child: Column(
-            children: [
-              // ── Orange App Bar ─────────────────────────────────────
-              _buildAppBar(),
-
-              // ── Scrollable body ────────────────────────────────────
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 12),
-
-                      // Title & subtitle
-                      Text(
-                        l10n.createSalesAccount,
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        l10n.registrationSubtitle,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF8E8E93),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // Form card
-                      _buildFormCard(l10n),
-
-                      const SizedBox(height: 24),
-
-                      // OR divider
-                      _buildOrDivider(l10n),
-
-                      const SizedBox(height: 20),
-
-                      // Already have an account
-                      _buildLoginLink(l10n),
-
-                      const SizedBox(height: 32),
-                    ],
-                  ),
+      body: Stack(
+        children: [
+          // Background Image
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/bg_premium.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+          
+          // Gradient Overlay
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.4),
+                    Colors.black.withOpacity(0.9),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+
+          BlocListener<AuthBloc, AuthState>(
+            listener: (context, state) {
+              if (state is RegisterSuccess) {
+                context.goNamed(kRouteDashboard);
+              } else if (state is AuthError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // ── Custom App Bar ─────────────────────────────────────
+                  _buildCustomAppBar(),
+
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      child: Column(
+                        children: [
+                          _buildLogoHeader(),
+                          const SizedBox(height: 32),
+                          _buildFormCard(l10n).animate().fadeIn(duration: 800.ms).moveY(begin: 30, end: 0, curve: Curves.easeOutQuart),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Orange App Bar
-  // ---------------------------------------------------------------------------
-  Widget _buildAppBar() {
-    return Container(
-      color: _orange,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+  Widget _buildCustomAppBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
           IconButton(
             icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
-            onPressed: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.goNamed(kRouteLogin);
-              }
-            },
+            onPressed: () => context.goNamed(kRouteLogin),
           ),
-          const Expanded(
-            child: Text(
-              'Wowin CRM',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
+          const Spacer(),
+          const Text(
+            'Wowin CRM',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Colors.white70,
+              letterSpacing: 1.2,
             ),
           ),
-          // Balance the back button
+          const Spacer(),
           const SizedBox(width: 48),
         ],
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Form card
-  // ---------------------------------------------------------------------------
+  Widget _buildLogoHeader() {
+    return Column(
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Image.asset(
+              'assets/images/logo.png',
+              fit: BoxFit.contain,
+            ),
+          ),
+        ).animate().scale(duration: 600.ms, curve: Curves.easeOutBack),
+      ],
+    );
+  }
+
   Widget _buildFormCard(AppLocalizations l10n) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Nama Lengkap
-          _buildLabel(l10n.fullName),
-          const SizedBox(height: 8),
-          _buildTextField(
-            controller: _nameController,
-            hint: l10n.fullNameHint,
-            prefixIcon: LucideIcons.user,
-            validator: (v) => (v == null || v.trim().isEmpty)
-                ? l10n.emailEmptyError // Reusing or adding name empty error
-                : null,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
           ),
-          const SizedBox(height: 16),
-
-          // Work Email
-          _buildLabel(l10n.workEmail),
-          const SizedBox(height: 8),
-          _buildTextField(
-            controller: _emailController,
-            hint: 'name@company.com',
-            prefixIcon: LucideIcons.mail,
-            keyboardType: TextInputType.emailAddress,
-            validator: (v) {
-              if (v == null || v.isEmpty) return l10n.emailEmptyError;
-              if (!v.contains('@')) return l10n.invalidEmail;
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-
-          const SizedBox(height: 16),
-
-          // Password
-          _buildLabel(l10n.password),
-          const SizedBox(height: 8),
-          _buildPasswordField(l10n),
-          const SizedBox(height: 16),
-
-          // Sales Type
-          _buildLabel('Tipe Sales'),
-          const SizedBox(height: 8),
-          _buildSalesTypeDropdown(l10n),
-          const SizedBox(height: 20),
-
-          // Terms & Conditions checkbox
-          _buildTermsCheckbox(l10n),
-          const SizedBox(height: 28),
-
-          // Sign Up button
-          _buildSignUpButton(l10n),
         ],
+      ),
+      padding: const EdgeInsets.all(32.0),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.createSalesAccount,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.registrationSubtitle,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 32),
+
+            _buildLabel(l10n.fullName),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                hintText: 'John Doe',
+                prefixIcon: Icon(LucideIcons.user, size: 20),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Nama tidak boleh kosong' : null,
+            ),
+            const SizedBox(height: 20),
+
+            _buildLabel(l10n.workEmail),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                hintText: 'name@company.com',
+                prefixIcon: Icon(LucideIcons.mail, size: 20),
+              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return l10n.emailEmptyError;
+                if (!v.contains('@')) return l10n.invalidEmail;
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+
+            _buildLabel(l10n.password),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: !_isPasswordVisible,
+              decoration: InputDecoration(
+                hintText: l10n.minCharacters,
+                prefixIcon: const Icon(LucideIcons.lock, size: 20),
+                suffixIcon: IconButton(
+                  icon: Icon(_isPasswordVisible ? LucideIcons.eye : LucideIcons.eyeOff, size: 20),
+                  onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                ),
+              ),
+              validator: (v) => (v == null || v.length < 8) ? l10n.passwordEmptyError : null,
+            ),
+            const SizedBox(height: 20),
+
+            _buildLabel('Tipe Sales'),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _selectedSalesType,
+              items: const [
+                DropdownMenuItem(value: 'motoris', child: Text('Motoris')),
+                DropdownMenuItem(value: 'task_order', child: Text('Task Order')),
+                DropdownMenuItem(value: 'canvas', child: Text('Canvas')),
+              ],
+              onChanged: (v) => setState(() => _selectedSalesType = v),
+              validator: (v) => (v == null || v.isEmpty) ? 'Silahkan pilih tipe sales' : null,
+              decoration: const InputDecoration(
+                hintText: 'Pilih Tipe Sales',
+                prefixIcon: Icon(LucideIcons.briefcase, size: 20),
+              ),
+              icon: const Icon(LucideIcons.chevronDown, size: 20),
+            ),
+            const SizedBox(height: 24),
+
+            GestureDetector(
+              onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: _agreedToTerms,
+                      onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
+                      activeColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      l10n.agreeToTerms,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            ElevatedButton(
+              onPressed: _submit,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(l10n.signUp.toUpperCase()),
+                  const SizedBox(width: 8),
+                  const Icon(LucideIcons.arrowRight, size: 18),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(l10n.alreadyHaveAccount, style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => context.goNamed(kRouteLogin),
+                    child: const Text(
+                      'Login',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Re-usable field label
-  // ---------------------------------------------------------------------------
   Widget _buildLabel(String text) {
     return Text(
       text,
       style: const TextStyle(
         fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF1A1A1A),
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Re-usable text field
-  // ---------------------------------------------------------------------------
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData prefixIcon,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A1A)),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 15),
-        prefixIcon: Icon(prefixIcon, size: 20, color: const Color(0xFFAAAAAA)),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFDDDDDD), width: 1.2),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _orange, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
-        ),
-      ),
-      validator: validator,
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Password field with visibility toggle
-  // ---------------------------------------------------------------------------
-  Widget _buildPasswordField(AppLocalizations l10n) {
-    return TextFormField(
-      controller: _passwordController,
-      obscureText: !_isPasswordVisible,
-      style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A1A)),
-      decoration: InputDecoration(
-        hintText: l10n.minCharacters,
-        hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 15),
-        prefixIcon:
-            const Icon(LucideIcons.lock, size: 20, color: Color(0xFFAAAAAA)),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _isPasswordVisible ? LucideIcons.eye : LucideIcons.eyeOff,
-            size: 20,
-            color: const Color(0xFFAAAAAA),
-          ),
-          onPressed: () =>
-              setState(() => _isPasswordVisible = !_isPasswordVisible),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFDDDDDD), width: 1.2),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _orange, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
-        ),
-      ),
-      validator: (v) {
-        if (v == null || v.isEmpty) return l10n.passwordEmptyError;
-        if (v.length < 8) return l10n.passwordEmptyError; // or specific length error
-        return null;
-      },
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Terms & Conditions checkbox
-  // ---------------------------------------------------------------------------
-  Widget _buildTermsCheckbox(AppLocalizations l10n) {
-    return GestureDetector(
-      onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: Checkbox(
-              value: _agreedToTerms,
-              onChanged: (v) => setState(() => _agreedToTerms = v ?? false),
-              activeColor: _orange,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
-              side: const BorderSide(color: Color(0xFFCCCCCC), width: 1.5),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              l10n.agreeToTerms,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF3C3C43),
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Sign Up button
-  // ---------------------------------------------------------------------------
-  Widget _buildSignUpButton(AppLocalizations l10n) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        final isLoading = state is AuthLoading;
-        return SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton(
-            onPressed: isLoading ? null : _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _orange,
-              foregroundColor: Colors.white,
-              disabledBackgroundColor: _orange.withOpacity(0.6),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              elevation: 0,
-            ),
-            child: isLoading
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: Colors.white,
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        l10n.signUp,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(LucideIcons.arrowRight, size: 18),
-                    ],
-                  ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSalesTypeDropdown(AppLocalizations l10n) {
-    return DropdownButtonFormField<String>(
-      value: _selectedSalesType,
-      items: const [
-        DropdownMenuItem(value: 'motoris', child: Text('Motoris')),
-        DropdownMenuItem(value: 'task_order', child: Text('Task Order')),
-        DropdownMenuItem(value: 'canvas', child: Text('Canvas')),
-      ],
-      onChanged: (v) => setState(() => _selectedSalesType = v),
-      validator: (v) => (v == null || v.isEmpty) ? 'Silahkan pilih tipe sales' : null,
-      decoration: InputDecoration(
-        hintText: 'Pilih Tipe Sales',
-        hintStyle: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 15),
-        prefixIcon: const Icon(LucideIcons.briefcase, size: 20, color: Color(0xFFAAAAAA)),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFDDDDDD), width: 1.2),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: _orange, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.2),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
-        ),
-      ),
-      icon: const Icon(LucideIcons.chevronDown, size: 20, color: Color(0xFFAAAAAA)),
-      dropdownColor: Colors.white,
-      style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A1A)),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // OR divider
-  // ---------------------------------------------------------------------------
-  Widget _buildOrDivider(AppLocalizations l10n) {
-    return Row(
-      children: [
-        const Expanded(child: Divider(color: Color(0xFFDDDDDD))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            l10n.or,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF8E8E93),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        const Expanded(child: Divider(color: Color(0xFFDDDDDD))),
-      ],
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Already have an account link
-  // ---------------------------------------------------------------------------
-  Widget _buildLoginLink(AppLocalizations l10n) {
-    return Center(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '${l10n.alreadyHaveAccount} ',
-            style: const TextStyle(fontSize: 14, color: Color(0xFF3C3C43)),
-          ),
-          GestureDetector(
-            onTap: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.goNamed(kRouteLogin);
-              }
-            },
-            child: Text(
-              l10n.login,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFFE8622A),
-              ),
-            ),
-          ),
-        ],
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
       ),
     );
   }

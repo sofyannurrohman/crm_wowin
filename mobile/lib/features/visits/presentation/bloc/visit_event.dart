@@ -153,3 +153,22 @@ class LinkDealToVisit extends VisitEvent {
 class RestoreActiveVisit extends VisitEvent {
   const RestoreActiveVisit();
 }
+
+class FinalizeVisitSubmitted extends VisitEvent {
+  final String activityId;
+  final List<Map<String, dynamic>> items;
+  final String outcome;
+  final double? priceOverride;
+  final String notes;
+
+  const FinalizeVisitSubmitted({
+    required this.activityId,
+    required this.items,
+    required this.outcome,
+    this.priceOverride,
+    required this.notes,
+  });
+
+  @override
+  List<Object?> get props => [activityId, items, outcome, priceOverride, notes];
+}

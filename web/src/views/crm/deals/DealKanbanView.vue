@@ -7,7 +7,8 @@ import { DEAL_STAGES } from '@/constants'
 import { 
   Loader2, DollarSign, Calendar, FileText, Plus, 
   TrendingUp, ArrowRight, User, MoreVertical,
-  Target, CheckCircle2, XCircle, BarChart2
+  Target, CheckCircle2, XCircle, BarChart2,
+  Search, LayoutGrid, AlertCircle
 } from 'lucide-vue-next'
 import type { DealStage, Deal } from '@/types/deal.types'
 import { Button } from '@/components/ui/button'

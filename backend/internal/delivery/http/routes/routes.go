@@ -19,7 +19,6 @@ func SetupRouter(
 	trackingHandler *handlers.TrackingHandler,
 	territoryHandler *handlers.TerritoryHandler,
 	reportHandler *handlers.ReportHandler,
-	attendanceHandler *handlers.AttendanceHandler, 
 	notificationHandler *handlers.NotificationHandler,
 	targetHandler *handlers.TargetHandler,
 	taskHandler *handlers.TaskHandler,
@@ -117,6 +116,7 @@ func SetupRouter(
 		visitGroup.PUT("/schedules/:id", visitHandler.UpdateSchedule)
 		
 		visitGroup.POST("/activities", visitHandler.LogActivity) // Check-in / Checkout
+		visitGroup.POST("/activities/:id/finalize", visitHandler.FinalizeVisit)
 		visitGroup.GET("/activities", visitHandler.ListActivities)
 		visitGroup.GET("/active", visitHandler.GetActiveActivity)
 		visitGroup.GET("/schedules/:schedule_id/activities", visitHandler.GetActivitiesBySchedule)
@@ -140,12 +140,6 @@ func SetupRouter(
 		reportGroup.GET("/kpi-summary", reportHandler.GetKpiSummary)
 		reportGroup.GET("/analytics", reportHandler.GetAnalytics)
 		reportGroup.GET("/recommendations", reportHandler.GetVisitRecommendations)
-		
-		// Attendance
-		attendanceGroup := protected.Group("/attendance")
-		attendanceGroup.POST("/clock-in", attendanceHandler.ClockIn)
-		attendanceGroup.POST("/clock-out", attendanceHandler.ClockOut)
-		attendanceGroup.GET("/history", attendanceHandler.GetHistory)
 		
 		// Notifications
 		notifGroup := protected.Group("/notifications")

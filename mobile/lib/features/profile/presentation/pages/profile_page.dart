@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/router/route_constants.dart';
 import '../../../../core/widgets/app_sidebar.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
@@ -17,11 +18,10 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  // changed orange -> new green #0D8549
-  static const Color _orange = Color(0xFF0D8549);
-  static const Color _bg = Color(0xFFF9FAFB);
-  static const Color _textPrimary = Color(0xFF111827);
-  static const Color _textSecondary = Color(0xFF6B7280);
+  static const Color _emerald = AppColors.primary;
+  static const Color _bg = AppColors.background;
+  static const Color _textPrimary = AppColors.textPrimary;
+  static const Color _textSecondary = AppColors.textSecondary;
 
   @override
   void initState() {
@@ -79,7 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
           appBar: _buildAppBar(),
           drawer: const AppSidebar(),
           body: isLoading 
-              ? const Center(child: CircularProgressIndicator(color: _orange))
+              ? const Center(child: CircularProgressIndicator(color: _emerald))
               : (user != null ? _buildProfileContent(user) : const Center(child: Text('Gagal memuat profil'))),
         );
       },
@@ -140,8 +140,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildHeader(UserEntity user) {
     final avatarUrl = user.avatarPath != null 
       ? '${ApiEndpoints.uploadsBaseUrl}${user.avatarPath}'
-      // update avatar bg param from EA580C -> 0D8549
-      : 'https://ui-avatars.com/api/?name=${user.name}&background=0D8549&color=fff';
+      : 'https://ui-avatars.com/api/?name=${user.name}&background=004D40&color=fff';
 
     return Column(
       children: [
@@ -165,7 +164,7 @@ class _ProfilePageState extends State<ProfilePage> {
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: _orange,
+                  color: _emerald,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 2),
                 ),
@@ -187,7 +186,7 @@ class _ProfilePageState extends State<ProfilePage> {
         Text(
           user.role.toUpperCase(),
           style: const TextStyle(
-            color: _orange,
+            color: _emerald,
             fontSize: 12,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.5,
@@ -239,7 +238,7 @@ class _ProfilePageState extends State<ProfilePage> {
         children: [
           _buildInfoItem(
             icon: LucideIcons.user,
-            iconColor: _orange,
+            iconColor: _emerald,
             iconBg: const Color(0xFFFFF7ED),
             label: 'Full Name',
             value: user.name,
@@ -250,7 +249,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           _buildInfoItem(
             icon: LucideIcons.phone,
-            iconColor: _orange,
+            iconColor: _emerald,
             iconBg: const Color(0xFFFFF7ED),
             label: 'Phone Number',
             value: user.phone ?? 'Not set',
@@ -261,7 +260,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           _buildInfoItem(
             icon: LucideIcons.hash,
-            iconColor: _orange,
+            iconColor: _emerald,
             iconBg: const Color(0xFFFFF7ED),
             label: 'Employee Code',
             value: user.employeeCode ?? '-',
@@ -474,7 +473,7 @@ class _ProfilePageState extends State<ProfilePage> {
               onSave(controller.text);
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: _orange, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: _emerald, foregroundColor: Colors.white),
             child: const Text('Simpan'),
           ),
         ],

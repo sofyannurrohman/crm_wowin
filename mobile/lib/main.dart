@@ -9,7 +9,6 @@ import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/bloc/auth_event.dart';
 import 'features/visits/presentation/bloc/visit_bloc.dart';
 import 'features/tracking/services/tracking_background_service.dart';
-import 'features/attendance/presentation/bloc/attendance_bloc.dart';
 import 'features/notifications/presentation/bloc/notification_bloc.dart';
 import 'features/notifications/presentation/bloc/notification_event.dart';
 import 'features/customers/presentation/bloc/customer_bloc.dart';
@@ -62,9 +61,6 @@ class WowinCrmApp extends StatelessWidget {
         ),
         BlocProvider<VisitBloc>(
           create: (_) => sl<VisitBloc>()..add(const RestoreActiveVisit()),
-        ),
-        BlocProvider<AttendanceBloc>(
-          create: (_) => sl<AttendanceBloc>(),
         ),
         BlocProvider<NotificationBloc>(
           create: (_) =>

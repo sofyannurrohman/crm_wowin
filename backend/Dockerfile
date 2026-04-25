@@ -1,13 +1,14 @@
 # Build stage
-FROM golang:1.25-alpine AS builder
+FROM mirror.gcr.io/library/golang:1.25-alpine AS builder
+
 
 WORKDIR /app
 
 # Install dependencies needed for fetching modules and building
 RUN apk add --no-cache git ca-certificates
 
-# Set Go proxy to default (direct or proxy.golang.org)
-ENV GOPROXY=https://proxy.golang.org,direct
+# Set Go proxy (using goproxy.cn to avoid timeout issues in some regions)
+ENV GOPROXY=https://goproxy.cn,direct
 
 # Download and install goose binary for migrations
 RUN go install github.com/pressly/goose/v3/cmd/goose@latest
@@ -33,7 +34,9 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux go build -installsuffix cgo -o seeder ./cmd/seeder/main.go
 
 # Final stage
-FROM alpine:latest
+
+FROM mirror.gcr.io/library/alpine:latest
+
 
 WORKDIR /app
 

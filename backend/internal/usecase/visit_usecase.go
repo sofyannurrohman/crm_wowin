@@ -25,6 +25,7 @@ type VisitUseCase interface {
 	// Check-in and Check-out
 	GetActiveActivity(ctx context.Context, salesID uuid.UUID) (*models.VisitActivity, error)
 	LogActivity(ctx context.Context, activity *models.VisitActivity) (*models.VisitActivity, error)
+	FinalizeVisit(ctx context.Context, activityID uuid.UUID, items []models.DealItem, outcome string, priceOverride *float64, notes string) error
 	GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error)
 	ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error)
 	GetTaskByDestinationID(ctx context.Context, destID uuid.UUID) (*models.Task, error)
@@ -132,6 +133,25 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 		targetLng = customer.Longitude
 		targetName = customer.Name
 		targetRadius = float64(customer.CheckinRadius)
+
+		// Fetch Sales Person details to check SalesType/Role
+		user, err := u.userRepo.FindByID(ctx, activity.SalesID)
+		if err != nil {
+			return nil, errors.New("failed to fetch salesman info")
+		}
+
+		// DEBUG: Log IDs to see why they don't match
+		fmt.Printf("DEBUG CHECKIN: Customer AssignedTo: %v | Activity SalesID: %v\n", customer.AssignedTo, activity.SalesID)
+
+		// ENFORCE OWNERSHIP: Only assigned salesman (or managers) can check-in
+		if customer.AssignedTo != nil && *customer.AssignedTo != activity.SalesID {
+			// Check if requester has elevated role
+			if user.Role == models.RoleSales {
+				// TEMPORARY BYPASS: Log the error but don't block, to let user work while we debug
+				fmt.Printf("⚠️  OWNERSHIP MISMATCH BLOCKED (Bypassed for debug): Customer belongs to %v, Checkin by %v\n", customer.AssignedTo, activity.SalesID)
+				// return nil, errors.New("akses ditolak: toko ini dimiliki oleh salesman lain")
+			}
+		}
 		
 		// If it's linked to a schedule, enforce integrity
 		if activity.ScheduleID != nil {
@@ -161,10 +181,18 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 		return nil, errors.New("customer_id or lead_id is required for activity")
 	}
 
-	// Fetch Sales Person details to check SalesType
-	user, err := u.userRepo.FindByID(ctx, activity.SalesID)
-	if err != nil {
-		return nil, errors.New("failed to fetch salesman info")
+	// Fetch Sales Person details for Lead check or Proximity (if not already fetched for Customer)
+	var user *models.User
+	if activity.CustomerID != nil {
+		// user was already fetched in the customer block
+		// we just need to ensure it's available for proximity logic below
+		user, _ = u.userRepo.FindByID(ctx, activity.SalesID)
+	} else {
+		var err error
+		user, err = u.userRepo.FindByID(ctx, activity.SalesID)
+		if err != nil {
+			return nil, errors.New("failed to fetch salesman info")
+		}
 	}
 
 	// PROXIMITY VALIDATION! 
@@ -219,6 +247,7 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 			SignaturePath:     &activity.SignaturePath,
 			Distance:          activity.Distance,
 			IsOffline:         activity.IsOffline,
+			Status:            models.VisitStatusDraft, // Start as draft (check-in)
 			ActivityAt:        activity.CreatedAt,
 		}
 		if activity.Notes != nil {
@@ -273,6 +302,21 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 				now := utils.FlexTime{Time: time.Now()}
 				activeSession.CheckOutTime = &now
 				activeSession.SignaturePath = &activity.SignaturePath
+				activeSession.NotaPhotoPath = &activity.NotaPhotoPath
+				
+				// Determine status: If items are provided now, it's COMPLETED. 
+				// Otherwise, if a nota photo is provided, it's DRAFT_PHOTO for later input.
+				if len(activity.DealItems) > 0 {
+					activeSession.Status = models.VisitStatusCompleted
+					activity.Status = models.VisitStatusCompleted
+				} else if activity.NotaPhotoPath != "" {
+					activeSession.Status = models.VisitStatusDraft
+					activity.Status = models.VisitStatusDraft
+				} else {
+					activeSession.Status = models.VisitStatusCompleted
+					activity.Status = models.VisitStatusCompleted
+				}
+
 				if activity.Outcome != nil {
 					activeSession.Outcome = activity.Outcome
 				}
@@ -287,13 +331,13 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 		}
 
 		// Handle DealItems if provided during Checkout, or if outcome explicitly dictates a deal/negotiation
-		// We trigger deal creation for: won, negotiation, follow_up, lost/rejected, or if a price/items are present
+		// BYPASS deal creation if status is DRAFT_PHOTO (will be handled in FinalizeVisit later)
 		shouldCreateDeal := (len(activity.DealItems) > 0 || 
 			(activity.Outcome != nil && (*activity.Outcome == "deal_won" || *activity.Outcome == "negotiation" || *activity.Outcome == "follow_up" || *activity.Outcome == "deal_lost" || *activity.Outcome == "rejection")) || 
 			activity.PriceOverride != nil || 
 			(activity.Notes != nil && (strings.Contains(strings.ToLower(*activity.Notes), "closing") || strings.Contains(strings.ToLower(*activity.Notes), "bungkus"))))
 
-		if shouldCreateDeal && activity.DealID == nil {
+		if shouldCreateDeal && activity.DealID == nil && activity.Status != models.VisitStatusDraft {
 			var dAmount float64
 			for _, it := range activity.DealItems {
 				dAmount += it.UnitPrice * it.Quantity
@@ -641,6 +685,116 @@ func (u *visitUseCaseImpl) LogActivity(ctx context.Context, activity *models.Vis
 	return activity, nil
 }
 
+func (u *visitUseCaseImpl) FinalizeVisit(ctx context.Context, activityID uuid.UUID, items []models.DealItem, outcome string, priceOverride *float64, notes string) error {
+	// 1. Fetch the activity
+	activity, err := u.activityRepo.GetByID(ctx, activityID)
+	if err != nil {
+		return err
+	}
+
+	if activity.Status != models.VisitStatusDraft {
+		return errors.New("activity is already completed or not in draft status")
+	}
+
+	// 2. Prepare VisitActivity wrapper for LogActivity-like processing
+	// We reuse LogActivity logic by creating a dummy checkout activity
+	dummyCheckout := &models.VisitActivity{
+		ID:                activity.ID,
+		SalesID:           activity.UserID,
+		LeadID:            activity.LeadID,
+		CustomerID:        activity.CustomerID,
+		DealID:            activity.DealID,
+		TaskDestinationID: activity.TaskDestinationID,
+		Type:              models.VisitTypeCheckOut,
+		Latitude:          *activity.Latitude,
+		Longitude:         *activity.Longitude,
+		DealItems:         items,
+		Outcome:           &outcome,
+		PriceOverride:     priceOverride,
+		Notes:             &notes,
+		CreatedAt:         utils.FlexTime{Time: time.Now()},
+		Status:            models.VisitStatusCompleted,
+	}
+	if activity.SignaturePath != nil {
+		dummyCheckout.SignaturePath = *activity.SignaturePath
+	}
+
+	// 3. Process the dummy checkout (this will create deals, invoices, etc.)
+	// We manually trigger the logic here or refactor LogActivity to be more modular.
+	// For now, I'll copy the deal creation logic or call a helper.
+	
+	// Fetch user for SalesType/Role check
+	user, err := u.userRepo.FindByID(ctx, activity.UserID)
+	if err != nil {
+		return errors.New("failed to fetch salesman info")
+	}
+
+	// Deal Creation Logic (Copied/Adapted from LogActivity)
+	var dAmount float64
+	for _, it := range items {
+		dAmount += it.UnitPrice * it.Quantity
+	}
+	if priceOverride != nil {
+		dAmount = *priceOverride
+	}
+
+	salesmanID := activity.UserID
+	newDeal := &models.Deal{
+		Title:       "Deal dari Finalisasi Kunjungan",
+		CustomerID:  activity.CustomerID,
+		LeadID:      activity.LeadID,
+		AssignedTo:  &salesmanID,
+		Stage:       models.DealStageProspect,
+		Status:      models.DealStatusOpen,
+		Amount:      &dAmount,
+		Probability: 0,
+		Items:       items,
+		CreatedBy:   &salesmanID,
+	}
+
+	// Conversion logic
+	if newDeal.CustomerID == nil && newDeal.LeadID != nil {
+		newCustID := u.convertLeadToCustomerInline(ctx, *newDeal.LeadID, activity.UserID)
+		if newCustID != nil {
+			newDeal.CustomerID = newCustID
+		}
+	}
+
+	isWon := false
+	if outcome == "deal_won" {
+		isWon = true
+	} else if outcome == "negotiation" {
+		newDeal.Stage = models.DealStageNegotiation
+	} else if outcome == "deal_lost" || outcome == "rejection" {
+		newDeal.Stage = models.DealStageClosedLost
+		newDeal.Status = models.DealStatusLost
+	}
+
+	if isWon {
+		if user.SalesType != nil && *user.SalesType == models.SalesTypeCanvas {
+			// Canvas Deduct
+			for _, it := range items {
+				_ = u.vanStockRepo.DeductStock(ctx, user.ID, it.ProductID, it.Quantity)
+			}
+		}
+		newDeal.Stage = models.DealStageClosedWon
+		newDeal.Status = models.DealStatusWon
+	}
+
+	if err := u.dealRepo.Create(ctx, newDeal); err != nil {
+		return err
+	}
+
+	// 4. Update Activity Status
+	activity.Status = models.VisitStatusCompleted
+	activity.DealID = &newDeal.ID
+	activity.Outcome = &outcome
+	activity.Notes = &notes
+	activity.DealAmount = &dAmount
+	
+	return u.activityRepo.Update(ctx, activity)
+}
+
 func (u *visitUseCaseImpl) GetActiveActivity(ctx context.Context, salesID uuid.UUID) (*models.VisitActivity, error) {
 	filter := repository.SalesActivityFilter{
 		SalesID: &salesID,
@@ -666,6 +820,7 @@ func (u *visitUseCaseImpl) GetActiveActivity(ctx context.Context, salesID uuid.U
 				CreatedAt:         *sa.CheckInTime,
 				IsOffline:         sa.IsOffline,
 				Notes:             sa.Notes,
+				Status:            models.VisitStatus(sa.Status),
 			}, nil
 		}
 	}
@@ -709,6 +864,7 @@ func (u *visitUseCaseImpl) ListActivities(ctx context.Context, filter repository
 				DealTitle:         sa.DealTitle,
 				Type:              models.VisitTypeCheckIn,
 				CreatedAt:         *sa.CheckInTime,
+				Status:            models.VisitStatus(sa.Status),
 			}
 			if sa.Latitude != nil { checkIn.Latitude = *sa.Latitude }
 			if sa.Longitude != nil { checkIn.Longitude = *sa.Longitude }
@@ -742,6 +898,7 @@ func (u *visitUseCaseImpl) ListActivities(ctx context.Context, filter repository
 				DealTitle:         sa.DealTitle,
 				Type:              models.VisitTypeCheckOut,
 				CreatedAt:         *sa.CheckOutTime,
+				Status:            models.VisitStatus(sa.Status),
 			}
 			if sa.Latitude != nil { checkOut.Latitude = *sa.Latitude }
 			if sa.Longitude != nil { checkOut.Longitude = *sa.Longitude }

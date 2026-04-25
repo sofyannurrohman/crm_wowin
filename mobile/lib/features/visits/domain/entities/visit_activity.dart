@@ -24,6 +24,9 @@ class VisitActivity extends Equatable {
   final String? leadName;
   final double? dealAmount;
   final bool taskCompleted;
+  final String? status;
+  final String? notaPhotoPath;
+  final String? taskDestinationId;
   final DateTime createdAt;
 
   const VisitActivity({
@@ -48,6 +51,9 @@ class VisitActivity extends Equatable {
     this.leadName,
     this.dealAmount,
     this.taskCompleted = false,
+    this.status,
+    this.notaPhotoPath,
+    this.taskDestinationId,
     required this.createdAt,
   });
 
@@ -73,6 +79,9 @@ class VisitActivity extends Equatable {
       leadName: json['lead_name'],
       dealAmount: (json['deal_amount'] as num?)?.toDouble(),
       taskCompleted: json['task_completed'] ?? false,
+      status: json['status'],
+      notaPhotoPath: json['nota_photo_path'],
+      taskDestinationId: json['task_destination_id'],
       createdAt: DateTime.parse(json['created_at']),
     );
   }
@@ -99,6 +108,9 @@ class VisitActivity extends Equatable {
         leadName,
         dealAmount,
         taskCompleted,
+        status,
+        notaPhotoPath,
+        taskDestinationId,
         createdAt,
       ];
 }

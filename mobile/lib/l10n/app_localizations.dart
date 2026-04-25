@@ -290,12 +290,6 @@ abstract class AppLocalizations {
   /// **'Leads'**
   String get leads;
 
-  /// No description provided for @attendance.
-  ///
-  /// In en, this message translates to:
-  /// **'Attendance'**
-  String get attendance;
-
   /// No description provided for @leadsAndCustomers.
   ///
   /// In en, this message translates to:
@@ -356,18 +350,6 @@ abstract class AppLocalizations {
   /// **'PREVIEW'**
   String get preview;
 
-  /// No description provided for @clockIn.
-  ///
-  /// In en, this message translates to:
-  /// **'CLOCK IN'**
-  String get clockIn;
-
-  /// No description provided for @clockOut.
-  ///
-  /// In en, this message translates to:
-  /// **'CLOCK OUT'**
-  String get clockOut;
-
   /// No description provided for @recentActivity.
   ///
   /// In en, this message translates to:
@@ -403,18 +385,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sedang mengunci lokasi GPS...'**
   String get locatingGpsWait;
-
-  /// No description provided for @onTime.
-  ///
-  /// In en, this message translates to:
-  /// **'On Time'**
-  String get onTime;
-
-  /// No description provided for @normal.
-  ///
-  /// In en, this message translates to:
-  /// **'Normal'**
-  String get normal;
 
   /// No description provided for @createSalesAccount.
   ///

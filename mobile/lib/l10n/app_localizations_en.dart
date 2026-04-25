@@ -105,9 +105,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get leads => 'Leads';
 
   @override
-  String get attendance => 'Attendance';
-
-  @override
   String get leadsAndCustomers => 'Leads & Customers';
 
   @override
@@ -138,12 +135,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get preview => 'PREVIEW';
 
   @override
-  String get clockIn => 'CLOCK IN';
-
-  @override
-  String get clockOut => 'CLOCK OUT';
-
-  @override
   String get recentActivity => 'Recent Activity';
 
   @override
@@ -160,12 +151,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get locatingGpsWait => 'Sedang mengunci lokasi GPS...';
-
-  @override
-  String get onTime => 'On Time';
-
-  @override
-  String get normal => 'Normal';
 
   @override
   String get createSalesAccount => 'Create Sales Account';

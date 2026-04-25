@@ -41,6 +41,8 @@ type SalesActivity struct {
 	CustomerName      *string        `json:"customer_name,omitempty"`
 	LeadName          *string        `json:"lead_name,omitempty"`
 	DealAmount        *float64       `json:"deal_amount,omitempty"`
+	NotaPhotoPath     *string        `json:"nota_photo_path,omitempty"`
+	Status            VisitStatus    `json:"status"`
 	ActivityAt        utils.FlexTime  `json:"activity_at"`
 	CreatedAt         utils.FlexTime  `json:"created_at"`
 	UpdatedAt         utils.FlexTime  `json:"updated_at"`

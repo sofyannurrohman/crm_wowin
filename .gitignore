@@ -1,0 +1,42 @@
+# Storage & Uploads
+storage/uploads/
+backend/storage/uploads/
+web/storage/uploads/
+*.png
+*.jpg
+*.jpeg
+*.webp
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Go
+backend/server
+backend/bin/
+backend/vendor/
+
+# Flutter / Dart
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.pub-cache/
+mobile/.pub/
+mobile/build/
+
+# Node / JS
+node_modules/
+dist/
+.next/
+out/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log

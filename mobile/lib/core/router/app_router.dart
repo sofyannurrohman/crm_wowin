@@ -4,7 +4,6 @@ import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/visits/presentation/pages/check_in_page.dart';
 import '../../features/visits/presentation/pages/check_out_page.dart';
-import '../../features/attendance/presentation/pages/attendance_history_page.dart';
 import '../../features/notifications/presentation/pages/notification_page.dart';
 import '../../features/dashboard/presentation/pages/dashboard_page.dart';
 import '../../features/customers/presentation/pages/customer_list_page.dart';
@@ -28,7 +27,6 @@ import '../../features/tasks/presentation/pages/route_planner_page.dart';
 import '../../features/tasks/domain/entities/task.dart' as task_ent;
 import '../../features/activities/presentation/pages/activity_log_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
-import '../../features/attendance/presentation/pages/attendance_home_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/products/presentation/pages/product_list_page.dart';
 import '../../features/products/presentation/pages/product_detail_page.dart';
@@ -45,6 +43,9 @@ import '../../features/banners/presentation/pages/add_banner_page.dart';
 import '../../features/visits/presentation/pages/ongoing_visit_page.dart';
 import '../../features/inventory/presentation/pages/inventory_transfer_page.dart';
 import '../../features/leads/presentation/pages/quick_lead_page.dart';
+import '../../features/visits/presentation/pages/evening_task_list_page.dart';
+import '../../features/visits/presentation/pages/finalize_visit_page.dart';
+import '../../features/visits/domain/entities/visit_activity.dart';
 
 
 
@@ -125,6 +126,8 @@ final GoRouter appRouter = GoRouter(
           targetRadiusMeters: args?['targetRadiusMeters'] as double? ?? 200.0,
           dealId: args?['dealId'] as String?,
           taskDestinationId: args?['taskDestinationId'] as String?,
+          salesId: args?['salesId'] as String?,
+          salesmanName: args?['salesmanName'] as String?,
         );
       },
     ),
@@ -163,11 +166,6 @@ final GoRouter appRouter = GoRouter(
           dealId: args['dealId'] as String?,
         );
       },
-    ),
-    GoRoute(
-      name: kRouteAttendanceHistory,
-      path: '/attendance-history',
-      builder: (context, state) => const AttendanceHistoryPage(),
     ),
     GoRoute(
       name: kRouteNotifications,
@@ -305,11 +303,6 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ProfilePage(),
     ),
     GoRoute(
-      name: kRouteAttendanceHome,
-      path: '/attendance-home',
-      builder: (context, state) => const AttendanceHomePage(),
-    ),
-    GoRoute(
       name: kRouteSettings,
       path: '/settings',
       builder: (context, state) => const SettingsPage(),
@@ -386,6 +379,19 @@ final GoRouter appRouter = GoRouter(
       name: kRouteQuickLead,
       path: '/leads/quick',
       builder: (context, state) => const QuickLeadPage(),
+    ),
+    GoRoute(
+      name: kRouteEveningTasks,
+      path: '/evening-tasks',
+      builder: (context, state) => const EveningTaskListPage(),
+    ),
+    GoRoute(
+      name: kRouteFinalizeVisit,
+      path: '/finalize-visit',
+      builder: (context, state) {
+        final activity = state.extra as VisitActivity;
+        return FinalizeVisitPage(activity: activity);
+      },
     ),
   ],
   redirect: (context, state) async {

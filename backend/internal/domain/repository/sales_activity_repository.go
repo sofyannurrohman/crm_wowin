@@ -15,6 +15,7 @@ type SalesActivityFilter struct {
 	DealID     *uuid.UUID
 	StartDate  *time.Time
 	EndDate    *time.Time
+	Status     *models.VisitStatus
 }
 
 type SalesActivityRepository interface {

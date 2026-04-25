@@ -3,6 +3,7 @@ import '../../domain/usecases/check_in_usecase.dart';
 import '../../domain/usecases/check_out_usecase.dart';
 import '../../domain/usecases/get_activities.dart';
 import '../../domain/usecases/get_active_visit.dart';
+import '../../domain/usecases/finalize_visit.dart';
 import '../../domain/entities/visit_request_entities.dart';
 import '../../../customers/domain/repositories/invoice_repository.dart';
 import '../../../customers/domain/entities/invoice.dart';
@@ -14,6 +15,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
   final CheckOutUseCase checkOutUseCase;
   final GetActivities getActivitiesUseCase;
   final GetActiveVisitUseCase getActiveVisitUseCase;
+  final FinalizeVisit finalizeVisitUseCase;
   final InvoiceRepository invoiceRepository;
 
   VisitBloc({
@@ -21,10 +23,12 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
     required this.checkOutUseCase,
     required this.getActivitiesUseCase,
     required this.getActiveVisitUseCase,
+    required this.finalizeVisitUseCase,
     required this.invoiceRepository,
   }) : super(VisitInitial()) {
     on<CheckInSubmitted>(_onCheckInSubmitted);
     on<CheckOutSubmitted>(_onCheckOutSubmitted);
+    on<FinalizeVisitSubmitted>(_onFinalizeVisitSubmitted);
     on<FetchActivities>(_onFetchActivities);
     on<LinkDealToVisit>(_onLinkDealToVisit);
     on<RestoreActiveVisit>(_onRestoreActiveVisit);
@@ -42,18 +46,28 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
         (failure) => null, // Ignore failures during reconciliation for now
         (activity) {
           if (activity != null) {
+            final currentState = state is VisitSuccess ? state as VisitSuccess : null;
             emit(VisitSuccess(
               'Sesi kunjungan dilanjutkan.',
               customerId: activity.customerId,
               leadId: activity.leadId,
-              customerName: null, // We might need to fetch this if missing, but UI handles ID
+              customerName: currentState?.customerName, // Preserve name if we have it locally
               checkInTime: activity.createdAt,
-              scheduleId: activity.id, // Using activity ID if scheduleId is not direct
+              scheduleId: activity.id,
+              taskDestinationId: activity.taskDestinationId,
+              invoices: currentState?.invoices ?? const [],
             ));
           } else {
-            // If backend says no active visit but we have local state, clear it
+            // Only clear if we are in VisitSuccess but the backend definitely says no active visit
+            // AND the check-in wasn't just now (to avoid race conditions)
             if (state is VisitSuccess) {
-              emit(VisitInitial());
+              final s = state as VisitSuccess;
+              final isVeryRecent = s.checkInTime != null && 
+                  DateTime.now().difference(s.checkInTime!).inSeconds < 30;
+              
+              if (!isVeryRecent) {
+                emit(VisitInitial());
+              }
             }
           }
         },
@@ -196,5 +210,25 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
         currentDealId: event.dealId,
       ));
     }
+  }
+
+  Future<void> _onFinalizeVisitSubmitted(
+    FinalizeVisitSubmitted event,
+    Emitter<VisitState> emit,
+  ) async {
+    emit(VisitLoading());
+
+    final result = await finalizeVisitUseCase(
+      activityId: event.activityId,
+      items: event.items,
+      outcome: event.outcome,
+      priceOverride: event.priceOverride,
+      notes: event.notes,
+    );
+
+    result.fold(
+      (failure) => emit(VisitError(failure.message)),
+      (_) => emit(const VisitSuccess('Kunjungan berhasil difinalisasi!')),
+    );
   }
 }
