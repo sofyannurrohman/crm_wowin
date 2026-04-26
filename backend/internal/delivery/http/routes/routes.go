@@ -118,6 +118,7 @@ func SetupRouter(
 		
 		visitGroup.POST("/activities", visitHandler.LogActivity) // Check-in / Checkout
 		visitGroup.POST("/activities/:id/finalize", visitHandler.FinalizeVisit)
+		visitGroup.POST("/activities/:id/analyze-receipt", visitHandler.AnalyzeReceipt)
 		visitGroup.GET("/activities", visitHandler.ListActivities)
 		visitGroup.GET("/active", visitHandler.GetActiveActivity)
 		visitGroup.GET("/schedules/:schedule_id/activities", visitHandler.GetActivitiesBySchedule)

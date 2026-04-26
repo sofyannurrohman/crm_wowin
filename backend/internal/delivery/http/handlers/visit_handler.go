@@ -479,3 +479,19 @@ func (h *VisitHandler) FinalizeVisit(c *gin.Context) {
 
 	response.OK(c, nil, "visit finalized successfully")
 }
+
+func (h *VisitHandler) AnalyzeReceipt(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Fail(c, http.StatusBadRequest, "invalid activity id")
+		return
+	}
+
+	items, err := h.uc.AnalyzeReceipt(c.Request.Context(), id)
+	if err != nil {
+		response.Fail(c, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	response.OK(c, items, "receipt analyzed successfully")
+}

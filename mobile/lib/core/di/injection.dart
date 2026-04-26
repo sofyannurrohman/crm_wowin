@@ -18,6 +18,7 @@ import '../../features/visits/domain/usecases/check_out_usecase.dart';
 import '../../features/visits/domain/usecases/get_activities.dart';
 import '../../features/visits/domain/usecases/get_active_visit.dart';
 import '../../features/visits/domain/usecases/finalize_visit.dart';
+import '../../features/visits/domain/usecases/analyze_receipt.dart';
 import '../../features/visits/data/sync/offline_sync_manager.dart';
 import '../../features/visits/presentation/bloc/visit_bloc.dart';
 import '../database/local_db_helper.dart';
@@ -213,6 +214,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetActivities(sl()));
   sl.registerLazySingleton(() => GetActiveVisitUseCase(sl()));
   sl.registerLazySingleton(() => FinalizeVisit(sl()));
+  sl.registerLazySingleton(() => AnalyzeReceiptUseCase(sl()));
   sl.registerLazySingleton(() => GetCustomers(sl()));
   sl.registerLazySingleton(() => GetCustomerDetail(sl()));
   sl.registerLazySingleton(() => CreateCustomer(sl()));
@@ -252,6 +254,7 @@ Future<void> initDependencies() async {
         getActivitiesUseCase: sl(),
         getActiveVisitUseCase: sl(),
         finalizeVisitUseCase: sl(),
+        analyzeReceiptUseCase: sl(),
         invoiceRepository: sl(),
       ));
   sl.registerFactory(() => NotificationBloc(repository: sl()));

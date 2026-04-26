@@ -27,6 +27,7 @@ import '../widgets/stock_check_sheet.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart' as auth;
 import '../../../auth/presentation/bloc/auth_state.dart' as auth;
 import '../../../../core/di/injection.dart';
+import '../../../../core/utils/image_utils.dart';
 
 class CheckOutPage extends StatefulWidget {
   final String scheduleId;
@@ -185,8 +186,13 @@ class _CheckOutPageState extends State<CheckOutPage> {
   }
 
   Future<void> _takeReceiptPhoto() async {
-    final XFile? photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 70);
-    if (photo != null) setState(() => _receiptPhoto = photo);
+    final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
+    if (photo != null) {
+      // Preprocessing (Important for older devices/HP Lawas)
+      // This resizes to max width 1024px and compresses to save bandwidth
+      final File processedFile = await ImageUtils.processImageForUpload(File(photo.path));
+      setState(() => _receiptPhoto = XFile(processedFile.path));
+    }
   }
 
   void _submitCheckOut() {

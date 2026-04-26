@@ -88,3 +88,11 @@ class ActivitiesLoaded extends VisitState {
   @override
   List<Object> get props => [activities];
 }
+
+class AnalyzeReceiptSuccess extends VisitState {
+  final List<Map<String, dynamic>> items;
+  const AnalyzeReceiptSuccess(this.items);
+
+  @override
+  List<Object?> get props => [items];
+}

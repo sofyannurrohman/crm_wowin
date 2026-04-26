@@ -96,4 +96,16 @@ class VisitRepositoryImpl implements VisitRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> analyzeReceipt(String activityId) async {
+    try {
+      final result = await remoteDataSource.analyzeReceipt(activityId);
+      return Right(result);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

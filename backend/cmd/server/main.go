@@ -15,6 +15,7 @@ import (
 	"crm_wowin_backend/internal/delivery/http/routes"
 	"crm_wowin_backend/internal/repository/postgres"
 	"crm_wowin_backend/internal/usecase"
+	"crm_wowin_backend/pkg/ai"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -177,12 +178,15 @@ func main() {
 		uploadDir = "./storage/uploads"
 	}
 	
+	geminiKey := os.Getenv("GEMINI_API_KEY")
+	geminiService := ai.NewGeminiService(geminiKey)
+
 	userUC := usecase.NewUserUseCase(userRepo, jwtSecret, 24, 7) // 24hrs JWT, 7 days Refresh (or taken from Env later)
 	customerUC := usecase.NewCustomerUseCase(customerRepo, dealRepo, visitRepo)
 	leadUC := usecase.NewLeadUseCase(leadRepo, customerRepo)
 	dealUC := usecase.NewDealUseCase(dealRepo, customerRepo)
 	productUC := usecase.NewProductUseCase(productRepo, dealItemRepo, dealRepo, uploadDir)
-	visitUC := usecase.NewVisitUseCase(visitRepo, customerRepo, taskRepo, salesActivityRepo, leadRepo, dealRepo, userRepo, vanStockRepo, paymentRepo, invoiceRepo)
+	visitUC := usecase.NewVisitUseCase(visitRepo, customerRepo, taskRepo, salesActivityRepo, leadRepo, dealRepo, userRepo, vanStockRepo, paymentRepo, invoiceRepo, productRepo, geminiService, uploadDir)
 	trackingUC := usecase.NewTrackingUseCase(trackingRepo)
 	territoryUC := usecase.NewTerritoryUseCase(territoryRepo)
 	reportUC := usecase.NewReportUseCase(reportRepo, targetRepo, salesTargetRepo, taskRepo)

@@ -15,4 +15,5 @@ abstract class VisitRepository {
     double? priceOverride,
     String? notes,
   });
+  Future<Either<Failure, List<Map<String, dynamic>>>> analyzeReceipt(String activityId);
 }

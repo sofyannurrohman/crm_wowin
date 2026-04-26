@@ -172,3 +172,11 @@ class FinalizeVisitSubmitted extends VisitEvent {
   @override
   List<Object?> get props => [activityId, items, outcome, priceOverride, notes];
 }
+
+class AnalyzeReceiptTriggered extends VisitEvent {
+  final String activityId;
+  const AnalyzeReceiptTriggered(this.activityId);
+
+  @override
+  List<Object?> get props => [activityId];
+}

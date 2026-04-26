@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"crm_wowin_backend/pkg/utils"
+	"crm_wowin_backend/pkg/ai"
 	"github.com/google/uuid"
 )
 
@@ -29,6 +30,7 @@ type VisitUseCase interface {
 	GetActivitiesBySchedule(ctx context.Context, scheduleID uuid.UUID) ([]*models.VisitActivity, error)
 	ListActivities(ctx context.Context, filter repository.ActivityFilter) ([]*models.VisitActivity, error)
 	GetTaskByDestinationID(ctx context.Context, destID uuid.UUID) (*models.Task, error)
+	AnalyzeReceipt(ctx context.Context, activityID uuid.UUID) ([]models.DealItem, error)
 }
 
 type visitUseCaseImpl struct {
@@ -42,6 +44,9 @@ type visitUseCaseImpl struct {
 	vanStockRepo repository.VanStockRepository
 	paymentRepo  repository.PaymentRepository
 	invoiceRepo  repository.InvoiceRepository
+	productRepo  repository.ProductRepository
+	geminiService ai.GeminiService
+	uploadsDir   string
 }
 
 func NewVisitUseCase(
@@ -55,6 +60,9 @@ func NewVisitUseCase(
 	vsr repository.VanStockRepository,
 	pr repository.PaymentRepository,
 	ir repository.InvoiceRepository,
+	prodr repository.ProductRepository,
+	gs ai.GeminiService,
+	uploadsDir string,
 ) VisitUseCase {
 	return &visitUseCaseImpl{
 		visitRepo:    vr,
@@ -67,6 +75,9 @@ func NewVisitUseCase(
 		vanStockRepo: vsr,
 		paymentRepo:  pr,
 		invoiceRepo:  ir,
+		productRepo:  prodr,
+		geminiService: gs,
+		uploadsDir:   uploadsDir,
 	}
 }
 
@@ -1041,4 +1052,61 @@ func (u *visitUseCaseImpl) activateCustomerIfProspect(ctx context.Context, custI
 			_ = u.custRepo.Update(ctx, cust)
 		}
 	}
+}
+
+func (u *visitUseCaseImpl) AnalyzeReceipt(ctx context.Context, activityID uuid.UUID) ([]models.DealItem, error) {
+	// 1. Fetch activity
+	activity, err := u.activityRepo.GetByID(ctx, activityID)
+	if err != nil {
+		return nil, err
+	}
+
+	if activity.NotaPhotoPath == "" {
+		return nil, fmt.Errorf("tidak ada foto nota untuk kunjungan ini")
+	}
+
+	// 2. Resolve full path
+	fullPath := fmt.Sprintf("%s/%s", u.uploadsDir, activity.NotaPhotoPath)
+
+	// 3. Call Gemini
+	mimeType := "image/jpeg"
+	lowerPath := strings.ToLower(fullPath)
+	if strings.HasSuffix(lowerPath, ".png") {
+		mimeType = "image/png"
+	} else if strings.HasSuffix(lowerPath, ".webp") {
+		mimeType = "image/webp"
+	}
+
+	extractedItems, err := u.geminiService.AnalyzeReceipt(ctx, fullPath, mimeType)
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. Map to DealItems and perform product matching
+	var dealItems []models.DealItem
+	for _, it := range extractedItems {
+		item := models.DealItem{
+			Name:      it.Name,
+			Quantity:  it.Quantity,
+			Unit:      it.Unit,
+			UnitPrice: it.Price,
+			Subtotal:  it.Quantity * it.Price,
+		}
+
+		// Try to match product by name
+		products, _ := u.productRepo.List(ctx, repository.ProductFilter{Search: it.Name})
+		if len(products) > 0 {
+			// Take the first match
+			p := products[0]
+			item.ProductID = p.ID
+			if item.UnitPrice <= 0 {
+				item.UnitPrice = p.Price
+			}
+			item.Subtotal = item.Quantity * item.UnitPrice
+		}
+
+		dealItems = append(dealItems, item)
+	}
+
+	return dealItems, nil
 }

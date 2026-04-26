@@ -4,6 +4,7 @@ import '../../domain/usecases/check_out_usecase.dart';
 import '../../domain/usecases/get_activities.dart';
 import '../../domain/usecases/get_active_visit.dart';
 import '../../domain/usecases/finalize_visit.dart';
+import '../../domain/usecases/analyze_receipt.dart';
 import '../../domain/entities/visit_request_entities.dart';
 import '../../../customers/domain/repositories/invoice_repository.dart';
 import '../../../customers/domain/entities/invoice.dart';
@@ -16,6 +17,7 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
   final GetActivities getActivitiesUseCase;
   final GetActiveVisitUseCase getActiveVisitUseCase;
   final FinalizeVisit finalizeVisitUseCase;
+  final AnalyzeReceiptUseCase analyzeReceiptUseCase;
   final InvoiceRepository invoiceRepository;
 
   VisitBloc({
@@ -24,11 +26,13 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
     required this.getActivitiesUseCase,
     required this.getActiveVisitUseCase,
     required this.finalizeVisitUseCase,
+    required this.analyzeReceiptUseCase,
     required this.invoiceRepository,
   }) : super(VisitInitial()) {
     on<CheckInSubmitted>(_onCheckInSubmitted);
     on<CheckOutSubmitted>(_onCheckOutSubmitted);
     on<FinalizeVisitSubmitted>(_onFinalizeVisitSubmitted);
+    on<AnalyzeReceiptTriggered>(_onAnalyzeReceiptTriggered);
     on<FetchActivities>(_onFetchActivities);
     on<LinkDealToVisit>(_onLinkDealToVisit);
     on<RestoreActiveVisit>(_onRestoreActiveVisit);
@@ -229,6 +233,18 @@ class VisitBloc extends Bloc<VisitEvent, VisitState> with HydratedMixin {
     result.fold(
       (failure) => emit(VisitError(failure.message)),
       (_) => emit(const VisitSuccess('Kunjungan berhasil difinalisasi!')),
+    );
+  }
+
+  Future<void> _onAnalyzeReceiptTriggered(
+    AnalyzeReceiptTriggered event,
+    Emitter<VisitState> emit,
+  ) async {
+    emit(VisitLoading());
+    final result = await analyzeReceiptUseCase(event.activityId);
+    result.fold(
+      (failure) => emit(VisitError(failure.message)),
+      (items) => emit(AnalyzeReceiptSuccess(items)),
     );
   }
 }

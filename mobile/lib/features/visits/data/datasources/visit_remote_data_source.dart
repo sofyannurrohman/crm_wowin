@@ -17,6 +17,7 @@ abstract class VisitRemoteDataSource {
     double? priceOverride,
     String? notes,
   });
+  Future<List<Map<String, dynamic>>> analyzeReceipt(String activityId);
 }
 
 class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
@@ -188,6 +189,21 @@ class VisitRemoteDataSourceImpl implements VisitRemoteDataSource {
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw ServerException(response.data['message'] ?? 'Gagal melakukan finalisasi');
+      }
+    } on DioException catch (e) {
+      throw ServerException(e.response?.data['message'] ?? 'Gagal menghubungi server');
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> analyzeReceipt(String activityId) async {
+    try {
+      final response = await dio.post('/visits/activities/$activityId/analyze-receipt');
+      if (response.statusCode == 200) {
+        final List data = response.data['data'];
+        return data.map((json) => json as Map<String, dynamic>).toList();
+      } else {
+        throw ServerException(response.data['message'] ?? 'Gagal menganalisa nota');
       }
     } on DioException catch (e) {
       throw ServerException(e.response?.data['message'] ?? 'Gagal menghubungi server');

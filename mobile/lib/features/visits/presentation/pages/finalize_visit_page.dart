@@ -82,6 +82,28 @@ class _FinalizeVisitPageState extends State<FinalizeVisitPage> {
               const SnackBar(content: Text('Visit finalized successfully.'), backgroundColor: AppColors.primary, behavior: SnackBarBehavior.floating),
             );
             context.pop(true);
+          } else if (state is AnalyzeReceiptSuccess) {
+            setState(() {
+              _selectedItems.clear();
+              for (var item in state.items) {
+                _selectedItems.add({
+                  'product_id': item['product_id'],
+                  'name': item['name'],
+                  'quantity': (item['quantity'] as num).toDouble(),
+                  'unit': item['unit'] ?? 'pcs',
+                  'unit_price': (item['unit_price'] as num).toDouble(),
+                  'subtotal': (item['subtotal'] as num).toDouble(),
+                  'discount': 0.0,
+                });
+              }
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Nota berhasil dianalisa dengan AI!'),
+                backgroundColor: Color(0xFF6366F1),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
           } else if (state is VisitError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message), backgroundColor: const Color(0xFFEF4444), behavior: SnackBarBehavior.floating),
@@ -187,6 +209,49 @@ class _FinalizeVisitPageState extends State<FinalizeVisitPage> {
               ..._selectedItems.asMap().entries.map((entry) => _buildItemTile(entry.key, entry.value).animate().fadeIn().slideX()),
               
               const SizedBox(height: 16),
+              // AI AUTOFILL BUTTON
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6366F1), Color(0xFFA855F7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF6366F1).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () {
+                      context.read<VisitBloc>().add(AnalyzeReceiptTriggered(widget.activity.id));
+                    },
+                    child: Container(
+                      height: 60,
+                      width: double.infinity,
+                      alignment: Alignment.center,
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(LucideIcons.sparkles, size: 18, color: Colors.white),
+                          SizedBox(width: 12),
+                          Text('AUTOFILL WITH GEMINI AI', 
+                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Colors.white, letterSpacing: 0.5)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: _showProductPicker,
                 icon: const Icon(LucideIcons.plus, size: 18),

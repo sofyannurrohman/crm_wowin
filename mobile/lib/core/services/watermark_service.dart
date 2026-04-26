@@ -8,6 +8,12 @@ class WatermarkService {
   static Future<Uint8List> addAddressWatermark(Uint8List imageBytes, Position? position, {String? address}) async {
     img.Image? image = img.decodeImage(imageBytes);
     if (image == null) return imageBytes;
+    
+    // PREPROCESSING: Optimization for "HP Lawas"
+    // Resize to max 1024px BEFORE processing watermark to save RAM and CPU
+    if (image.width > 1024) {
+      image = img.copyResize(image, width: 1024);
+    }
 
     String addressText = address ?? '';
     
